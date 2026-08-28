@@ -1,3 +1,5 @@
+Note: This is an educational project developed as part of a university course. It is not an official Utah State University or Analytics Solutions Center application.
+
 # ASC Project Management Platform
 
 A centralized project management and collaboration platform for the **Analytics Solutions Center (ASC)** at Utah State University.
