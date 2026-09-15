@@ -1,0 +1,117 @@
+// data/requirements.js
+const requirements = [
+  {
+    id: 1,
+    projectId: 1,
+    title: "Load historical ticket sales",
+    description: "Import five seasons of ticket sales from the Athletics export into the working database.",
+    priority: "High",
+    statusId: 5,
+    dueDate: "2026-01-30",
+    assignedPersonId: 2,
+    mentorPersonId: 4,
+    acceptanceCriteria: "All five seasons load with no null game dates and row counts match the source export.",
+    estimatedHours: 16,
+    actualHours: 19
+  },
+  {
+    id: 2,
+    projectId: 1,
+    title: "Build attendance-by-sport chart",
+    description: "A bar chart of average attendance per sport, filterable by season.",
+    priority: "High",
+    statusId: 2,
+    dueDate: "2026-02-20",
+    assignedPersonId: 1,
+    mentorPersonId: 4,
+    acceptanceCriteria: "Chart renders under two seconds and the season filter updates it without a page reload.",
+    estimatedHours: 24,
+    actualHours: 11
+  },
+  {
+    id: 3,
+    projectId: 1,
+    title: "Draft the public read-only view",
+    description: "A stripped-down version of the dashboard that does not require a login.",
+    priority: "Low",
+    statusId: 1,
+    dueDate: "2026-04-10",
+    assignedPersonId: 1,
+    mentorPersonId: 4,
+    acceptanceCriteria: "Public view shows charts but no student or staff names.",
+    estimatedHours: 20,
+    actualHours: 0
+  },
+  {
+    id: 4,
+    projectId: 1,
+    title: "Confirm 2019 season data handling",
+    description: "Get a written answer from the client on whether the incomplete 2019 season should appear.",
+    priority: "Medium",
+    statusId: 4,
+    dueDate: "2026-02-14",
+    assignedPersonId: 3,
+    mentorPersonId: 4,
+    acceptanceCriteria: "Client decision recorded in the project notes.",
+    estimatedHours: 2,
+    actualHours: 1
+  },
+  {
+    id: 5,
+    projectId: 1,
+    title: "Accessibility pass on the dashboard",
+    description: "Check color contrast, keyboard navigation, and screen reader labels.",
+    priority: "Medium",
+    statusId: 3,
+    dueDate: "2026-03-06",
+    assignedPersonId: 1,
+    mentorPersonId: 4,
+    acceptanceCriteria: "No contrast failures and every control is reachable by keyboard.",
+    estimatedHours: 8,
+    actualHours: 8
+  },
+  {
+    id: 6,
+    projectId: 2,
+    title: "Design the inventory item form",
+    description: "A form volunteers use to add and update stocked items on a tablet.",
+    priority: "High",
+    statusId: 2,
+    dueDate: "2026-02-27",
+    assignedPersonId: 7,
+    mentorPersonId: 6,
+    acceptanceCriteria: "Form is usable one-handed on a ten inch tablet and validates required fields.",
+    estimatedHours: 18,
+    actualHours: 6
+  },
+  {
+    id: 7,
+    projectId: 2,
+    title: "Low-stock alert rules",
+    description: "Flag items that fall below the threshold the pantry sets per item.",
+    priority: "Medium",
+    statusId: 1,
+    dueDate: "2026-03-20",
+    assignedPersonId: 8,
+    mentorPersonId: 6,
+    acceptanceCriteria: "Items below threshold appear in a low-stock list sorted by how far below they are.",
+    estimatedHours: 12,
+    actualHours: 0
+  },
+  {
+    id: 8,
+    projectId: 3,
+    title: "Request the alumni giving extract",
+    description: "Submit the data request to the Alumni Association and track approval.",
+    priority: "High",
+    statusId: 4,
+    dueDate: "2026-02-16",
+    assignedPersonId: 5,
+    mentorPersonId: 3,
+    acceptanceCriteria: "Extract received and stored in the project folder.",
+    estimatedHours: 4,
+    actualHours: 2
+  }
+];
+
+module.exports = requirements;
