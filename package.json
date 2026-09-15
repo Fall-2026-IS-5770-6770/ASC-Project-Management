@@ -1,0 +1,43 @@
+{
+  "name": "asc-project-management",
+  "version": "1.0.0",
+  "description": "A project management app for the Analytics Solution Center",
+  "keywords": [
+    "PM",
+    "ASC",
+    "Full-stack",
+    "Server-side",
+    "NoSQL",
+    "SQL",
+    "Node",
+    "Express",
+    "MangoDB"
+  ],
+  "homepage": "https://github.com/Fall-2026-IS-5770-6770/ASC-Project-Management#readme",
+  "bugs": {
+    "url": "https://github.com/Fall-2026-IS-5770-6770/ASC-Project-Management/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Fall-2026-IS-5770-6770/ASC-Project-Management.git"
+  },
+  "license": "MIT",
+  "author": "USU Fall 2026 IS5770/6770 Class",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run lint",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "nodemon": "^3.1.14"
+  }
+}
