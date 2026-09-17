@@ -7,6 +7,15 @@ const PORT = 3000;
 app.use(express.urlencoded({extended:true}));
 
 
+app.get("/projects/new", (req, res) => {
+    res.send("Create project page");
+})
+
+app.post("/projects/new", (req,res) => {
+    console.log (req.body)
+    res.send("Saving a new project");
+})
+
 // Start listening
 app.listen(PORT,()=>{
     console.log(`App is live: http://localhost:${PORT}`)
