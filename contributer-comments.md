@@ -3,3 +3,4 @@ Put your comments into this file with your GitHub username. This is a public rep
 Exmaple:
 @Paorapotangaroa: "Any application that can be written in JavaScript, will eventually be written in JavaScript." - Jeff Atwood
 
+@EmilyPruden: "If it helps, it's very human to be deeply confused all the time." - We Fix Space Junk
