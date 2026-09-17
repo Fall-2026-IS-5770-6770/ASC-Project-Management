@@ -3,3 +3,5 @@ Put your comments into this file with your GitHub username. This is a public rep
 Exmaple:
 @Paorapotangaroa: "Any application that can be written in JavaScript, will eventually be written in JavaScript." - Jeff Atwood
 
+@RikoSwave: "If... If is good." - Panic, Disney's Hercules
+
