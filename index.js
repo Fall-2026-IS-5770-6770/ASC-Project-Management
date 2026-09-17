@@ -44,7 +44,7 @@ app.post('/clients/edit/:id', (req, res)=> {
 // *** handle delete client ***
 // display clients to be deleted
 app.get('/clients/delete/:id', (req, res)=> {
-    res.send('displaying client that will be deleted')
+    res.send('displaying client that will be deleted '+req.params.id)
 })
 
 // delete request for client 
