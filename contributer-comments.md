@@ -3,3 +3,4 @@ Put your comments into this file with your GitHub username. This is a public rep
 Exmaple:
 @Paorapotangaroa: "Any application that can be written in JavaScript, will eventually be written in JavaScript." - Jeff Atwood
 
+@sperrychristian: 'The Six Stages of Debugging: That can't happen. That doesn't happen on my machine. That shouldn't happen. Why does that happen? Oh, I see.'
