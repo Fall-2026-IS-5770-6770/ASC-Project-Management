@@ -3,6 +3,6 @@ Put your comments into this file with your GitHub username. This is a public rep
 Example:
 @Paorapotangaroa: "Any application that can be written in JavaScript, will eventually be written in JavaScript." - Jeff Atwood
 
-@johnsondillond: "The ability to speak does not make you intelligent" - Qui=Gon Jinn
+@johnsondillond: "The ability to speak does not make you intelligent" - Qui-Gon Jinn
 
 
