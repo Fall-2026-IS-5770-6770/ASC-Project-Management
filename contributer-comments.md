@@ -3,3 +3,4 @@ Put your comments into this file with your GitHub username. This is a public rep
 Exmaple:
 @Paorapotangaroa: "Any application that can be written in JavaScript, will eventually be written in JavaScript." - Jeff Atwood
 
+@mteeples: "Most good programmers do programming not because they expect to get paid or get adulation by the public, but because it is fun to program." - Linus Torvalds 
