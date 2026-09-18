@@ -12,6 +12,11 @@ app.get("/person-skill/new", (req, res) => {
     res.send("Page to create new person-skill association");
 });
 
+app.post("/person-skill/new", (req, res) => {
+    console.log(req.body) // Data for new association
+    res.send("Save new person-skill association");
+});
+
 app.get("/person-skill/:id", (req, res) => {
     res.send(`Page to view person-skill association with id ${req.params.id}`);
 });
@@ -22,11 +27,6 @@ app.get("/person-skill/all", (req, res) => {
 
 app.get("person-skill/edit/:id", (req, res) => {
     res.send(`Page to edit person-skill association with id ${req.params.id}`);
-});
-
-app.post("/person-skill/new", (req, res) => {
-    console.log(req.body) // Data for new association
-    res.send("Save new person-skill association");
 });
 
 app.post("person-skill/edit/:id", (req, res) => {
