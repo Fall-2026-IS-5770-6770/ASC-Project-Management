@@ -6,6 +6,7 @@ const PORT = 3000;
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({extended:true}));
 
+//Creating Mentors route
 app.get("/mentors/new", (req, res) => {
     res.send("Create mentors page")
 });
@@ -16,7 +17,7 @@ app.post("/mentors/new", (req, res) => {
 });
 
 
-
+// Retrieving Mentors route
 app.get("/mentors/:id", (req,res) => {
     res.send("getting a mentor " + req.params.id)
 });
@@ -26,7 +27,7 @@ app.get("/mentors", (req, res) => {
 });
 
 
-
+//Updating Mentors route
 app.get("/mentors/edit", (req, res) => {
     res.send("Edit a Mentor Page");
 })
@@ -35,6 +36,7 @@ app.post("/mentors/edit", (req, res) => {
     res.send("Saving an edit on a mentor");
 })
 
+//Deleting Mentors route
 app.post("mentors/:id/delete", (req, res) => {
     console.log(res.body);
     res.send("deleting a mentor by Id: " + req.params.id);
