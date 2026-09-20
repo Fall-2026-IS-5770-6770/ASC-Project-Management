@@ -3,3 +3,4 @@ Put your comments into this file with your GitHub username. This is a public rep
 Exmaple:
 @Paorapotangaroa: "Any application that can be written in JavaScript, will eventually be written in JavaScript." - Jeff Atwood
 
+@NelsonA255: Learning Node.js one step at a time and understanding how server-side applications work.
