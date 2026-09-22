@@ -16,7 +16,7 @@ app.post("/projects/new", (req, res) => {
 });
 
 app.get("/projects/edit/:id", (req, res) => {
-    res.send("Edit specific project"+req.params.id);
+    res.type("text").send("Edit specific project"+req.params.id);
 });
 
 app.post("/projects/edit/:id", (req, res) => {
