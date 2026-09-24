@@ -455,10 +455,6 @@ app.get("/project-skills/:id/delete",(req,res)=>{
 });
 
 
-// Start listening
-app.listen(PORT,()=>{
-    console.log(`App is live: http://localhost:${PORT}`)
-})
 
 // CREATE
 // Get the create project page
