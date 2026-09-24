@@ -13,3 +13,5 @@ Example:
 @hcronley: "Created an option to view all or one thread. As well as create, edit, or delete a thread."
 
 @lukeni64: "Please come to the marketing analytics club event today (today when I'm writing this, probably not today when you're reading this.)"
+
+@hcronley: "Here is my comment that I am adding to this file :>"
