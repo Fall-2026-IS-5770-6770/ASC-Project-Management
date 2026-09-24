@@ -30,3 +30,5 @@ Example:
 @sperrychristian: 'The Six Stages of Debugging: That can't happen. That doesn't happen on my machine. That shouldn't happen. Why does that happen? Oh, I see.'
 
 @EmilyPruden: "If it helps, it's very human to be deeply confused all the time." - We Fix Space Junk
+
+@mteeples: "Most good programmers do programming not because they expect to get paid or get adulation by the public, but because it is fun to program." - Linus Torvalds 
