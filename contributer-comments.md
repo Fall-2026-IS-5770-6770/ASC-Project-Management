@@ -24,3 +24,5 @@ Example:
 @brooklynwagner3: "JavaScrip is lit"
 
 @drewUSU: "Put any comment you want." - Toa
+
+@sperrychristian: 'The Six Stages of Debugging: That can't happen. That doesn't happen on my machine. That shouldn't happen. Why does that happen? Oh, I see.'
