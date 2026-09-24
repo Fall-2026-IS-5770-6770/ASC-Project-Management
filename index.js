@@ -480,6 +480,44 @@ app.get("/project-skills/:id/delete",(req,res)=>{
 });
 
 
+//C - create a new person
+app.get("/people/new", (req,res)=>{
+    res.send("Create a new person");
+})
+
+app.post("/people/new", (req,res)=>{
+    console.log(req.body);
+    res.send("Saving a new person");
+})
+
+
+//R - view all/view a new person
+app.get("/people/view/:id", (req,res)=>{
+    res.send(`View a specific person with id: ${req.params.id}`);
+})
+
+app.get("/people/view", (req,res)=>{
+    res.send("View all people");
+})
+
+
+//U - edit a person
+app.get("/people/edit/:id", (req,res)=>{
+    res.send(`Edit a person with id: ${req.params.id}`);
+})
+
+app.post("/people/edit/:id", (req,res)=>{
+    console.log(req.body)
+    res.send(`Saving edits on a person with id: ${req.params.id}`)
+})
+
+//D - delete a person
+app.post("/people/delete/:id", (req,res)=>{
+    console.log(req.body);
+    res.send(`Deleting a person with id: ${req.params.id}`);
+})
+
+
 // CREATE
 // Get the create project page
 app.get("/projects/new",(req,res)=>{
@@ -554,6 +592,7 @@ app.delete("/threads/:id",(req,res)=>{
 app.get("/project/new",(req,res)=>{
     res.send("Create a project page")
 })
+
 
 // Routes for tracking associations between people and their skills
 app.get("/person-skill/new", (req, res) => {
