@@ -1,0 +1,33 @@
+<!-- Create student modal-->
+<%# A student is a person, so pick an existing person first, then fill in the student-only fields.
+    Expects: availablePeople (people who are not already students), plus what studentFields needs %>
+<div class="modal fade" id="createStudentModal" tabindex="-1" aria-labelledby="createStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" action="/students/new" method="POST">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createStudentModalLabel">Add Student</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <% if (availablePeople.length === 0) { %>
+                    <p class="mb-0">Every person is already a student. Add a new person first.</p>
+                <% } else { %>
+                    <div class="mb-3">
+                        <label for="personId" class="form-label">Person</label>
+                        <select class="form-select" id="personId" name="personId" required>
+                            <option value="" selected disabled>Choose a person...</option>
+                            <% availablePeople.forEach((person) => { %>
+                                <option value="<%= person.id %>"><%= person.firstName %> <%= person.lastName %> (<%= person.email %>)</option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <%- include('studentFields', { student: {} }) %>
+                <% } %>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" <%= availablePeople.length === 0 ? 'disabled' : '' %>>Add Student</button>
+            </div>
+        </form>
+    </div>
+</div>
