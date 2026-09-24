@@ -1,0 +1,54 @@
+<%# Student-only fields shared by the create modal and the edit page.
+    Expects: student (empty object when creating), projectTypes, skills, approvalStatuses %>
+<div class="row g-3">
+    <div class="col-md-6">
+        <label for="major" class="form-label">Major</label>
+        <input type="text" class="form-control" id="major" name="major" value="<%= student.major || '' %>" required />
+    </div>
+    <div class="col-md-6">
+        <label for="graduationDate" class="form-label">Graduation Date</label>
+        <input type="date" class="form-control" id="graduationDate" name="graduationDate" value="<%= student.graduationDate || '' %>" required />
+    </div>
+    <div class="col-md-6">
+        <label for="minHoursPerWeek" class="form-label">Min Hours / Week</label>
+        <input type="number" min="0" class="form-control" id="minHoursPerWeek" name="minHoursPerWeek" value="<%= student.minHoursPerWeek ?? '' %>" required />
+    </div>
+    <div class="col-md-6">
+        <label for="maxHoursPerWeek" class="form-label">Max Hours / Week</label>
+        <input type="number" min="0" class="form-control" id="maxHoursPerWeek" name="maxHoursPerWeek" value="<%= student.maxHoursPerWeek ?? '' %>" required />
+    </div>
+    <div class="col-md-6">
+        <label for="workApprovalStatus" class="form-label">Work Approval Status</label>
+        <select class="form-select" id="workApprovalStatus" name="workApprovalStatus" required>
+            <% approvalStatuses.forEach((status) => { %>
+                <option value="<%= status %>" <%= student.workApprovalStatus === status ? 'selected' : '' %>><%= status %></option>
+            <% }) %>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label for="preferredProjectTypeId" class="form-label">Preferred Project Type</label>
+        <select class="form-select" id="preferredProjectTypeId" name="preferredProjectTypeId">
+            <option value="">No preference</option>
+            <% projectTypes.forEach((type) => { %>
+                <option value="<%= type.id %>" <%= student.preferredProjectTypeId === type.id ? 'selected' : '' %>><%= type.name %></option>
+            <% }) %>
+        </select>
+    </div>
+    <div class="col-12">
+        <label for="availability" class="form-label">Availability</label>
+        <input type="text" class="form-control" id="availability" name="availability" value="<%= student.availability || '' %>" placeholder="e.g. Weekday afternoons" />
+    </div>
+    <div class="col-12">
+        <label for="resumeUrl" class="form-label">Resume URL</label>
+        <input type="text" class="form-control" id="resumeUrl" name="resumeUrl" value="<%= student.resumeUrl || '' %>" />
+    </div>
+    <div class="col-12">
+        <span class="form-label d-block">Skills</span>
+        <% skills.forEach((skill) => { %>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="skill-<%= skill.id %>" name="skillIds" value="<%= skill.id %>" <%= (student.skillIds || []).includes(skill.id) ? 'checked' : '' %> />
+                <label class="form-check-label" for="skill-<%= skill.id %>"><%= skill.name %></label>
+            </div>
+        <% }) %>
+    </div>
+</div>

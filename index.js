@@ -1,11 +1,21 @@
 const express = require("express");
+const path = require("path");
 const statuses = require("./data/statuses.js");
+const students = require("./data/students.js");
+const people = require("./data/people.js");
+const projectTypes = require("./data/projectTypes.js");
+const skills = require("./data/skills.js");
 
 const app = express();
 const PORT = 3000;
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
+// Serve static files (css, js, images) from the public folder
+app.use(express.static(path.join(__dirname, "public")));
+// Render pages with EJS from the views folder
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 
 // This is a server-rendered app, so browsers can only send GET and POST.
 // Every resource follows the same pattern:
@@ -13,7 +23,6 @@ app.use(express.urlencoded({ extended: true }));
 //   GET  /thing/edit/:id    -> edit form         POST /thing/edit/:id    -> save edit
 //                                                POST /thing/delete/:id  -> delete (confirmed on the frontend)
 // Static paths (new, edit, all) must be registered before /:id so they aren't shadowed.
-
 
 // ===== PROJECTS (Issue #1) =====
 
@@ -327,36 +336,123 @@ app.get("/mentors/:id", (req, res) => {
 });
 
 
-// ===== STUDENTS (Issue #5) =====
+// ===== STUDENTS (Issue #5, pages for Issue #26) =====
+// A student row has no name on it; it points at a person by personId.
 
+const studentApprovalStatuses = ["Approved", "Pending", "Not Approved"];
+
+// Attach the matching person so views can show the student's name and contact info
+const withPerson = (student) => ({
+    ...student,
+    person: people.find((p) => p.id === student.personId)
+});
+
+// Data every page with the student form needs (create modal and edit page)
+const studentFormOptions = () => ({
+    projectTypes,
+    skills,
+    approvalStatuses: studentApprovalStatuses,
+    // Only people who are not already students can be made into one
+    availablePeople: people.filter((person) => !students.some((s) => s.personId === person.id))
+});
+
+const renderStudentList = (res, openCreateModal) => {
+    res.render("students/index", {
+        title: "Students",
+        activePage: "Students",
+        students: students.map(withPerson),
+        openCreateModal,
+        ...studentFormOptions()
+    });
+};
+
+// Create is a modal on the list page, so /students/new opens the list with the modal showing
 app.get("/students/new", (req, res) => {
-    res.send("This is the new student form page");
+    renderStudentList(res, true);
 });
 
 app.post("/students/new", (req, res) => {
-    console.log(req.body);
-    res.send("This saves the new student form data to the database");
+    const personId = Number(req.body.personId);
+
+    if (!people.some((p) => p.id === personId)) {
+        return res.status(400).send(`Person with id ${personId} not found`);
+    }
+    if (students.some((s) => s.personId === personId)) {
+        return res.status(400).send(`Person with id ${personId} is already a student`);
+    }
+
+    // Use the highest existing id so ids stay unique after deletes
+    const newStudentId = students.reduce((max, s) => Math.max(max, s.id), 0) + 1;
+
+    students.push({
+        id: newStudentId,
+        personId,
+        major: req.body.major,
+        graduationDate: req.body.graduationDate,
+        resumeUrl: req.body.resumeUrl,
+        minHoursPerWeek: Number(req.body.minHoursPerWeek),
+        maxHoursPerWeek: Number(req.body.maxHoursPerWeek),
+        workApprovalStatus: req.body.workApprovalStatus,
+        availability: req.body.availability,
+        preferredProjectTypeId: req.body.preferredProjectTypeId ? Number(req.body.preferredProjectTypeId) : null,
+        // One checked box comes through as a string, several as an array
+        skillIds: [].concat(req.body.skillIds ?? []).map(Number)
+    });
+
+    res.redirect("/students");
 });
 
 app.get("/students", (req, res) => {
-    res.send("This shows a list of all students");
+    renderStudentList(res, false);
 });
 
 app.get("/students/edit/:id", (req, res) => {
-    res.send(`This is the edit form for student with id ${req.params.id}`);
+    const student = students.find((s) => s.id === Number(req.params.id));
+
+    if (!student) {
+        return res.status(404).send(`Student with id ${req.params.id} not found`);
+    }
+
+    res.render("students/edit", {
+        title: "Edit Student",
+        activePage: "Students",
+        student: withPerson(student),
+        ...studentFormOptions()
+    });
 });
 
+// The data file is not updated yet; logging proves the edit form reached this route
 app.post("/students/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`This updates the student with id ${req.params.id} in the database`);
+    console.log(`Edit submitted for student ${req.params.id}: major = ${req.body.major}`);
+    res.redirect(`/students/${req.params.id}`);
 });
 
+// Removes only the student record; the underlying person is kept
 app.post("/students/delete/:id", (req, res) => {
-    res.send(`This deletes the student with id ${req.params.id} from the database`);
+    const studentIndex = students.findIndex((s) => s.id === Number(req.params.id));
+
+    if (studentIndex === -1) {
+        return res.status(404).send(`Student with id ${req.params.id} not found`);
+    }
+
+    students.splice(studentIndex, 1);
+    res.redirect("/students");
 });
 
 app.get("/students/:id", (req, res) => {
-    res.send(`This shows the details for student with id ${req.params.id}`);
+    const student = students.find((s) => s.id === Number(req.params.id));
+
+    if (!student) {
+        return res.status(404).send(`Student with id ${req.params.id} not found`);
+    }
+
+    res.render("students/show", {
+        title: "Student",
+        activePage: "Students",
+        student: withPerson(student),
+        preferredProjectType: projectTypes.find((type) => type.id === student.preferredProjectTypeId),
+        studentSkills: skills.filter((skill) => student.skillIds.includes(skill.id))
+    });
 });
 
 
