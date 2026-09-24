@@ -723,6 +723,42 @@ app.post("/requirements/delete/:id", (req, res) => {
     res.send("Delete requirement with ID: " + req.params.id);
 });
 
+//Creating Mentors route
+app.get("/mentors/new", (req, res) => {
+    res.send("Create mentors page")
+});
+
+app.post("/mentors/new", (req, res) => {
+    console.log(req.body);
+    res.send("Saving a new mentor");
+});
+
+
+// Retrieving Mentors route
+app.get("/mentors/:id", (req,res) => {
+    res.send("getting a mentor " + req.params.id)
+});
+
+app.get("/mentors", (req, res) => {
+    res.send("get all mentors");
+});
+
+
+//Updating Mentors route
+app.get("/mentors/edit", (req, res) => {
+    res.send("Edit a Mentor Page");
+})
+app.post("/mentors/edit", (req, res) => {
+    console.log(res.body);
+    res.send("Saving an edit on a mentor");
+})
+
+//Deleting Mentors route
+app.post("mentors/:id/delete", (req, res) => {
+    console.log(res.body);
+    res.send("deleting a mentor by Id: " + req.params.id);
+})
+
 // Start listening
 app.listen(PORT, () => {
     console.log(`App is listening on http://localhost:${PORT}`);
