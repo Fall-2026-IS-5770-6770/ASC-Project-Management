@@ -189,6 +189,10 @@ app.delete("/threads/:id",(req,res)=>{
     res.send("This route deletes thread ", req.params.id);
 })
 
+app.get("/project/new",(req,res)=>{
+    res.send("Create a project page")
+})
+
 // Start listening
 app.listen(PORT, () => {
     console.log(`App is listening on http://localhost:${PORT}`);
