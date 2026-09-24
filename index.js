@@ -7,8 +7,33 @@ const app = express();
 const PORT = 3000;
 
 // Allow body encoding for POST Requests
-app.use(express.urlencoded({extended:true}));
-// TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/project/type', (req, res) => {
+    res.send("List of the available types of Projects")
+})
+
+app.get('/project/type/create', (req, res) => {
+    res.send("Create Project type")
+})
+
+app.post('/project/type/create', (req, res) => {
+    res.send("Project type created")
+})
+
+app.get('/project/type/:id', (req, res) => {
+    res.send("Project type details")
+})
+
+app.put('/project/type/:id', (req, res) => {
+    res.send("Project type updated")
+})
+
+app.delete('/project/type/:id', (req, res) => {
+    res.send("Delete Project type")
+})
+
+// TASK 12: TRACKING PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
 
 app.get("/statuses", (req, resp) => {
     const statusMessagePrefix = `
@@ -352,37 +377,37 @@ app.post("/projects/edit/:id", (req, res) => {
 });
 
 // viewing all
-app.get("/projects/:projectid/people", (req, res) => {
+app.get('/projects/:projectid/people', (req, res) => {
     res.send("Show all people associated with a given project ID")
 })
 
-//  form to create a relationship
-app.get("/projects/:projectid/people/new", (req, res) => {
+// form to create a relationship
+app.get('/projects/:projectid/people/new', (req, res) => {
     res.send("Show the form for creating a new relationship between a person and the selected project")
 })
 
 // POST to save new relationship
-app.post("/projects/:projectid/people", (req, res) => {
+app.post('/projects/:projectid/people', (req, res) => {
     res.send("Saved a new relationship between a person and project " + req.params.projectid)
 })
 
 // get to view a specific relationship (person to project)
-app.get("/projects/:projectid/people/:relationshipid", (req, res) => {
+app.get('/projects/:projectid/people/:relationshipid', (req, res) => {
     res.send("Show a specific relationship between a person and the chosen project")
 })
 
 // get the form to edit a relationship
-app.get("/projects/:projectid/people/:relationshipid/edit", (req, res) => {
+app.get('/projects/:projectid/people/:relationshipid/edit', (req, res) => {
     res.send("Edit the relationship between a person and the selected project")
 })
 
 // POST to save edited relationship
-app.post("/projects/:projectid/people/:relationshipid", (req, res) => {
+app.post('/projects/:projectid/people/:relationshipid', (req, res) => {
     res.send("Saved an updated relationship " + req.params.relationshipid + " for project " + req.params.projectid)
 })
 
 // POST to delete a relationship
-app.post("/projects/:projectid/people/:relationshipid/delete", (req, res) => {
+app.post('/projects/:projectid/people/:relationshipid/delete', (req, res) => {
     res.send("Deleted a relationship between a person and project " + req.params.projectid)
 })
 
@@ -455,7 +480,6 @@ app.get("/project-skills/:id/delete",(req,res)=>{
 });
 
 
-
 // CREATE
 // Get the create project page
 app.get("/projects/new",(req,res)=>{
@@ -507,25 +531,25 @@ app.get("/threads",(req,res)=>{
 // view one
 app.get("/threads/:id",(req,res)=>{
     console.log(req.params.id);
-    res.send("This route returns thread ", req.params.id);
+    res.send(`This route returns thread ${req.params.id}`);
 });
 
 // create a thread
 app.post("/threads",(req,res)=>{
-    res.send("POST request called")
-})
+    res.send("POST request called");
+});
 
 // edit a thread
 app.put("/threads/:id",(req,res)=>{
     console.log(req.params.id);
-    res.send("This route edits thread ", req.params.id);
-})
+    res.send(`This route edits thread ${req.params.id}`);
+});
 
 // delete a thread
 app.delete("/threads/:id",(req,res)=>{
     console.log(req.params.id);
-    res.send("This route deletes thread ", req.params.id);
-})
+    res.send(`This route deletes thread ${req.params.id}`);
+});
 
 app.get("/project/new",(req,res)=>{
     res.send("Create a project page")
