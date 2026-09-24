@@ -6,6 +6,15 @@ const PORT = 3000;
 app.use(express.urlencoded({extended:true}));
 // TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
 
+app.get("/projects/edit/:id", (req, res) => {
+    res.type("text").send("Edit specific project"+req.params.id);
+});
+
+app.post("/projects/edit/:id", (req, res) => {
+    console.log(req.body);
+    res.send("Updating project with ID "+req.params.id);
+});
+
 // viewing all
 app.get("/projects/:projectid/people", (req, res) => {
     res.send("Show all people associated with a given project ID")

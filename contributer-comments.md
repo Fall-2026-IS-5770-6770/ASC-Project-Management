@@ -19,3 +19,5 @@ Example:
 @hcronley: "Here is my comment that I am adding to this file :>"
 
 @jaxonwebster: Toa is the goat
+
+@ellieangus: Hey guys what's up
