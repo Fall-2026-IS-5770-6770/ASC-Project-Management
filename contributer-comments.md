@@ -1,10 +1,34 @@
 Put your comments into this file with your GitHub username. This is a public repository, so anyone can see it. Please keep that in mind when you write your comments.
 
-Exmaple:
+Example:
 @Paorapotangaroa: "Any application that can be written in JavaScript, will eventually be written in JavaScript." - Jeff Atwood
 
-@caderdunkley: "https://www.youtube.com/watch?v=dQw4w9WgXcQ is a fantastic watch, give it a look"
+@RikoSwave: "If... If is good." - Panic, Disney's Hercules
+
+@johnsondillond: "The ability to speak does not make you intelligent" - Qui-Gon Jinn
+
+@jaclyntaylor : "Magic. Do not touch."
 
 @caderdunkley: "https://www.youtube.com/watch?v=dQw4w9WgXcQ is a fantastic watch, give it a look"
+
+@tanner-mccurdy: "This is a comment, believe it or not."
 
 @hcronley: "Created an option to view all or one thread. As well as create, edit, or delete a thread."
+
+@lukeni64: "Please come to the marketing analytics club event today (today when I'm writing this, probably not today when you're reading this.)"
+
+@hcronley: "Here is my comment that I am adding to this file :>"
+
+@jaxonwebster: Toa is the goat
+
+@ellieangus: Hey guys what's up
+
+@brooklynwagner3: "JavaScrip is lit"
+
+@drewUSU: "Put any comment you want." - Toa
+
+@sperrychristian: 'The Six Stages of Debugging: That can't happen. That doesn't happen on my machine. That shouldn't happen. Why does that happen? Oh, I see.'
+
+@EmilyPruden: "If it helps, it's very human to be deeply confused all the time." - We Fix Space Junk
+
+@mteeples: "Most good programmers do programming not because they expect to get paid or get adulation by the public, but because it is fun to program." - Linus Torvalds 
