@@ -4,6 +4,9 @@ const PORT = 3000;
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({extended:true}));
+app.use(express.static('public'));
+app.set('view engine', 'ejs')
+
 // TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
 
 // viewing all
@@ -59,7 +62,7 @@ app.post("/projects/new",(req,res)=>{
 // READ
 // Get all projects
 app.get("/projects",(req,res)=>{
-    res.send("Send all of the projects");
+    res.render("projects/index.ejs");
 });
 
 // Get one project by id
