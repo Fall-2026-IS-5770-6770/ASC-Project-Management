@@ -1,8 +1,18 @@
 const express = require("express");
 const statuses = require("./data/statuses.js");
 
+// required data for threads
+const threads = require("./data/threads");
+const people = require("./data/people");
+
+
 const app = express();
 const PORT = 3000;
+
+app.set("view engine", "ejs");
+
+// use the public folder
+app.use(express.static("public"));
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
@@ -402,34 +412,45 @@ app.get("/channels/:id", (req, res) => {
 
 // ===== THREADS (Issue #7) =====
 
+// create new thread
 app.get("/threads/new", (req, res) => {
-    res.send("This route sends the create thread page");
+    res.render('partials/threads/new/new-thread-modal.ejs');
 });
 
+// post request for new thread 
+// .redirect will send users back to a page following the post request
 app.post("/threads/new", (req, res) => {
-    console.log(req.body);
-    res.send("This route saves a new thread");
+    console.log('New thread submitted:', req.body.threadName);
+    res.redirect('/threads');
 });
 
+// see all threads
 app.get("/threads", (req, res) => {
-    res.send("This route sends all threads");
+    const channelThreads = threads
+        .filter((thread) => thread.channelId === 1)
+        .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
+
+    res.render("partials/threads/all/all-thread-modal", { threads: channelThreads });
 });
 
+
+// edit a thread
 app.get("/threads/edit/:id", (req, res) => {
-    res.send(`This route sends the edit page for thread ${req.params.id}`);
+    const thread = threads.find((t) => t.id === parseInt(req.params.id));
+    res.render("partials/threads/edit/edit-thread-modal", { threadId: thread.id, threadName: thread.name });
 });
 
-app.post("/threads/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`This route saves edits to thread ${req.params.id}`);
-});
-
+// post request for deleting a thrad
 app.post("/threads/delete/:id", (req, res) => {
+    console.log(`Thread ${req.params.id} deleted`);
     res.send(`This route deletes thread ${req.params.id}`);
 });
 
+// see threads by id
 app.get("/threads/:id", (req, res) => {
-    res.send(`This route returns thread ${req.params.id}`);
+    const thread = threads.find((t) => t.id === parseInt(req.params.id));
+    if (!thread) return res.status(404).send("Thread not found");
+    res.render("partials/threads/show/show-threads-modal", { threadId: thread.id, threadName: thread.name });
 });
 
 

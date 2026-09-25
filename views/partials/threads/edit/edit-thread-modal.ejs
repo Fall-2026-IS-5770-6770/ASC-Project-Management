@@ -1,0 +1,12 @@
+<%- include('../../header') %>
+
+<h1>Edit Thread</h1>
+
+<form action="/threads/edit/<%= threadId %>" method="POST">
+    <label for="threadName">Thread Name</label>
+    <input type="text" id="threadName" name="threadName" value="<%= threadName %>" required>
+
+    <button type="submit">Save Changes</button>
+</form>
+
+<%- include('../../footer') %>
