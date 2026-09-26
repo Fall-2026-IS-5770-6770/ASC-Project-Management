@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= person.firstName %> <%= person.lastName %></title>
+</head>
+<body>
+  <a href="/people">← Back to people</a>
+  <h1><%= person.firstName %> <%= person.lastName %></h1>
+  <p>Email: <%= person.email %></p>
+  <a href="/people/edit/<%= person.id %>">✏️ Edit person</a>
+</body>
+</html>
