@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>People</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .actions form {
+      display: inline;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .icon-button {
+      border: 0;
+      background: none;
+      font-size: 1.2rem;
+    }
+
+    dialog {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 24px;
+      width: min(400px, 90%);
+    }
+
+    dialog label {
+      display: block;
+      margin-top: 14px;
+    }
+
+    dialog input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>People</h1>
+    <button type="button" id="open-create">Add person</button>
+  </header>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% people.forEach((person) => { %>
+        <tr>
+          <td>
+            <a href="/people/<%= person.id %>">
+              <%= person.firstName %> <%= person.lastName %>
+            </a>
+          </td>
+          <td><%= person.email %></td>
+          <td class="actions">
+            <a href="/people/edit/<%= person.id %>"
+               aria-label="Edit <%= person.firstName %> <%= person.lastName %>"
+               title="Edit">✏️</a>
+
+            <form action="/people/delete/<%= person.id %>"
+                  method="POST"
+                  onsubmit="return confirm('Delete this person?');">
+              <button class="icon-button"
+                      type="submit"
+                      aria-label="Delete <%= person.firstName %> <%= person.lastName %>"
+                      title="Delete">🗑️</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <!-- Add person form -->
+  <dialog id="create-dialog">
+    <h2>Add a person</h2>
+
+    <form action="/people/new" method="POST">
+      <label for="firstName">First name</label>
+      <input id="firstName" name="firstName" required>
+
+      <label for="lastName">Last name</label>
+      <input id="lastName" name="lastName" required>
+
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required>
+
+      <div class="modal-actions">
+        <button type="button" id="close-create">Cancel</button>
+        <button type="submit">Add person</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Shown after adding a person -->
+  <dialog id="create-confirmation-dialog">
+    <h2>Person submitted</h2>
+    <p>The new person's information was sent to the create route.</p>
+    <div class="modal-actions">
+      <button type="button" id="close-create-confirmation">Close</button>
+    </div>
+  </dialog>
+
+  <!-- Shown after confirming a deletion -->
+  <dialog id="delete-confirmation-dialog">
+    <h2>Delete request submitted</h2>
+    <p>The request was sent to the delete route.</p>
+    <div class="modal-actions">
+      <button type="button" id="close-delete-confirmation">Close</button>
+    </div>
+  </dialog>
+
+  <script>
+    const createDialog = document.getElementById("create-dialog");
+    const createConfirmationDialog = document.getElementById(
+      "create-confirmation-dialog"
+    );
+    const deleteConfirmationDialog = document.getElementById(
+      "delete-confirmation-dialog"
+    );
+
+    document.getElementById("open-create").addEventListener("click", () => {
+      createDialog.showModal();
+    });
+
+    document.getElementById("close-create").addEventListener("click", () => {
+      createDialog.close();
+    });
+
+    document.getElementById("close-create-confirmation")
+      .addEventListener("click", () => {
+        createConfirmationDialog.close();
+      });
+
+    document.getElementById("close-delete-confirmation")
+      .addEventListener("click", () => {
+        deleteConfirmationDialog.close();
+      });
+
+    <% if (openCreateModal) { %>
+      createDialog.showModal();
+    <% } %>
+
+    <% if (personSubmitted) { %>
+      createConfirmationDialog.showModal();
+    <% } %>
+
+    <% if (personDeleted) { %>
+      deleteConfirmationDialog.showModal();
+    <% } %>
+  </script>
+</body>
+</html>

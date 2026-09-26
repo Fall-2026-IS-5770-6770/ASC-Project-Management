@@ -3,9 +3,13 @@ const statuses = require("./data/statuses.js");
 
 const app = express();
 const PORT = 3000;
+const people = require("./data/people");
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
+app.set("view engine", "ejs")
+
+app.use(express.static('public'))
 
 // This is a server-rendered app, so browsers can only send GET and POST.
 // Every resource follows the same pattern:
@@ -648,33 +652,73 @@ app.get("/clients/:id", (req, res) => {
 // ===== PEOPLE (Issue #18) =====
 
 app.get("/people/new", (req, res) => {
-    res.send("Create a new person");
+  res.render("people/index", {
+    people,
+    openCreateModal: true,
+    personSubmitted: false,
+    personDeleted: false
+  });
 });
 
 app.post("/people/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new person");
+  console.log("Submitted new person:", req.body.firstName);
+
+  res.render("people/index", {
+    people,
+    openCreateModal: false,
+    personSubmitted: true,
+    personDeleted: false
+  });
 });
 
 app.get("/people", (req, res) => {
-    res.send("View all people");
+  const sortedPeople = [...people].sort((a, b) =>
+    a.lastName.localeCompare(b.lastName)
+  );
+
+  res.render("people/index", {
+    people: sortedPeople,
+    openCreateModal: false,
+    personSubmitted: false,
+    personDeleted: false
+  });
 });
 
 app.get("/people/edit/:id", (req, res) => {
-    res.send(`Edit a person with id: ${req.params.id}`);
+  const person = people.find((p) => p.id === Number(req.params.id));
+  if (!person) return res.status(404).send("404 Person not found");
+
+  res.render("people/edit", { person, submitted: false });
 });
 
 app.post("/people/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saving edits on a person with id: ${req.params.id}`);
+  const person = people.find((p) => p.id === Number(req.params.id));
+  if (!person) return res.status(404).send("Person not found");
+
+  console.log("Submitted email:", req.body.email);
+
+  res.render("people/edit", { person, submitted: true });
 });
 
 app.post("/people/delete/:id", (req, res) => {
-    res.send(`Deleting a person with id: ${req.params.id}`);
+  const person = people.find((p) => p.id === Number(req.params.id));
+  if (!person) return res.status(404).send("Person not found");
+
+  console.log("Delete requested for person ID:", person.id);
+
+  res.render("people/index", {
+    people,
+    openCreateModal: false,
+    personSubmitted: false,
+    personDeleted: true
+  });
 });
 
 app.get("/people/:id", (req, res) => {
-    res.send(`View a specific person with id: ${req.params.id}`);
+  const person = people.find((p) => p.id === Number(req.params.id));
+  if (!person) return res.status(404).send("Person not found");
+
+  res.render("people/show", { person });
 });
 
 
