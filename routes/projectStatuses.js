@@ -39,14 +39,16 @@ router.post("/new", (req, res) => {
 
 // Form to update a project's status (e.g. its order in the workflow)
 router.get("/edit/:id", (req, res) => {
-    const record = data.find((item) => item.id.toString() === req.params.id);
+    const projectStatus = data.find((item) => item.id.toString() === req.params.id);
+    const record = {projectStatus, statuses, projects};
     res.render("project-status/edit.ejs", record);
 });
 
 // Save the updated project status
 router.post("/edit/:id", (req, res) => {
+    console.log(`Saved edits to status association ${req.params.id}`);
     console.log(req.body);
-    res.send(`Saved edits to status association ${req.params.id} on project ${req.params.projectid}`);
+    res.redirect("../all"); // Redirect to the all page after console logging the edit
 });
 
 // Remove a status from a project
