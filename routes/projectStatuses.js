@@ -48,7 +48,7 @@ router.get("/edit/:id", (req, res) => {
 router.post("/edit/:id", (req, res) => {
     console.log(`Saved edits to status association ${req.params.id}`);
     console.log(req.body);
-    res.redirect("../all"); // Redirect to the all page after console logging the edit
+    res.redirect(`../${req.params.id}`); // Redirect to the view page after console logging the edit
 });
 
 // Remove a status from a project
