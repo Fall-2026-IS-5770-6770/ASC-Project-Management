@@ -1,0 +1,47 @@
+<%- include('components/header'); %>
+                        <a type="button" class="btn btn-primary mb-3" href="/project-status/new">New Project Status</a>
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-table me-1"></i>
+                                All Project Statuses
+                            </div>
+                            <div class="card-body">
+                                <table id="datatablesSimple">
+                                    <thead>
+                                        <tr>
+                                            <th>Project</th>
+                                            <th>Status</th>
+                                            <th>Order</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tfoot>
+                                        <tr>
+                                            <th>Project</th>
+                                            <th>Status</th>
+                                            <th>Order</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </tfoot>
+                                    <tbody>
+                                        <% for (let projectStatus of projectStatuses) {%>
+                                            <tr>
+                                                <td><%=projectStatus.project.name%></td>
+                                                <td><%=projectStatus.status.name%></td>
+                                                <td><%=projectStatus.order%></td>
+                                                <td>
+                                                    <a href="/project-status/<%=projectStatus.id%>"><i class="bi bi-eye"></i></a>
+                                                    &ensp;
+                                                    <a href="/project-status/edit/<%=projectStatus.id%>"><i class="bi bi-pencil"></i></a>
+                                                    &ensp;
+                                                    <a href="/project-status/delete/<%=projectStatus.id%>"><i class="bi bi-trash3"></i></a>
+                                                </td>
+                                            </tr>
+                                        <%}%>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+<%- include('components/footer'); %>
