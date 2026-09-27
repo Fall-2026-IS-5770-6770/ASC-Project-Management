@@ -6,6 +6,8 @@ const PORT = 3000;
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
+app.set("view engine", "ejs");
+app.use(express.static("public"));
 
 // This is a server-rendered app, so browsers can only send GET and POST.
 // Every resource follows the same pattern:
@@ -219,38 +221,8 @@ app.get("/status/:id", (req, resp) => {
 
 // ===== PROJECT STATUSES (Issue #3) =====
 // Associates statuses with a specific project
-
-// View all statuses used by a project
-app.get("/projects/:projectid/statuses", (req, res) => {
-    res.send(`Show all statuses associated with project ${req.params.projectid}`);
-});
-
-// Form to add a status to a project
-app.get("/projects/:projectid/statuses/new", (req, res) => {
-    res.send(`Show the form for adding a status to project ${req.params.projectid}`);
-});
-
-// Save a status added to a project
-app.post("/projects/:projectid/statuses/new", (req, res) => {
-    console.log(req.body);
-    res.send(`Saved a new status for project ${req.params.projectid}`);
-});
-
-// Form to update a project's status (e.g. its order in the workflow)
-app.get("/projects/:projectid/statuses/edit/:id", (req, res) => {
-    res.send(`Show the form for editing status association ${req.params.id} on project ${req.params.projectid}`);
-});
-
-// Save the updated project status
-app.post("/projects/:projectid/statuses/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saved edits to status association ${req.params.id} on project ${req.params.projectid}`);
-});
-
-// Remove a status from a project
-app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
-    res.send(`Removed status association ${req.params.id} from project ${req.params.projectid}`);
-});
+const projectStatusRouter = require("./routes/projectStatuses.js")
+app.use('/project-status', projectStatusRouter);
 
 
 // ===== PROJECT PEOPLE (Issue #12) =====

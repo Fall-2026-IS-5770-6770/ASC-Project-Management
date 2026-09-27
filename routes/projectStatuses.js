@@ -1,0 +1,61 @@
+const express = require("express");
+const router = express.Router()
+const projectStatuses = require("../data/projectStatuses.js");
+const projects = require("../data/projects.js");
+const statuses = require("../data/statuses.js");
+
+const data = projectStatuses.map((item) => {
+    return {
+        ...item,
+        project: projects.find((project)=>project.id===item.projectId),
+        status: statuses.find((statuses)=>statuses.id===item.statusId),
+    }
+});
+
+
+// View all statuses used by a project
+router.get("/all", (req, res) => {
+    const record = {projectStatuses: data, ...req.params};
+    res.render("project-status/view-all.ejs", record);
+});
+
+router.get("/:id", (req, res) => {
+    const record = data.find((item) => item.id.toString() === req.params.id);
+    res.render("project-status/view.ejs", record);
+});
+
+// Form to add a status to a project
+router.get("/new", (req, res) => {
+    res.render("project-status/create.ejs");
+});
+
+// Save a status added to a project
+router.post("/new", (req, res) => {
+    console.log(req.body);
+    res.send(`Saved a new status for project ${req.params.projectid}`);
+});
+
+// Form to update a project's status (e.g. its order in the workflow)
+router.get("/edit/:id", (req, res) => {
+    const record = data.find((item) => item.id.toString() === req.params.id);
+    res.render("project-status/edit.ejs", record);
+});
+
+// Save the updated project status
+router.post("/edit/:id", (req, res) => {
+    console.log(req.body);
+    res.send(`Saved edits to status association ${req.params.id} on project ${req.params.projectid}`);
+});
+
+// Show confirmation for delete
+router.get("/delete/:id", (req, res) => {
+    const record = data.find((item) => item.id.toString() === req.params.id);
+    res.render("project-status/delete.ejs", record);
+});
+
+// Remove a status from a project
+router.post("/delete/:id", (req, res) => {
+    res.send(`Removed status association ${req.params.id} from project ${req.params.projectid}`);
+});
+
+module.exports = router;
