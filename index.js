@@ -1,7 +1,12 @@
 const express = require("express");
+
 const statuses = require("./data/statuses.js");
+const documents = require("./data/documents.js");
+const projects = require("./data/projects.js");
+const people = require("./data/people.js");
 
 const app = express();
+app.set("view engine", "ejs");
 const PORT = 3000;
 
 // Allow body encoding for POST Requests
@@ -677,6 +682,85 @@ app.get("/people/:id", (req, res) => {
     res.send(`View a specific person with id: ${req.params.id}`);
 });
 
+// ==================== DOCUMENTS ====================
+
+// View all documents
+app.get("/documents", (req, res) => {
+    console.log("DOCUMENTS ROUTE REACHED");
+    
+    const documentList = documents.map((document) => {
+        const project = projects.find((p) => p.id === document.projectId);
+        const uploader = people.find((p) => p.id === document.personId);
+
+        return {
+            ...document,
+            projectName: project ? project.name : "Unknown Project",
+            uploaderName: uploader
+                ? `${uploader.firstName} ${uploader.lastName}`
+                : "Unknown"
+        };
+    });
+
+    res.render("documents/index", {
+        documents: documentList,
+        projects,
+        people
+    });
+});
+
+// Add a document
+app.post("/documents/new", (req, res) => {
+    console.log("Document submitted:", req.body.name);
+    res.redirect("/documents");
+});
+
+// Edit document page
+app.get("/documents/edit/:id", (req, res) => {
+    const documentId = Number(req.params.id);
+    const document = documents.find((d) => d.id === documentId);
+
+    if (!document) {
+        return res.status(404).send("Document not found");
+    }
+
+    res.render("documents/edit", {
+        document,
+        projects,
+        people
+    });
+});
+
+// Submit document edits
+app.post("/documents/edit/:id", (req, res) => {
+    console.log("Edited document:", req.body.name);
+    res.redirect("/documents");
+});
+
+// Delete document
+app.post("/documents/delete/:id", (req, res) => {
+    const documentId = Number(req.params.id);
+    console.log("Delete document:", documentId);
+    res.redirect("/documents");
+});
+
+// View one document
+app.get("/documents/:id", (req, res) => {
+    const documentId = Number(req.params.id);
+    const document = documents.find((d) => d.id === documentId);
+
+    if (!document) {
+        return res.status(404).send("Document not found");
+    }
+
+    const project = projects.find((p) => p.id === document.projectId);
+    const uploader = people.find((p) => p.id === document.personId);
+
+    res.render("documents/show", {
+        document,
+        project,
+        uploader
+    });
+});
 
 // Start listening
 app.listen(PORT, () => {
