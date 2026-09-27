@@ -4,7 +4,7 @@ const projectStatuses = require("../data/projectStatuses.js");
 const projects = require("../data/projects.js");
 const statuses = require("../data/statuses.js");
 
-let data = projectStatuses.map((item) => {
+const data = projectStatuses.map((item) => {
     return {
         ...item,
         project: projects.find((project)=>project.id===item.projectId),
@@ -15,7 +15,7 @@ let data = projectStatuses.map((item) => {
 
 // View all statuses used by a project
 router.get("/all", (req, res) => {
-    const record = {projectStatuses: data, ...req.params};
+    const record = {projectStatuses: data, projects, statuses, ...req.params};
     res.render("project-status/view-all.ejs", record);
 });
 
@@ -32,8 +32,9 @@ router.get("/:id", (req, res) => {
 
 // Save a status added to a project
 router.post("/new", (req, res) => {
+    console.log(`Saved a new project status`);
     console.log(req.body);
-    res.send(`Saved a new status for project ${req.params.projectid}`);
+    res.redirect("./all"); //redirect back to the home page 
 });
 
 // Form to update a project's status (e.g. its order in the workflow)
@@ -51,7 +52,6 @@ router.post("/edit/:id", (req, res) => {
 // Remove a status from a project
 router.post("/delete/:id", (req, res) => {
     console.log(`Removed project status association ${req.params.id}`);
-    data = data.filter((item) => item.id.toString() !== req.params.id);
     res.redirect("../all"); // Redirect to the all page after console logging the delete
 });
 
