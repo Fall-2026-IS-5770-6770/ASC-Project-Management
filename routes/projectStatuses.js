@@ -4,7 +4,7 @@ const projectStatuses = require("../data/projectStatuses.js");
 const projects = require("../data/projects.js");
 const statuses = require("../data/statuses.js");
 
-const data = projectStatuses.map((item) => {
+let data = projectStatuses.map((item) => {
     return {
         ...item,
         project: projects.find((project)=>project.id===item.projectId),
@@ -25,9 +25,10 @@ router.get("/:id", (req, res) => {
 });
 
 // Form to add a status to a project
-router.get("/new", (req, res) => {
-    res.render("project-status/create.ejs");
-});
+// Task indicates that the create should be handled within a modal, so I wrapped this into the /all page
+// router.get("/new", (req, res) => {
+//     res.send(`Saved a new project status`);
+// });
 
 // Save a status added to a project
 router.post("/new", (req, res) => {
@@ -47,15 +48,11 @@ router.post("/edit/:id", (req, res) => {
     res.send(`Saved edits to status association ${req.params.id} on project ${req.params.projectid}`);
 });
 
-// Show confirmation for delete
-router.get("/delete/:id", (req, res) => {
-    const record = data.find((item) => item.id.toString() === req.params.id);
-    res.render("project-status/delete.ejs", record);
-});
-
 // Remove a status from a project
 router.post("/delete/:id", (req, res) => {
-    res.send(`Removed status association ${req.params.id} from project ${req.params.projectid}`);
+    console.log(`Removed project status association ${req.params.id}`);
+    data = data.filter((item) => item.id.toString() !== req.params.id);
+    res.redirect("../all"); // Redirect to the all page after console logging the delete
 });
 
 module.exports = router;

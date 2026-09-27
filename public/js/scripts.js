@@ -24,3 +24,20 @@ window.addEventListener('DOMContentLoaded', event => {
     }
 
 });
+
+let deleteModal = document.getElementById('deleteModal')
+deleteModal.addEventListener('show.bs.modal', function (event) {
+  // Button that triggered the modal
+  let button = event.relatedTarget;
+  // Extract info from data-bs-* attributes
+  let itemid = button.getAttribute('data-bs-itemid');
+  let project = button.getAttribute('data-bs-project');
+  let status = button.getAttribute('data-bs-status');
+
+  let modalBodyForm = deleteModal.querySelector('.modal-body form');
+  let modalBodyText = deleteModal.querySelector('.modal-body p');
+
+  modalBodyForm.action = `/project-status/delete/${itemid}`;
+  modalBodyText.textContent = `Are you sure you want to remove "${status}" status from "${project}"?`;
+})
+
