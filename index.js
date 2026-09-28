@@ -1895,6 +1895,94 @@ async function handleDelete(entityKey, req, res, { record, backHref, redirectTo 
 }
 
 
+// ===== SIGN-IN (Issues #116 and following) =====
+// Which providers the ASC supports, and how a sign-in becomes a person:
+//
+// - Microsoft is the main provider: every USU student, faculty member, and
+//   staff member already has a university account.
+// - GitHub is for contributors on development projects, including people
+//   outside the university.
+// - Cognito issues accounts to sponsors and other outside stakeholders who
+//   have neither of the above.
+//
+// A provider returns a profile: a stable account id, an email, and a name.
+// The profile is matched to a person record in this order:
+//   1. an account already linked to that provider id,
+//   2. otherwise a person with the same email (and the account is linked),
+//   3. otherwise a new person is created from the profile.
+// So one person can sign in through several providers and stay the same person.
+//
+// There are no real OAuth apps registered yet, so each provider is a dummy
+// strategy with a stand-in sign-in page. Every provider is a strategy with the
+// same shape, so the rest of the app only asks "who is signed in" and a real
+// provider can replace a dummy one without touching the routes:
+//   {
+//     label,                          // shown on the sign-in page
+//     authorizationUrl(state, req),   // where "Sign in with ..." sends the browser
+//     exchange(code, req),            // callback code -> { accountId, email, firstName, lastName }
+//   }
+
+const AUTH_PROVIDERS = {};
+
+// eslint-disable-next-line no-unused-vars -- the first provider registers itself in #118
+function registerAuthProvider(key, strategy) {
+    AUTH_PROVIDERS[key] = strategy;
+}
+
+// Match a provider profile to a person (see the rules above)
+async function resolvePerson(provider, profile) {
+    const email = String(profile.email || "").trim().toLowerCase();
+    const existing = people.find(person => person.email.toLowerCase() === email);
+    if (existing) {
+        return existing;
+    }
+    const { record, errors } = await createRecord("people", {
+        firstName: profile.firstName || email.split("@")[0],
+        lastName: profile.lastName || "",
+        email,
+        phone: null,
+        address: { street: "", city: "", state: "", zip: "" }
+    }, null);
+    if (errors) {
+        throw new Error(errors.join(" "));
+    }
+    return record;
+}
+
+// Start signing in: remember a random state value and send the browser to the provider
+app.get("/auth/:provider", (req, res) => {
+    const provider = AUTH_PROVIDERS[req.params.provider];
+    if (!provider) {
+        return sendPage(res, "Unknown sign-in provider", `<h1>Unknown sign-in provider</h1><p><a href="/signin">Back to sign in</a></p>`, 404);
+    }
+    const state = crypto.randomBytes(16).toString("hex");
+    req.session.signInState = { provider: req.params.provider, state, returnTo: req.query.returnTo };
+    res.redirect(provider.authorizationUrl(state, req));
+});
+
+// The provider sends the browser back here with a one-time code
+app.get("/auth/:provider/callback", async (req, res) => {
+    const provider = AUTH_PROVIDERS[req.params.provider];
+    const pending = req.session.signInState;
+    delete req.session.signInState;
+    if (!provider || !pending || pending.provider !== req.params.provider || pending.state !== req.query.state) {
+        return sendPage(res, "Sign-in failed", `<h1>Sign-in failed</h1><p>The sign-in request expired or didn't match. Please try again.</p><p><a href="/signin">Back to sign in</a></p>`, 400);
+    }
+    const profile = await provider.exchange(req.query.code, req);
+    if (!profile) {
+        return sendPage(res, "Sign-in failed", `<h1>Sign-in failed</h1><p>${esc(provider.label)} didn't confirm who you are. Please try again.</p><p><a href="/signin">Back to sign in</a></p>`, 400);
+    }
+    const person = await resolvePerson(req.params.provider, profile);
+
+    // A new session id on sign-in, so an id set before signing in can't be reused
+    await new Promise((resolve, reject) => req.session.regenerate(error => (error ? reject(error) : resolve())));
+    req.session.personId = person.id;
+    req.session.provider = req.params.provider;
+    flash(req, "success", `Signed in as ${ENTITIES.people.display(person)} with ${provider.label}.`);
+    redirectBack(res, pending.returnTo, "/");
+});
+
+
 // ===== ACTIVITY (Issue #97) =====
 // Every recorded change, newest first, with the person who made it
 
