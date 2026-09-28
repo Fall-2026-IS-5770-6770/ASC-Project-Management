@@ -646,6 +646,7 @@ const ENTITIES = {
         plural: "threads",
         store: threads,
         display: thread => thread.name,
+        recordActor: true,
         fields: [
             { name: "channelId", label: "Channel", type: "select", ref: "channels", required: true, cascade: true },
             { name: "name", label: "Name", type: "text", required: true },
