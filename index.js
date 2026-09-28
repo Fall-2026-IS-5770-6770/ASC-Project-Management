@@ -661,6 +661,7 @@ const ENTITIES = {
         plural: "messages",
         store: messages,
         display: message => `${displayOf("people", message.senderPersonId)}: ${message.body.slice(0, 40)}`,
+        recordActor: true,
         fields: [
             { name: "threadId", label: "Thread", type: "select", ref: "threads", required: true, cascade: true },
             { name: "channelId", label: "Channel", type: "select", ref: "channels", required: true, cascade: true },
