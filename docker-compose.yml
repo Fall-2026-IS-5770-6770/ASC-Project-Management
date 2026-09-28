@@ -1,4 +1,4 @@
-# Local databases for development: PostgreSQL (through Prisma) and MongoDB (logs).
+# Local databases for development: PostgreSQL (records, through Prisma) and MongoDB (logs).
 # Start them with:  docker compose up -d
 # The passwords below are development defaults; override them in .env.
 # Postgres listens on 5433 so it doesn't collide with another local Postgres on 5432.
@@ -22,5 +22,23 @@ services:
       timeout: 5s
       retries: 10
 
+  mongo:
+    image: mongo:8
+    container_name: asc-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-asc}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-asc_dev_password}
+    ports:
+      - "27017:27017"
+    volumes:
+      - asc-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   asc-postgres-data:
+  asc-mongo-data:
