@@ -469,6 +469,7 @@ const ENTITIES = {
         plural: "mentors",
         store: mentors,
         display: mentor => displayOf("people", mentor.personId),
+        recordActor: true,
         fields: [
             { name: "personId", label: "Person", type: "select", ref: "people", required: true },
             { name: "department", label: "Department", type: "text" },
