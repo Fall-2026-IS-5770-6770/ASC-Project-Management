@@ -741,6 +741,9 @@ const STYLES = `
     .edit-in-place[open] { flex-basis: 100%; }
     .composer { display: flex; gap: .5rem; align-items: flex-end; }
     .composer textarea { flex: 1; }
+    .signin { max-width: 520px; margin: 2rem auto; }
+    .signin-button { display: inline-block; padding: .6rem 1rem; border: 1px solid var(--accent); border-radius: 6px; background: #fff; font-weight: 600; text-decoration: none; margin-right: .5rem; }
+    .signin-button:hover { background: var(--accent); color: #fff; }
     .tag { display: inline-block; background: var(--column); border-radius: 999px; padding: .05rem .5rem; font-size: .8rem; }
 `;
 
@@ -1962,6 +1965,25 @@ function resolvePerson(provider, profile) {
         return person;
     });
 }
+
+// The sign-in page: every supported provider, each starting its own sign-in flow
+app.get("/signin", (req, res) => {
+    const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "";
+    const providers = Object.entries(AUTH_PROVIDERS);
+    const buttons = providers.map(([key, provider]) => `<p>
+        <a class="signin-button" href="/auth/${esc(key)}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}">Sign in with ${esc(provider.label)}</a>
+        ${provider.description ? `<span class="muted">${esc(provider.description)}</span>` : ""}
+    </p>`).join("");
+    const signedIn = req.session.personId ? findById("people", req.session.personId) : undefined;
+
+    sendPage(res, "Sign in", `
+        <section class="panel signin">
+            <h1>Sign in to ASC Project Management</h1>
+            ${signedIn ? `<p>You're signed in as <strong>${esc(ENTITIES.people.display(signedIn))}</strong>. <a href="/">Go to the main board</a></p>` : ""}
+            ${buttons || `<p class="muted">No sign-in providers are set up yet.</p>`}
+        </section>
+    `);
+});
 
 // Start signing in: remember a random state value and send the browser to the provider
 app.get("/auth/:provider", (req, res) => {
