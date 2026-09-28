@@ -396,6 +396,7 @@ const ENTITIES = {
         plural: "project statuses",
         store: projectStatuses,
         display: row => `${displayOf("statuses", row.statusId)} on ${displayOf("projects", row.projectId)}`,
+        recordActor: true,
         fields: [
             { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
             { name: "statusId", label: "Status", type: "select", ref: "statuses", required: true },
