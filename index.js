@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const express = require("express");
 const session = require("express-session");
+const mongoose = require("mongoose");
 
 // ===== DATA =====
 // The dummy data in /data stands in for the database until one is wired up.
@@ -92,6 +93,58 @@ if (!IS_PRODUCTION) {
         res.json({ id: req.sessionID, session: req.session });
     });
 }
+
+// ===== MONGODB LOGS =====
+// Logs are written to MongoDB through Mongoose models. The connection string
+// comes from MONGODB_URI. Without it (or while MongoDB is unreachable) the app
+// keeps working and log entries are skipped, with a warning at startup.
+// Writes are fire-and-forget so a slow or failing log never breaks a route.
+
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// Fail fast instead of queueing log writes while disconnected
+mongoose.set("bufferCommands", false);
+
+if (MONGODB_URI) {
+    mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+        .then(() => console.log("Connected to MongoDB for logs"))
+        .catch(error => console.error(`Couldn't connect to MongoDB, so logs won't be saved: ${error.message}`));
+} else {
+    console.warn("MONGODB_URI is not set, so logs won't be saved.");
+}
+
+function logsEnabled() {
+    return mongoose.connection.readyState === 1;
+}
+
+function writeLog(Model, entry) {
+    if (!logsEnabled()) {
+        return;
+    }
+    Model.create(entry).catch(error => console.error(`Couldn't write to ${Model.modelName}: ${error.message}`));
+}
+
+// Fields every change log shares: what happened, who did it, and when
+const LOG_FIELDS = {
+    action: { type: String, required: true },
+    actorPersonId: { type: Number, default: null },
+    at: { type: Date, default: Date.now, index: true }
+};
+
+function logModel(name, fields) {
+    const schema = new mongoose.Schema({ ...fields, ...LOG_FIELDS }, { versionKey: false });
+    return mongoose.models[name] || mongoose.model(name, schema);
+}
+
+// Issue #78: a durable record of every route that fails
+const ErrorLog = logModel("ErrorLog", {
+    message: { type: String, required: true },
+    stack: String,
+    method: String,
+    path: String,
+    statusCode: { type: Number, required: true }
+});
+
 
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
@@ -3290,6 +3343,42 @@ app.get("/people/:id", (req, res) => {
         : `<p class="muted">Not assigned to any projects.</p>`}
         </section>`
     });
+});
+
+
+// ===== ERRORS (Issue #78) =====
+
+// Development-only route that fails on purpose, to check the error log
+if (!IS_PRODUCTION) {
+    app.get("/dev/error", () => {
+        throw new Error("Test error from /dev/error");
+    });
+}
+
+// Anything no route answered
+app.use((req, res) => {
+    sendPage(res, "Not found", `<h1>Not found</h1><p>There's no page at ${esc(req.path)}.</p><p><a href="/">Back to the main board</a></p>`, 404);
+});
+
+// A route failed: write it to the error log, then show a friendly page
+app.use((error, req, res, next) => {
+    const statusCode = error.status || error.statusCode || 500;
+    console.error(error);
+    writeLog(ErrorLog, {
+        action: "error",
+        message: error.message || String(error),
+        stack: error.stack,
+        method: req.method,
+        path: req.originalUrl,
+        statusCode,
+        actorPersonId: req.session?.personId ?? null
+    });
+
+    if (res.headersSent) {
+        return next(error);
+    }
+    const message = statusCode < 500 ? error.message : "Something went wrong on our end. The error has been logged.";
+    sendPage(res, "Something went wrong", `<h1>Something went wrong</h1><div class="errors">${esc(message)}</div><p><a href="/">Back to the main board</a></p>`, statusCode);
 });
 
 
