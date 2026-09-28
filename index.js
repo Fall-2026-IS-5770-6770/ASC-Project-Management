@@ -351,6 +351,27 @@ logRecordChanges("ClientUpdateLog", "clients", "clientId");
 logRecordChanges("ProjectTypeUpdateLog", "projectTypes", "projectTypeId");
 
 
+// Issue #90: documents uploaded, versioned, or moved through draft, review, and approval
+logRecordChanges("DocumentUpdateLog", "documents", "documentId", {
+    fields: {
+        projectId: { type: Number, index: true },
+        version: String,
+        status: String
+    },
+    extra: document => ({ projectId: document.projectId, version: document.version, status: document.status }),
+    actionFor: (action, changes) => {
+        if (action === "created") {
+            return "uploaded";
+        }
+        if (action === "updated") {
+            const moves = [changes.version && "versioned", changes.status && "status changed"].filter(Boolean);
+            return moves.length ? moves.join(" and ") : "updated";
+        }
+        return action;
+    }
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
