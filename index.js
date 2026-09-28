@@ -688,6 +688,7 @@ const ENTITIES = {
         plural: "requirements",
         store: requirements,
         display: requirement => requirement.title,
+        recordActor: true,
         fields: [
             { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
             { name: "title", label: "Title", type: "text", required: true },
