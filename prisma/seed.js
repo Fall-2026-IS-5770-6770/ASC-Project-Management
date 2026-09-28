@@ -101,6 +101,12 @@ const tables = [
             createdAt: time(row.createdAt),
             lastActivityAt: time(row.lastActivityAt)
         })
+    },
+    {
+        model: "message",
+        table: "Message",
+        rows: require("../data/messages.js").messages,
+        map: row => ({ ...row, postedAt: time(row.postedAt), editedAt: time(row.editedAt) })
     }
 ];
 

@@ -36,7 +36,9 @@ const personSkills = databaseTable("personSkills");
 const projectProjectTypes = databaseTable("projectProjectTypes");
 const documents = databaseTable("documents");
 const threads = databaseTable("threads");
-const { messages, currentPersonId: DEFAULT_PERSON_ID } = require("./data/messages.js");
+const messages = databaseTable("messages");
+// Stand-in signed-in person from the dummy data, until sign-in exists
+const { currentPersonId: DEFAULT_PERSON_ID } = require("./data/messages.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1206,6 +1208,7 @@ const ENTITIES = {
         label: "message",
         plural: "messages",
         store: messages,
+        model: "message",
         display: message => `${displayOf("people", message.senderPersonId)}: ${message.body.slice(0, 40)}`,
         recordActor: true,
         fields: [

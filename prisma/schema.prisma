@@ -50,6 +50,7 @@ model Person {
   documents       Document[]
   channels        Channel[]       @relation("ChannelParticipants")
   threads         Thread[]
+  messages        Message[]
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -269,6 +270,7 @@ model Channel {
   createdDate  DateTime? @db.Date
   audit        Json?
   threads      Thread[]
+  messages     Message[]
 
   @@unique([projectId, name])
 }
@@ -285,4 +287,22 @@ model Thread {
   createdAt         DateTime?
   lastActivityAt    DateTime?
   audit             Json?
+  messages          Message[]
+}
+
+// A message in a thread. The channel is kept on the row too, so messages can be
+// read per channel without going through every thread (Issue #56)
+model Message {
+  id             Int       @id @default(autoincrement())
+  threadId       Int
+  thread         Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  channelId      Int
+  channel        Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  senderPersonId Int
+  sender         Person    @relation(fields: [senderPersonId], references: [id], onDelete: Restrict)
+  body           String
+  postedAt       DateTime?
+  // Stays null until someone edits the message
+  editedAt       DateTime?
+  audit          Json?
 }
