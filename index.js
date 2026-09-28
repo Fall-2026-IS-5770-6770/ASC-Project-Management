@@ -25,7 +25,7 @@ const clients = databaseTable("clients");
 const people = databaseTable("people");
 const mentors = databaseTable("mentors");
 const students = databaseTable("students");
-const projectPeople = require("./data/projectPeople.js");
+const projectPeople = databaseTable("projectPeople");
 const projectStatuses = databaseTable("projectStatuses");
 const requirements = require("./data/requirements.js");
 const channels = require("./data/channels.js");
@@ -1246,6 +1246,7 @@ const ENTITIES = {
         label: "project assignment",
         plural: "project assignments",
         store: projectPeople,
+        model: "projectPerson",
         display: row => `${displayOf("people", row.personId)} (${row.role}) on ${displayOf("projects", row.projectId)}`,
         recordActor: true,
         fields: [

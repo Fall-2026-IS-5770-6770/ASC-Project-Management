@@ -42,9 +42,10 @@ model Person {
   address   Json?
   audit     Json?
 
-  managedProjects Project[] @relation("ProjectManager")
+  managedProjects Project[]       @relation("ProjectManager")
   mentor          Mentor?
   student         Student?
+  projectPeople   ProjectPerson[]
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -111,6 +112,7 @@ model Project {
   workspaceInitializedAt DateTime?
   audit                  Json?
   projectStatuses        ProjectStatus[]
+  projectPeople          ProjectPerson[]
 }
 
 // Faculty who oversee and advise projects. A mentor is a person plus these details (Issue #44)
@@ -157,4 +159,24 @@ model ProjectStatus {
 
   // A project can't list the same status twice
   @@unique([projectId, statusId])
+}
+
+// Who is on which project and in what role. These rows decide who can reach a
+// project's workspace (Issue #46)
+model ProjectPerson {
+  id             Int       @id @default(autoincrement())
+  projectId      Int
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  personId       Int
+  person         Person    @relation(fields: [personId], references: [id], onDelete: Restrict)
+  // Project Manager, Faculty Mentor, Student, or Sponsor
+  role           String
+  startDate      DateTime? @db.Date
+  endDate        DateTime? @db.Date
+  assignedHours  Float?
+  approvalStatus String?
+  status         String?
+  audit          Json?
+
+  @@unique([projectId, personId, role])
 }
