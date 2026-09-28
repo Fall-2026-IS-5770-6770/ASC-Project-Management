@@ -545,6 +545,25 @@ const ENTITIES = {
             }
         }
     },
+    requirements: {
+        label: "requirement",
+        plural: "requirements",
+        store: requirements,
+        display: requirement => requirement.title,
+        fields: [
+            { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
+            { name: "title", label: "Title", type: "text", required: true },
+            { name: "description", label: "Description", type: "textarea" },
+            { name: "statusId", label: "Status", type: "select", ref: "statuses", required: true },
+            { name: "priority", label: "Priority", type: "select", options: ["Low", "Medium", "High", "Critical"] },
+            { name: "dueDate", label: "Due date", type: "date" },
+            { name: "assignedPersonId", label: "Assigned to", type: "select", ref: "people" },
+            { name: "mentorPersonId", label: "Mentor", type: "select", ref: "people" },
+            { name: "acceptanceCriteria", label: "Acceptance criteria", type: "textarea" },
+            { name: "estimatedHours", label: "Estimated hours", type: "number", min: 0 },
+            { name: "actualHours", label: "Actual hours", type: "number", min: 0 }
+        ]
+    },
     projectPeople: {
         label: "project assignment",
         plural: "project assignments",
@@ -1271,7 +1290,8 @@ app.get("/projects/:id", (req, res) => {
     const money = value => (value == null ? "—" : `$${Number(value).toLocaleString("en-US")}`);
 
     const workspace = hasWorkspace
-        ? `<p><strong>Board columns:</strong> ${columns.map(row => `<span class="tag">${esc(displayOf("statuses", row.statusId))}</span>`).join(" ") || "—"}</p>
+        ? `<p><a href="/requirements?projectId=${project.id}"><button type="button">Open the task board</button></a></p>
+           <p><strong>Board columns:</strong> ${columns.map(row => `<span class="tag">${esc(displayOf("statuses", row.statusId))}</span>`).join(" ") || "—"}</p>
            <p><strong>Channels:</strong></p>
            <ul>${projectChannels.map(channel => `<li><a href="/channels/${channel.id}">#${esc(channel.name)}</a> <span class="muted">(${channel.participantPersonIds.length} member${channel.participantPersonIds.length === 1 ? "" : "s"})</span></li>`).join("") || "<li class=\"muted\">None</li>"}</ul>`
         : `<p class="muted">The workspace is created automatically when this project moves into In Progress.</p>`;
@@ -2264,43 +2284,154 @@ app.get("/messages/:id", (req, res) => {
 });
 
 
-// ===== REQUIREMENTS (Issue #9) =====
+// ===== REQUIREMENTS (Issues #9, #38) =====
+// Requirements are the tasks on a project workspace's board. Each card sits
+// in the column for its status.
 
-// Users should be able to create requirements
+NAV.push({ href: "/requirements", label: "Requirements" });
+
+function findRequirement(req, res) {
+    const requirement = findById("requirements", req.params.id);
+    if (!requirement) {
+        sendNotFound(res, "requirement", req.params.id);
+    }
+    return requirement;
+}
+
+// A project's columns in order, plus any status its cards use that the
+// project hasn't set up, so no card is ever hidden
+function boardColumns(projectId, cards) {
+    const ids = projectId
+        ? projectStatuses.filter(row => row.projectId === projectId).sort(byOrder).map(row => row.statusId)
+        : [...statuses].sort(byOrder).map(status => status.id);
+    const extra = [...new Set(cards.map(card => card.statusId))]
+        .filter(id => !ids.includes(id))
+        .sort((a, b) => (findById("statuses", a)?.order ?? 0) - (findById("statuses", b)?.order ?? 0));
+    return [...ids, ...extra].map(id => findById("statuses", id)).filter(Boolean);
+}
+
+function requirementCard(requirement, showProject) {
+    return `<article class="card">
+        <h4><a href="/requirements/${requirement.id}">${esc(requirement.title)}</a></h4>
+        ${showProject ? `<p><span class="muted">Project:</span> ${esc(displayOf("projects", requirement.projectId))}</p>` : ""}
+        <p><span class="muted">Assigned:</span> ${esc(displayOf("people", requirement.assignedPersonId))}</p>
+        <p><span class="tag">${esc(requirement.priority || "No priority")}</span> ${requirement.dueDate ? `<span class="muted">due ${esc(requirement.dueDate)}</span>` : ""}</p>
+        <div class="row-actions">${recordActions("requirements", "/requirements", requirement)}</div>
+    </article>`;
+}
+
+// The create form lives in a modal on the board
 app.get("/requirements/new", (req, res) => {
-    res.send("Create requirements page");
+    res.redirect("/requirements");
 });
 
-// Save the new requirement
 app.post("/requirements/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new requirement");
+    handleCreate("requirements", req, res, {
+        backHref: "/requirements",
+        redirectTo: requirement => `/requirements?projectId=${requirement.projectId}`
+    });
 });
 
-// View all requirements
+// View all requirements as cards on a board, or one project's board with ?projectId=
 app.get("/requirements", (req, res) => {
-    res.send("View all requirements");
+    const project = req.query.projectId ? findById("projects", req.query.projectId) : undefined;
+    if (req.query.projectId && !project) {
+        return sendNotFound(res, "project", req.query.projectId);
+    }
+    const cards = requirements.filter(requirement => !project || requirement.projectId === project.id);
+    const columns = boardColumns(project?.id, cards).map(status => {
+        const inColumn = cards.filter(card => card.statusId === status.id);
+        return `<section class="column" aria-label="${esc(status.name)}">
+            <h3>${esc(status.name)} <span class="count">${inColumn.length}</span></h3>
+            ${inColumn.map(card => requirementCard(card, !project)).join("") || `<p class="muted">No cards</p>`}
+        </section>`;
+    });
+    const projectFilter = `<form method="GET" action="/requirements" class="actions">
+        <label>Project board <select name="projectId" onchange="this.form.submit()"><option value="">All projects</option>${selectOptions(optionsFor(fieldByName("requirements", "projectId")), project?.id)}</select></label>
+        <noscript><button type="submit">Show</button></noscript>
+    </form>`;
+    const firstColumn = project ? boardColumns(project.id, cards)[0] : undefined;
+
+    sendListPage(res, {
+        entityKey: "requirements",
+        title: project ? `${project.name} board` : "Requirements",
+        itemPath: "/requirements",
+        intro: projectFilter + (project ? `<p><a href="/projects/${project.id}">Back to ${esc(project.name)}</a></p>` : ""),
+        body: `<div class="board">${columns.join("")}</div>`,
+        createOptions: { record: { projectId: project?.id, statusId: firstColumn?.id } }
+    });
 });
 
-// Users should be able to edit existing requirements
 app.get("/requirements/edit/:id", (req, res) => {
-    res.send(`Edit requirement page for ID: ${req.params.id}`);
+    const requirement = findRequirement(req, res);
+    if (!requirement) {
+        return;
+    }
+    const statusOptions = boardColumns(requirement.projectId, [requirement]).map(status => ({ value: status.id, label: status.name }));
+    sendEditPage(res, {
+        entityKey: "requirements",
+        record: requirement,
+        itemPath: "/requirements",
+        backHref: `/requirements/${requirement.id}`,
+        omit: ["statusId"],
+        intro: `<section class="panel">
+            <h2>Status</h2>
+            <form method="POST" action="/requirements/${requirement.id}/status">
+                <label>Column on the board
+                    <select name="statusId" onchange="this.form.submit()">${selectOptions(statusOptions, requirement.statusId)}</select>
+                </label>
+                <noscript><button type="submit">Update status</button></noscript>
+            </form>
+        </section>`
+    });
 });
 
-// Save the edit form
 app.post("/requirements/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Save edited requirement with ID: ${req.params.id}`);
+    const requirement = findRequirement(req, res);
+    if (requirement) {
+        handleUpdate("requirements", req, res, {
+            record: requirement,
+            omit: ["statusId"],
+            backHref: `/requirements/edit/${requirement.id}`,
+            redirectTo: `/requirements/${requirement.id}`
+        });
+    }
 });
 
-// Delete requirements that are no longer needed or were created accidentally
+// Move a card to another column
+app.post("/requirements/:id/status", (req, res) => {
+    const requirement = findRequirement(req, res);
+    if (requirement) {
+        handleUpdate("requirements", req, res, {
+            record: requirement,
+            input: { ...requirement, statusId: req.body.statusId },
+            backHref: `/requirements/edit/${requirement.id}`,
+            redirectTo: `/requirements/edit/${requirement.id}`
+        });
+    }
+});
+
 app.post("/requirements/delete/:id", (req, res) => {
-    res.send(`Delete requirement with ID: ${req.params.id}`);
+    const requirement = findRequirement(req, res);
+    if (requirement) {
+        handleDelete("requirements", req, res, {
+            record: requirement,
+            backHref: `/requirements/${requirement.id}`,
+            redirectTo: `/requirements?projectId=${requirement.projectId}`
+        });
+    }
 });
 
-// View a specific requirement
 app.get("/requirements/:id", (req, res) => {
-    res.send(`View requirement page for ID: ${req.params.id}`);
+    const requirement = findRequirement(req, res);
+    if (requirement) {
+        sendDetailPage(res, {
+            entityKey: "requirements",
+            record: requirement,
+            itemPath: "/requirements",
+            listPath: `/requirements?projectId=${requirement.projectId}`
+        });
+    }
 });
 
 
