@@ -3816,6 +3816,9 @@ registerApi("/documents", "documents", {
     prepare: (input, req, existing) => (existing ? input : { ...input, personId: input.personId ?? actingPersonId(req) })
 });
 
+// Issue #147: communication channels
+registerApi("/channels", "channels");
+
 
 // ===== ERRORS (Issue #78) =====
 
