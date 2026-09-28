@@ -76,6 +76,12 @@ const tables = [
         table: "Document",
         rows: require("../data/documents.js"),
         map: row => ({ ...row, uploadedDate: date(row.uploadedDate) })
+    },
+    {
+        model: "channel",
+        table: "Channel",
+        rows: require("../data/channels.js"),
+        map: ({ participantPersonIds, ...row }) => ({ ...row, createdDate: date(row.createdDate), participants: connect(participantPersonIds) })
     }
 ];
 

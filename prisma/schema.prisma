@@ -48,6 +48,7 @@ model Person {
   projectPeople   ProjectPerson[]
   personSkills    PersonSkill[]
   documents       Document[]
+  channels        Channel[]       @relation("ChannelParticipants")
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -121,6 +122,7 @@ model Project {
   projectSkills          ProjectSkill[]
   projectProjectTypes    ProjectProjectType[]
   documents              Document[]
+  channels               Channel[]
 }
 
 // Faculty who oversee and advise projects. A mentor is a person plus these details (Issue #44)
@@ -250,4 +252,21 @@ model Document {
   version      String?
   status       String
   audit        Json?
+}
+
+// Slack-style spaces for a project's conversations. #general is created with the
+// project's workspace; participants are who can use the channel (Issue #54)
+model Channel {
+  id           Int       @id @default(autoincrement())
+  name         String
+  projectId    Int
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Team, Client, Topic, or Archived
+  type         String
+  url          String?
+  participants Person[]  @relation("ChannelParticipants")
+  createdDate  DateTime? @db.Date
+  audit        Json?
+
+  @@unique([projectId, name])
 }

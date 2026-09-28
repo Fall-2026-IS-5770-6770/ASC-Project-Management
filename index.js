@@ -28,7 +28,7 @@ const students = databaseTable("students");
 const projectPeople = databaseTable("projectPeople");
 const projectStatuses = databaseTable("projectStatuses");
 const requirements = require("./data/requirements.js");
-const channels = require("./data/channels.js");
+const channels = databaseTable("channels");
 const skills = databaseTable("skills");
 const projectTypes = databaseTable("projectTypes");
 const projectSkills = databaseTable("projectSkills");
@@ -1167,6 +1167,8 @@ const ENTITIES = {
         label: "channel",
         plural: "channels",
         store: channels,
+        model: "channel",
+        include: { participants: { select: { id: true } } },
         display: channel => `#${channel.name}`,
         recordActor: true,
         fields: [
@@ -1174,7 +1176,7 @@ const ENTITIES = {
             { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
             { name: "type", label: "Type", type: "select", options: ["Team", "Client", "Topic", "Archived"], required: true },
             { name: "url", label: "URL or identifier", type: "url" },
-            { name: "participantPersonIds", label: "Members", type: "multiselect", ref: "people" },
+            { name: "participantPersonIds", label: "Members", type: "multiselect", ref: "people", relation: "participants" },
             { name: "createdDate", label: "Created on", type: "date" }
         ],
         defaults: () => ({ createdDate: today() }),
