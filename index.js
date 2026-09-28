@@ -37,8 +37,6 @@ const projectProjectTypes = databaseTable("projectProjectTypes");
 const documents = databaseTable("documents");
 const threads = databaseTable("threads");
 const messages = databaseTable("messages");
-// Stand-in signed-in person from the dummy data, until sign-in exists
-const { currentPersonId: DEFAULT_PERSON_ID } = require("./data/messages.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -106,7 +104,8 @@ app.use(async (req, res, next) => {
 });
 
 // Development-only look at the current session, to confirm values persist
-// from one request to the next
+// from one request to the next. Deliberately public: it only shows the
+// caller's own session.
 if (!IS_PRODUCTION) {
     app.get("/dev/session", (req, res) => {
         req.session.views = (req.session.views || 0) + 1;
@@ -472,37 +471,33 @@ function flash(req, type, text) {
     req.session.flash = { type, text };
 }
 
-// ----- Acting person -----
-// Sign-in doesn't exist yet, so the application puts a stand-in person on the
-// session itself: the dummy data's currentPersonId by default. Routes read the
-// acting person from the session and record them on every change. Replace
-// this with the signed-in user once authentication lands.
-app.use((req, res, next) => {
-    if (!people.some(person => person.id === req.session.personId)) {
-        const standIn = people.some(person => person.id === DEFAULT_PERSON_ID) ? DEFAULT_PERSON_ID : people[0]?.id;
-        // API calls from other programs usually have no session cookie, so
-        // don't start a session for each one; they act as the stand-in person
-        if (req.path.startsWith("/api/")) {
-            req.actingPersonId = standIn;
-            return next();
-        }
-        req.session.personId = standIn;
-    }
-    req.actingPersonId = req.session.personId;
-    res.locals.actingPersonId = req.session.personId;
-    next();
-});
+// ----- Signed-in person (Issue #123) -----
+// Every route needs someone signed in, except the sign-in routes themselves.
+// Pages send anyone else to the sign-in page (and back afterwards); the API
+// answers 401. The signed-in person is who every change is attributed to.
+const PUBLIC_PATHS = [/^\/signin$/, /^\/auth\//];
 
-// Development-only switch for acting as someone else
-if (!IS_PRODUCTION) {
-    app.post("/dev/act-as", (req, res) => {
-        const personId = Number(req.body.personId);
-        if (people.some(person => person.id === personId)) {
-            req.session.personId = personId;
-        }
-        redirectBack(res, req.body.returnTo, "/");
-    });
-}
+app.use((req, res, next) => {
+    const person = req.session.provider ? people.find(candidate => candidate.id === req.session.personId) : undefined;
+    if (person) {
+        req.actingPersonId = person.id;
+        res.locals.actingPersonId = person.id;
+        return next();
+    }
+    // Signed in as someone who has since been deleted
+    if (req.session.provider) {
+        delete req.session.personId;
+        delete req.session.provider;
+    }
+    if (PUBLIC_PATHS.some(pattern => pattern.test(req.path))) {
+        return next();
+    }
+    if (req.path.startsWith("/api/")) {
+        return res.status(401).json({ errors: ["Sign in first"] });
+    }
+    const returnTo = req.method === "GET" ? req.originalUrl : "/";
+    res.redirect(`/signin?returnTo=${encodeURIComponent(returnTo)}`);
+});
 
 app.use((req, res, next) => {
     if (req.session.flash) {
@@ -686,7 +681,6 @@ const STYLES = `
     body > header a { color: #fff; text-decoration: none; opacity: .9; }
     body > header a:hover { opacity: 1; text-decoration: underline; }
     .acting-as { margin-left: auto; font-size: .85rem; }
-    .acting-as select { padding: .15rem; }
     .muted-light { opacity: .8; }
     .link-button { background: none; border: 1px solid rgba(255, 255, 255, .6); padding: .15rem .5rem; margin-left: .35rem; }
     body > header .brand { font-weight: 700; opacity: 1; margin-right: .5rem; }
@@ -771,29 +765,17 @@ function sendPage(res, title, body, statusCode = 200) {
 </html>`);
 }
 
-// Who the app thinks is making changes. In development it can be switched.
+// Who is signed in, and the way out
 function actingAsControl(res) {
     const personId = res.locals.actingPersonId;
     if (!personId) {
         return "";
     }
-    // Someone who actually signed in sees who they are and a way out
     const provider = res.req.session?.provider;
-    if (provider) {
-        return `<form class="acting-as" method="POST" action="/signout">
-            Signed in as <strong>${esc(displayOf("people", personId))}</strong>
-            <span class="muted-light">(${esc(AUTH_PROVIDERS[provider]?.label || provider)})</span>
-            <button type="submit" class="link-button">Sign out</button>
-        </form>`;
-    }
-    if (IS_PRODUCTION) {
-        return `<span class="acting-as">Acting as ${esc(displayOf("people", personId))}</span>`;
-    }
-    const options = [...people].sort(ENTITIES.people.sort).map(person => ({ value: person.id, label: ENTITIES.people.display(person) }));
-    return `<form class="acting-as" method="POST" action="/dev/act-as">
-        <input type="hidden" name="returnTo" value="${esc(res.req.originalUrl)}">
-        <label>Acting as <select name="personId" onchange="this.form.submit()">${selectOptions(options, personId)}</select></label>
-        <noscript><button type="submit">Switch</button></noscript>
+    return `<form class="acting-as" method="POST" action="/signout">
+        Signed in as <strong>${esc(displayOf("people", personId))}</strong>
+        <span class="muted-light">(${esc(AUTH_PROVIDERS[provider]?.label || provider)})</span>
+        <button type="submit" class="link-button">Sign out</button>
     </form>`;
 }
 
@@ -869,7 +851,7 @@ function nowStamp() {
     return new Date().toISOString().slice(0, 19);
 }
 
-// The person making the request, read from the session (see "Acting person")
+// The signed-in person making the request (see "Signed-in person")
 function actingPersonId(req) {
     return req.actingPersonId;
 }
