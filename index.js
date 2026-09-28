@@ -3828,6 +3828,28 @@ registerApi("/threads", "threads", {
     })
 });
 
+// Issue #149: messages. The caller is the sender, the channel comes from the
+// thread, and only the sender can edit (just the body) or delete a message.
+registerApi("/messages", "messages", {
+    prepare: (input, req, existing) => {
+        if (existing) {
+            return { ...existing, body: input.body ?? existing.body, editedAt: nowStamp() };
+        }
+        const thread = findById("threads", input.threadId);
+        return {
+            threadId: input.threadId,
+            channelId: thread ? thread.channelId : null,
+            senderPersonId: actingPersonId(req),
+            body: input.body,
+            postedAt: nowStamp(),
+            editedAt: null
+        };
+    },
+    authorize: (req, message) => (message.senderPersonId === actingPersonId(req)
+        ? null
+        : "Only the person who sent a message can change or delete it")
+});
+
 
 // ===== ERRORS (Issue #78) =====
 
