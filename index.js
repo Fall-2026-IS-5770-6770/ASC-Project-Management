@@ -800,6 +800,9 @@ function navVisible(link) {
     if (link.href === "/activity") {
         return can("activity:all");
     }
+    if (link.href === "/admin/roles") {
+        return can("roles:manage");
+    }
     const projectResource = NAV_PROJECT_RESOURCES[link.href];
     return !projectResource || canViewAny(projectResource);
 }
@@ -4551,6 +4554,151 @@ app.get("/people/:id", async (req, res) => {
         : `<p class="muted">Not assigned to any projects.</p>`}
         </section>`
     });
+});
+
+
+// ===== ROLE MANAGEMENT (Issue #131) =====
+// Administrators grant and revoke roles here instead of editing the database.
+// Organization roles are OrganizationRole rows; project roles are project
+// person associations, so granting one puts the person on the project.
+
+NAV.push({ href: "/admin/roles", label: "Roles" });
+
+function requireRoleManager(res) {
+    if (!can("roles:manage")) {
+        sendForbidden(res, "Only ASC Administrators can manage roles.");
+        return false;
+    }
+    return true;
+}
+
+// Who holds which role, with forms to grant and buttons to revoke
+app.get("/admin/roles", (req, res) => {
+    if (!requireRoleManager(res)) {
+        return;
+    }
+    const person = req.query.personId ? findById("people", req.query.personId) : undefined;
+    const forPerson = row => !person || row.personId === person.id;
+    const personOptions = [...people].sort(ENTITIES.people.sort).map(candidate => ({ value: candidate.id, label: ENTITIES.people.display(candidate) }));
+    const projectOptions = [...projects].sort((a, b) => a.name.localeCompare(b.name)).map(project => ({ value: project.id, label: project.name }));
+    const organizationRoleNames = roles.filter(role => role.scope === "organization").map(role => ({ value: role.name, label: role.name }));
+    const projectRoleNames = roles.filter(role => role.scope === "project").map(role => ({ value: role.name, label: role.name }));
+
+    const roleRows = [...roles].sort((a, b) => a.id - b.id).map(role => {
+        const holders = role.scope === "organization"
+            ? organizationRoles.filter(row => row.roleName === role.name).length
+            : new Set(projectPeople.filter(row => row.role === role.name && row.status !== "Removed").map(row => row.personId)).size;
+        return `<tr><td><strong>${esc(role.name)}</strong></td><td>${esc(role.scope === "organization" ? "Whole organization" : "One project")}</td><td>${esc(role.description)}</td><td>${holders}</td></tr>`;
+    }).join("");
+
+    const organizationRows = organizationRoles.filter(forPerson).map(row => `<tr>
+        <td><a href="/admin/roles?personId=${row.personId}">${esc(displayOf("people", row.personId))}</a></td>
+        <td>${esc(row.roleName)}</td>
+        <td class="row-actions">${deleteButton(`/admin/roles/organization/delete/${row.id}`, `the ${row.roleName} role from ${displayOf("people", row.personId)}`)}</td>
+    </tr>`).join("");
+
+    const projectRows = projectPeople
+        .filter(forPerson)
+        .sort((a, b) => displayOf("people", a.personId).localeCompare(displayOf("people", b.personId)) || a.projectId - b.projectId)
+        .map(row => `<tr>
+            <td><a href="/admin/roles?personId=${row.personId}">${esc(displayOf("people", row.personId))}</a></td>
+            <td>${esc(row.role)}</td>
+            <td><a href="/projects/${row.projectId}">${esc(displayOf("projects", row.projectId))}</a></td>
+            <td>${esc(row.status || "—")}</td>
+            <td class="row-actions">${deleteButton(`/admin/roles/project/delete/${row.id}`, `the ${row.role} role on ${displayOf("projects", row.projectId)} from ${displayOf("people", row.personId)}`)}</td>
+        </tr>`).join("");
+
+    sendPage(res, "Roles", `
+        <div class="toolbar">
+            <h1>${person ? `Roles held by ${esc(ENTITIES.people.display(person))}` : "Roles"}</h1>
+            <form method="GET" action="/admin/roles" class="actions">
+                <label>Person <select name="personId" onchange="this.form.submit()"><option value="">Everyone</option>${selectOptions(personOptions, person?.id)}</select></label>
+                <noscript><button type="submit">Show</button></noscript>
+            </form>
+        </div>
+        ${person ? "" : `<section class="panel">
+            <h2>The five roles</h2>
+            <table><thead><tr><th>Role</th><th>Held on</th><th>What it allows</th><th>People</th></tr></thead><tbody>${roleRows}</tbody></table>
+        </section>`}
+        <section class="panel">
+            <h2>Organization roles</h2>
+            ${organizationRows ? `<table><thead><tr><th>Person</th><th>Role</th><th></th></tr></thead><tbody>${organizationRows}</tbody></table>` : `<p class="muted">None.</p>`}
+            <form method="POST" action="/admin/roles/organization/new" class="actions">
+                ${hiddenInputs({ returnTo: req.originalUrl })}
+                <label>Person <select name="personId" required>${selectOptions(personOptions, person?.id)}</select></label>
+                <label>Role <select name="roleName" required>${selectOptions(organizationRoleNames)}</select></label>
+                <button type="submit">Grant</button>
+            </form>
+        </section>
+        <section class="panel">
+            <h2>Project roles</h2>
+            ${projectRows ? `<table><thead><tr><th>Person</th><th>Role</th><th>Project</th><th>Status</th><th></th></tr></thead><tbody>${projectRows}</tbody></table>` : `<p class="muted">None.</p>`}
+            <form method="POST" action="/admin/roles/project/new" class="actions">
+                ${hiddenInputs({ returnTo: req.originalUrl })}
+                <label>Person <select name="personId" required>${selectOptions(personOptions, person?.id)}</select></label>
+                <label>Role <select name="role" required>${selectOptions(projectRoleNames)}</select></label>
+                <label>Project <select name="projectId" required>${selectOptions(projectOptions)}</select></label>
+                <button type="submit">Grant</button>
+            </form>
+        </section>
+    `);
+});
+
+app.post("/admin/roles/organization/new", async (req, res) => {
+    if (!requireRoleManager(res)) {
+        return;
+    }
+    const { data, errors } = parseRecord("organizationRoles", req.body);
+    const result = errors.length ? { errors } : await createRecord("organizationRoles", data, actingPersonId(req));
+    if (result.errors) {
+        return sendErrors(res, result.errors, "/admin/roles");
+    }
+    flash(req, "success", `Granted ${result.record.roleName} to ${displayOf("people", result.record.personId)}.`);
+    redirectBack(res, req.body.returnTo, "/admin/roles");
+});
+
+app.post("/admin/roles/organization/delete/:id", async (req, res) => {
+    if (!requireRoleManager(res)) {
+        return;
+    }
+    const row = findById("organizationRoles", req.params.id);
+    if (!row) {
+        return sendNotFound(res, "organization role", req.params.id);
+    }
+    // Someone has to be left who can manage roles
+    if (row.roleName === ADMINISTRATOR && organizationRoles.filter(other => other.roleName === ADMINISTRATOR).length === 1) {
+        return sendErrors(res, ["Grant someone else the ASC Administrator role before revoking the last one."], "/admin/roles");
+    }
+    await deleteRecord("organizationRoles", row, actingPersonId(req));
+    flash(req, "success", `Revoked ${row.roleName} from ${displayOf("people", row.personId)}.`);
+    redirectBack(res, req.body.returnTo, "/admin/roles");
+});
+
+// A project role is a project person association
+app.post("/admin/roles/project/new", async (req, res) => {
+    if (!requireRoleManager(res)) {
+        return;
+    }
+    const { data, errors } = parseRecord("projectPeople", { ...req.body, status: "Active" });
+    const result = errors.length ? { errors } : await createRecord("projectPeople", data, actingPersonId(req));
+    if (result.errors) {
+        return sendErrors(res, result.errors, "/admin/roles");
+    }
+    flash(req, "success", `Granted ${result.record.role} on ${displayOf("projects", result.record.projectId)} to ${displayOf("people", result.record.personId)}.`);
+    redirectBack(res, req.body.returnTo, "/admin/roles");
+});
+
+app.post("/admin/roles/project/delete/:id", async (req, res) => {
+    if (!requireRoleManager(res)) {
+        return;
+    }
+    const row = findById("projectPeople", req.params.id);
+    if (!row) {
+        return sendNotFound(res, "project role", req.params.id);
+    }
+    await deleteRecord("projectPeople", row, actingPersonId(req));
+    flash(req, "success", `Revoked ${row.role} on ${displayOf("projects", row.projectId)} from ${displayOf("people", row.personId)}.`);
+    redirectBack(res, req.body.returnTo, "/admin/roles");
 });
 
 
