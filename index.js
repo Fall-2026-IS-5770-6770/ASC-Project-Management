@@ -184,6 +184,38 @@ onChange("projects", (entry, project) => {
 });
 
 
+// Issue #80: every move of a task (requirement) between columns on a project board
+const TaskStatusLog = logModel("TaskStatusLog", {
+    requirementId: { type: Number, required: true, index: true },
+    projectId: { type: Number, required: true, index: true },
+    title: String,
+    fromStatusId: { type: Number, default: null },
+    fromStatus: { type: String, default: null },
+    toStatusId: { type: Number, required: true },
+    toStatus: String
+});
+
+onChange("requirements", (entry, requirement) => {
+    const move = entry.action === "created"
+        ? { from: null, to: requirement.statusId }
+        : entry.changes.statusId;
+    if (!move || (entry.action !== "created" && entry.action !== "updated")) {
+        return;
+    }
+    writeLog(TaskStatusLog, {
+        action: entry.action === "created" ? "created" : "status changed",
+        requirementId: requirement.id,
+        projectId: requirement.projectId,
+        title: requirement.title,
+        fromStatusId: move.from,
+        fromStatus: move.from == null ? null : displayOf("statuses", move.from),
+        toStatusId: move.to,
+        toStatus: displayOf("statuses", move.to),
+        actorPersonId: entry.actorPersonId
+    });
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
