@@ -606,6 +606,7 @@ const ENTITIES = {
         plural: "documents",
         store: documents,
         display: document => document.name,
+        recordActor: true,
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
             { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
@@ -3140,7 +3141,12 @@ app.get("/documents/new", (req, res) => {
 });
 
 app.post("/documents/new", (req, res) => {
-    handleCreate("documents", req, res, { backHref: "/documents", redirectTo: document => `/documents?projectId=${document.projectId}` });
+    // Whoever adds a document is its uploader unless someone else is picked
+    handleCreate("documents", req, res, {
+        input: { ...req.body, personId: req.body.personId || actingPersonId(req) },
+        backHref: "/documents",
+        redirectTo: document => `/documents?projectId=${document.projectId}`
+    });
 });
 
 // View all documents, or one project's with ?projectId=
