@@ -221,7 +221,12 @@ const ENTITIES = {
         store: statuses,
         display: status => status.name,
         sort: byOrder,
-        fields: []
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "description", label: "Description", type: "textarea", required: true },
+            { name: "order", label: "Board order", type: "number", min: 0 }
+        ],
+        defaults: () => ({ order: nextOrder(statuses) })
     },
     mainBoardStatuses: {
         label: "main board status",
@@ -638,6 +643,138 @@ function projectTeam(projectId) {
 // Static paths (new, edit, all) must be registered before /:id so they aren't shadowed.
 
 
+// ===== RESOURCE PAGES =====
+// Most resources share one shape: a list page with a create modal, a page for
+// one record, and an edit page. These build those pages from the registry.
+
+// Plain-text version of a field's value, with ids turned into names
+function fieldText(field, value) {
+    switch (field.type) {
+    case "select":
+        return field.ref ? displayOf(field.ref, value) : value ?? "—";
+    case "multiselect":
+        return (value || []).map(id => displayOf(field.ref, id)).join(", ") || "—";
+    case "checkbox":
+        return value ? "Yes" : "No";
+    case "list":
+        return (value || []).join(", ") || "—";
+    case "address":
+        return value ? [value.street, value.city, [value.state, value.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "—" : "—";
+    case "datetime":
+        return value ? String(value).replace("T", " ").slice(0, 16) : "—";
+    default:
+        return value === null || value === undefined || value === "" ? "—" : String(value);
+    }
+}
+
+function fieldByName(entityKey, name) {
+    return ENTITIES[entityKey].fields.find(field => field.name === name);
+}
+
+// A table column that shows one field
+function fieldColumn(entityKey, name, label) {
+    const field = fieldByName(entityKey, name);
+    return { label: label || field.label, value: row => fieldText(field, row[name]) };
+}
+
+function recordActions(entityKey, itemPath, record) {
+    const label = ENTITIES[entityKey].display(record);
+    return `${editButton(`${itemPath}/edit/${record.id}`, label)}${deleteButton(`${itemPath}/delete/${record.id}`, label)}`;
+}
+
+// Columns are { label, value(row) } for text or { label, html(row) } for markup
+function recordTable(columns, rows, actions) {
+    if (rows.length === 0) {
+        return `<p class="muted">Nothing here yet.</p>`;
+    }
+    const head = columns.map(column => `<th>${esc(column.label)}</th>`).join("");
+    const body = rows.map(row => `<tr>
+        ${columns.map(column => `<td>${column.html ? column.html(row) : esc(column.value(row) ?? "—")}</td>`).join("")}
+        <td class="row-actions">${actions ? actions(row) : ""}</td>
+    </tr>`).join("");
+    return `<table><thead><tr>${head}<th></th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function createModal(entityKey, itemPath, { omit = [], hidden = {}, record = {} } = {}) {
+    const entity = ENTITIES[entityKey];
+    return modal(`create-${entityKey}`, `New ${entity.label}`,
+        renderForm(entityKey, { action: `${itemPath}/new`, submitLabel: `Create ${entity.label}`, inModal: true, omit, hidden, record }));
+}
+
+// List page with a create modal. Pass body to replace the default table.
+function sendListPage(res, { entityKey, title, itemPath, columns, rows, intro = "", body, createOptions }) {
+    const entity = ENTITIES[entityKey];
+    sendPage(res, title, `
+        <div class="toolbar">
+            <h1>${esc(title)}</h1>
+            ${modalButton(`create-${entityKey}`, `+ New ${entity.label}`)}
+        </div>
+        ${intro}
+        ${body ?? recordTable(columns, rows, row => recordActions(entityKey, itemPath, row))}
+        ${createModal(entityKey, itemPath, createOptions)}
+    `);
+}
+
+// Page for one record: every field, plus anything extra
+function sendDetailPage(res, { entityKey, record, itemPath, listPath, extra = "" }) {
+    const entity = ENTITIES[entityKey];
+    const name = entity.display(record);
+    const rows = entity.fields
+        .map(field => `<dt>${esc(field.label)}</dt><dd>${esc(fieldText(field, record[field.name]))}</dd>`)
+        .join("");
+    sendPage(res, name, `
+        <div class="toolbar">
+            <h1>${esc(name)}</h1>
+            <div class="row-actions">${recordActions(entityKey, itemPath, record)}</div>
+        </div>
+        <section class="panel"><dl class="details">${rows}</dl></section>
+        ${extra}
+        <p><a href="${esc(listPath)}">Back to all ${esc(entity.plural)}</a></p>
+    `);
+}
+
+function sendEditPage(res, { entityKey, record, itemPath, backHref, omit = [], intro = "" }) {
+    const entity = ENTITIES[entityKey];
+    const name = entity.display(record);
+    sendPage(res, `Edit ${name}`, `
+        <h1>Edit ${esc(entity.label)}: ${esc(name)}</h1>
+        ${intro}
+        <section class="panel">
+            ${renderForm(entityKey, { action: `${itemPath}/edit/${record.id}`, record, omit, submitLabel: "Save changes" })}
+        </section>
+        <p><a href="${esc(backHref)}">Cancel</a></p>
+    `);
+}
+
+// Shared POST handlers. Each takes the paths to send the user to afterwards.
+function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.body, omit = [] }) {
+    const { data, errors } = parseRecord(entityKey, input, { omit });
+    const result = errors.length ? { errors } : createRecord(entityKey, data);
+    if (result.errors) {
+        return sendErrors(res, result.errors, backHref);
+    }
+    res.redirect(typeof redirectTo === "function" ? redirectTo(result.record) : redirectTo);
+}
+
+function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input = req.body, omit = [] }) {
+    const { data, errors } = parseRecord(entityKey, input, { omit });
+    const result = errors.length ? { errors } : updateRecord(entityKey, record, data);
+    if (result.errors) {
+        return sendErrors(res, result.errors, backHref);
+    }
+    console.log(`Updated ${ENTITIES[entityKey].label} ${record.id}: ${ENTITIES[entityKey].display(record)}`);
+    res.redirect(typeof redirectTo === "function" ? redirectTo(record) : redirectTo);
+}
+
+function handleDelete(entityKey, req, res, { record, backHref, redirectTo }) {
+    const result = deleteRecord(entityKey, record);
+    if (result.errors) {
+        return sendErrors(res, result.errors, backHref);
+    }
+    res.redirect(redirectTo);
+}
+
+
 // ===== PROJECTS (Issues #1, #20) =====
 // The main board: every project is a card in the column for its status.
 
@@ -866,165 +1003,71 @@ app.get("/projects/:id", (req, res) => {
 });
 
 
-// ===== STATUSES (Issue #2) =====
+// ===== STATUSES (Issues #2, #21) =====
+// The task statuses that become the columns on a project workspace's board
 
-app.get("/statuses", (req, resp) => {
-    const statusMessagePrefix = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>All Statuses</title>
-        </head>
-        <body>
-            <h2>All existing project statuses are:</h2>
-            <a href="/status/new"><button>Add New</button></a>
-            <hr />
-    `;
+NAV.push({ href: "/statuses", label: "Statuses" });
 
-    const statusMessageSuffix = statuses
-        .map(status => {
-            return `
-                <div style="margin-bottom: 10px;">
-                    <strong>${status.id}:</strong> <a href="/status/${status.id}">${status.name}</a>
-                    <a href="/status/edit/${status.id}"><button>Edit</button></a>
-                    <form action="/status/delete/${status.id}" method="POST" style="display: inline;" onsubmit="return confirm('Delete status ${status.name}?')">
-                        <button type="submit">Delete</button>
-                    </form>
-                </div>
-            `;
-        })
-        .join("");
+function nextOrder(store) {
+    return store.reduce((max, row) => Math.max(max, row.order || 0), 0) + 1;
+}
 
-    const statusMessage = statusMessagePrefix + statusMessageSuffix + "</body></html>";
-
-    resp.send(statusMessage);
-});
-
-app.get("/status/new", (req, res) => {
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Create Status</title>
-        </head>
-        <body>
-            <h2>Create a New Status</h2>
-            <form action="/status/new" method="POST">
-                <input type="text" placeholder="Status Name" name="status_name" required>
-                <input type="text" placeholder="Status Description" name="status_description" required>
-                <input type="number" placeholder="Status Order" name="status_order">
-                <input type="submit" value="Save">
-            </form>
-            <a href="/statuses">Back to all statuses</a>
-        </body>
-        </html>
-    `);
-});
-
-app.post("/status/new", (req, resp) => {
-    const statusName = req.body.status_name;
-    const statusDescription = req.body.status_description;
-
-    if (!statusName || !statusDescription) {
-        return resp.status(400).send("Missing required fields: status_name or status_description");
-    }
-
-    // Use the highest existing id so ids stay unique after deletes
-    const newStatusId = statuses.reduce((max, status) => Math.max(max, status.id), 0) + 1;
-    const statusOrder = req.body.status_order ? Number(req.body.status_order) : newStatusId;
-
-    statuses.push({
-        id: newStatusId,
-        name: statusName,
-        description: statusDescription,
-        order: statusOrder
+// View all statuses in board order
+app.get("/statuses", (req, res) => {
+    sendListPage(res, {
+        entityKey: "statuses",
+        title: "Statuses",
+        itemPath: "/status",
+        intro: `<p class="muted">Statuses are the columns on the task board inside each project workspace, listed here in board order.</p>`,
+        columns: [
+            fieldColumn("statuses", "order"),
+            { label: "Name", html: status => `<a href="/status/${status.id}">${esc(status.name)}</a>` },
+            fieldColumn("statuses", "description")
+        ],
+        rows: [...statuses].sort(byOrder)
     });
-
-    resp.redirect("/statuses");
 });
 
-app.get("/status/edit/:id", (req, resp) => {
-    const statusId = Number(req.params.id);
-    const selectedStatus = statuses.find(status => status.id === statusId);
-
-    if (!selectedStatus) {
-        return resp.status(404).send(`Status with id ${statusId} not found`);
-    }
-
-    resp.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Edit Status</title>
-        </head>
-        <body>
-            <h2>Edit Status: ${selectedStatus.name}</h2>
-            <form action="/status/edit/${selectedStatus.id}" method="POST">
-                <input type="text" value="${selectedStatus.name}" name="status_name" required>
-                <input type="text" value="${selectedStatus.description}" name="status_description" required>
-                <input type="number" value="${selectedStatus.order}" name="status_order" required>
-                <input type="submit" value="Update">
-            </form>
-            <a href="/statuses">Cancel</a>
-        </body>
-        </html>
-    `);
+// The create form lives in a modal on the list page
+app.get("/status/new", (req, res) => {
+    res.redirect("/statuses");
 });
 
-app.post("/status/edit/:id", (req, resp) => {
-    const statusId = Number(req.params.id);
-    const selectedStatus = statuses.find(status => status.id === statusId);
-
-    if (!selectedStatus) {
-        return resp.status(404).send(`Status with id ${statusId} not found`);
-    }
-
-    const { status_name, status_description, status_order } = req.body;
-
-    if (!status_name || !status_description) {
-        return resp.status(400).send("Missing required fields: status_name or status_description");
-    }
-
-    selectedStatus.name = status_name;
-    selectedStatus.description = status_description;
-    selectedStatus.order = status_order ? Number(status_order) : selectedStatus.order;
-
-    resp.redirect("/statuses");
+app.post("/status/new", (req, res) => {
+    handleCreate("statuses", req, res, { backHref: "/statuses", redirectTo: "/statuses" });
 });
 
-app.post("/status/delete/:id", (req, resp) => {
-    const statusId = Number(req.params.id);
-    const statusIndex = statuses.findIndex(status => status.id === statusId);
-
-    if (statusIndex === -1) {
-        return resp.status(404).send(`Status with id ${statusId} not found`);
+app.get("/status/edit/:id", (req, res) => {
+    const status = findById("statuses", req.params.id);
+    if (!status) {
+        return sendNotFound(res, "status", req.params.id);
     }
+    sendEditPage(res, { entityKey: "statuses", record: status, itemPath: "/status", backHref: "/statuses" });
+});
 
-    statuses.splice(statusIndex, 1);
+app.post("/status/edit/:id", (req, res) => {
+    const status = findById("statuses", req.params.id);
+    if (!status) {
+        return sendNotFound(res, "status", req.params.id);
+    }
+    handleUpdate("statuses", req, res, { record: status, backHref: `/status/edit/${status.id}`, redirectTo: "/statuses" });
+});
 
-    resp.redirect("/statuses");
+app.post("/status/delete/:id", (req, res) => {
+    const status = findById("statuses", req.params.id);
+    if (!status) {
+        return sendNotFound(res, "status", req.params.id);
+    }
+    handleDelete("statuses", req, res, { record: status, backHref: "/statuses", redirectTo: "/statuses" });
 });
 
 // View a specific status
-app.get("/status/:id", (req, resp) => {
-    const statusId = Number(req.params.id);
-    const selectedStatus = statuses.find(status => status.id === statusId);
-
-    if (!selectedStatus) {
-        return resp.status(404).send(`Status with id ${statusId} not found`);
+app.get("/status/:id", (req, res) => {
+    const status = findById("statuses", req.params.id);
+    if (!status) {
+        return sendNotFound(res, "status", req.params.id);
     }
-
-    resp.send(`
-        <h2>${selectedStatus.name}</h2>
-        <p>${selectedStatus.description}</p>
-        <p>Order: ${selectedStatus.order}</p>
-        <a href="/statuses">Back to all statuses</a>
-    `);
+    sendDetailPage(res, { entityKey: "statuses", record: status, itemPath: "/status", listPath: "/statuses" });
 });
 
 
