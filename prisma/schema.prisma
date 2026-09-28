@@ -49,6 +49,7 @@ model Person {
   personSkills    PersonSkill[]
   documents       Document[]
   channels        Channel[]       @relation("ChannelParticipants")
+  threads         Thread[]
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -267,6 +268,21 @@ model Channel {
   participants Person[]  @relation("ChannelParticipants")
   createdDate  DateTime? @db.Date
   audit        Json?
+  threads      Thread[]
 
   @@unique([projectId, name])
+}
+
+// A conversation inside a channel. The message count is counted from its
+// messages rather than stored (Issue #55)
+model Thread {
+  id                Int       @id @default(autoincrement())
+  channelId         Int
+  channel           Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  name              String
+  createdByPersonId Int?
+  createdBy         Person?   @relation(fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  createdAt         DateTime?
+  lastActivityAt    DateTime?
+  audit             Json?
 }

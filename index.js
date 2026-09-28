@@ -35,7 +35,7 @@ const projectSkills = databaseTable("projectSkills");
 const personSkills = databaseTable("personSkills");
 const projectProjectTypes = databaseTable("projectProjectTypes");
 const documents = databaseTable("documents");
-const threads = require("./data/threads.js");
+const threads = databaseTable("threads");
 const { messages, currentPersonId: DEFAULT_PERSON_ID } = require("./data/messages.js");
 
 const app = express();
@@ -1190,6 +1190,7 @@ const ENTITIES = {
         label: "thread",
         plural: "threads",
         store: threads,
+        model: "thread",
         display: thread => thread.name,
         recordActor: true,
         fields: [

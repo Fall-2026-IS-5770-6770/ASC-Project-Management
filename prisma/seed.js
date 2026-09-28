@@ -20,6 +20,11 @@ function date(value) {
     return value ? new Date(`${value}T00:00:00Z`) : null;
 }
 
+// Dummy data times are YYYY-MM-DDTHH:MM:SS; the app treats them as UTC
+function time(value) {
+    return value ? new Date(`${value}Z`) : null;
+}
+
 // Link a many-to-many relation to existing rows by id
 function connect(ids) {
     return { connect: (ids || []).map(id => ({ id })) };
@@ -82,6 +87,20 @@ const tables = [
         table: "Channel",
         rows: require("../data/channels.js"),
         map: ({ participantPersonIds, ...row }) => ({ ...row, createdDate: date(row.createdDate), participants: connect(participantPersonIds) })
+    },
+    {
+        model: "thread",
+        table: "Thread",
+        rows: require("../data/threads.js"),
+        // messageCount in the dummy data is left out; it's counted from messages instead
+        map: row => ({
+            id: row.id,
+            channelId: row.channelId,
+            name: row.name,
+            createdByPersonId: row.createdByPersonId,
+            createdAt: time(row.createdAt),
+            lastActivityAt: time(row.lastActivityAt)
+        })
     }
 ];
 
