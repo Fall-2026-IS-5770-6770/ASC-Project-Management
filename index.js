@@ -347,6 +347,10 @@ logRecordChanges("RequirementUpdateLog", "requirements", "requirementId", {
 logRecordChanges("ClientUpdateLog", "clients", "clientId");
 
 
+// Issue #89: refinements to project types and their typical durations, deliverables, and skills
+logRecordChanges("ProjectTypeUpdateLog", "projectTypes", "projectTypeId");
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
