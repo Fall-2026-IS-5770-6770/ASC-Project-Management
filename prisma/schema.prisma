@@ -46,6 +46,7 @@ model Person {
   mentor          Mentor?
   student         Student?
   projectPeople   ProjectPerson[]
+  personSkills    PersonSkill[]
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -60,6 +61,7 @@ model Skill {
   mentors       Mentor[]       @relation("MentorSkills")
   students      Student[]      @relation("StudentSkills")
   projectSkills ProjectSkill[]
+  personSkills  PersonSkill[]
 }
 
 // Kinds of work a project can involve, such as Full-Stack or Data Visualization (Issue #50)
@@ -196,4 +198,19 @@ model ProjectSkill {
   audit              Json?
 
   @@unique([projectId, skillId])
+}
+
+// The skills a person has, how well, and how recently (Issue #49)
+model PersonSkill {
+  id              Int       @id @default(autoincrement())
+  personId        Int
+  person          Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
+  skillId         Int
+  skill           Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  proficiency     String
+  yearsExperience Float?
+  lastUsed        DateTime? @db.Date
+  audit           Json?
+
+  @@unique([personId, skillId])
 }

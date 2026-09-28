@@ -63,7 +63,13 @@ const tables = [
         rows: require("../data/projectPeople.js"),
         map: row => ({ ...row, startDate: date(row.startDate), endDate: date(row.endDate) })
     },
-    { model: "projectSkill", table: "ProjectSkill", rows: require("../data/projectSkills.js"), map: row => row }
+    { model: "projectSkill", table: "ProjectSkill", rows: require("../data/projectSkills.js"), map: row => row },
+    {
+        model: "personSkill",
+        table: "PersonSkill",
+        rows: require("../data/personSkills.js"),
+        map: row => ({ ...row, lastUsed: date(row.lastUsed) })
+    }
 ];
 
 async function seedTable({ model, table, rows, map }) {

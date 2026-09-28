@@ -32,7 +32,7 @@ const channels = require("./data/channels.js");
 const skills = databaseTable("skills");
 const projectTypes = databaseTable("projectTypes");
 const projectSkills = databaseTable("projectSkills");
-const personSkills = require("./data/personSkills.js");
+const personSkills = databaseTable("personSkills");
 const projectProjectTypes = require("./data/projectProjectTypes.js");
 const documents = require("./data/documents.js");
 const threads = require("./data/threads.js");
@@ -1088,6 +1088,7 @@ const ENTITIES = {
         label: "person skill",
         plural: "person skills",
         store: personSkills,
+        model: "personSkill",
         display: row => `${displayOf("people", row.personId)}: ${displayOf("skills", row.skillId)}`,
         recordActor: true,
         fields: [
