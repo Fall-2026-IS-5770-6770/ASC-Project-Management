@@ -1,13 +1,25 @@
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+const { AsyncLocalStorage } = require("async_hooks");
+
+// Settings such as DATABASE_URL come from .env when it exists (see .env.example)
+const ENV_FILE = path.join(__dirname, ".env");
+if (fs.existsSync(ENV_FILE)) {
+    process.loadEnvFile(ENV_FILE);
+}
+
 const express = require("express");
 const session = require("express-session");
 const mongoose = require("mongoose");
+const { Prisma, PrismaClient } = require("./generated/prisma");
+const { PrismaPg } = require("@prisma/adapter-pg");
 
 // ===== DATA =====
 // The dummy data in /data stands in for the database until one is wired up.
 // Each array is changed in place, so edits last until the server restarts.
 const projects = require("./data/projects.js");
-const statuses = require("./data/statuses.js");
+const statuses = databaseTable("statuses");
 const mainBoardStatuses = require("./data/mainBoardStatuses.js");
 const clients = require("./data/clients.js");
 const people = require("./data/people.js");
@@ -84,6 +96,12 @@ app.use(session({
         secure: IS_PRODUCTION
     }
 }));
+
+// Read this request's rows from the database before any route runs
+app.use(async (req, res, next) => {
+    const data = await loadSnapshot();
+    requestContext.run({ data }, next);
+});
 
 // Development-only look at the current session, to confirm values persist
 // from one request to the next
@@ -493,6 +511,152 @@ app.use((req, res, next) => {
 });
 
 
+// ===== DATABASE =====
+// Records live in PostgreSQL and are reached through Prisma (schema, migrations,
+// and seed data are in prisma/). Each request starts by reading the database
+// tables into a snapshot of its own, and the rest of the request works with
+// those rows as ordinary arrays. Every create, update, and delete is written
+// through Prisma inside a transaction and applied to the snapshot too. Change
+// history and log entries are only written once the transaction commits.
+// Resources that aren't in the database yet keep using the dummy data arrays.
+
+if (!process.env.DATABASE_URL) {
+    console.warn("DATABASE_URL is not set, so pages that need the database will fail. See .env.example.");
+}
+
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+
+// Holds the current request's rows, its open transaction, and work to run after commit
+const requestContext = new AsyncLocalStorage();
+
+function currentRows(entityKey) {
+    const rows = requestContext.getStore()?.data?.[entityKey];
+    if (!rows) {
+        throw new Error(`The ${entityKey} rows are only available while handling a request`);
+    }
+    return rows;
+}
+
+// Stands in for a table's array: every use reads the current request's rows
+function databaseTable(entityKey) {
+    return new Proxy([], {
+        get(target, property) {
+            const rows = currentRows(entityKey);
+            const value = Reflect.get(rows, property, rows);
+            return typeof value === "function" ? value.bind(rows) : value;
+        },
+        set(target, property, value) {
+            currentRows(entityKey)[property] = value;
+            return true;
+        },
+        has(target, property) {
+            return property in currentRows(entityKey);
+        }
+    });
+}
+
+// The client to use: the open transaction, if there is one
+function db() {
+    return requestContext.getStore()?.tx || prisma;
+}
+
+// Run work in one transaction. Nested calls join the outer transaction, and
+// the work queued with afterCommit only runs once everything has committed.
+async function inTransaction(work) {
+    const context = requestContext.getStore();
+    if (context?.tx) {
+        return work();
+    }
+    const committed = [];
+    try {
+        const result = await prisma.$transaction(tx => requestContext.run({ ...context, tx, committed }, work), { timeout: 15000 });
+        committed.forEach(task => task());
+        return result;
+    } catch (error) {
+        // A unique constraint the checks above didn't catch (for example a race)
+        if (error.code === "P2002") {
+            return { errors: [`That ${[].concat(error.meta?.target || "value").join(", ")} is already in use.`] };
+        }
+        throw error;
+    }
+}
+
+function afterCommit(task) {
+    const committed = requestContext.getStore()?.committed;
+    if (committed) {
+        committed.push(task);
+    } else {
+        task();
+    }
+}
+
+// Database rows use Dates and Decimals; the app works with the same plain
+// values the dummy data uses (YYYY-MM-DD dates, YYYY-MM-DDTHH:MM:SS times, numbers)
+function fromDb(entityKey, row) {
+    const record = { ...row };
+    for (const field of ENTITIES[entityKey].fields) {
+        const value = row[field.name];
+        if (field.relation) {
+            record[field.name] = (row[field.relation] || []).map(related => related.id);
+            delete record[field.relation];
+        } else if (value instanceof Date) {
+            record[field.name] = field.type === "date" ? value.toISOString().slice(0, 10) : value.toISOString().slice(0, 19);
+        } else if (value && typeof value === "object" && typeof value.toNumber === "function") {
+            record[field.name] = value.toNumber();
+        }
+    }
+    for (const [name, value] of Object.entries(record)) {
+        if (value instanceof Date) {
+            record[name] = value.toISOString();
+        }
+    }
+    return record;
+}
+
+function toDb(entityKey, values, creating) {
+    const data = {};
+    for (const [name, value] of Object.entries(values)) {
+        if (name === "id") {
+            continue;
+        }
+        const field = fieldByName(entityKey, name);
+        if (field?.relation) {
+            const ids = (value || []).map(id => ({ id }));
+            data[field.relation] = creating ? { connect: ids } : { set: ids };
+        } else if (field && (field.type === "date" || field.type === "datetime")) {
+            data[name] = value ? new Date(field.type === "date" ? `${value}T00:00:00Z` : `${value}Z`) : null;
+        } else if (field?.type === "address" || name === "audit") {
+            data[name] = value ?? Prisma.DbNull;
+        } else {
+            data[name] = value;
+        }
+    }
+    return data;
+}
+
+// Read every database-backed table for this request
+async function loadSnapshot() {
+    const data = {};
+    await Promise.all(Object.entries(ENTITIES)
+        .filter(([, entity]) => entity.model)
+        .map(async ([entityKey, entity]) => {
+            const rows = await prisma[entity.model].findMany({ orderBy: { id: "asc" }, include: entity.include });
+            data[entityKey] = rows.map(row => fromDb(entityKey, row));
+        }));
+    return data;
+}
+
+// Save bookkeeping fields (such as a thread's last activity) without
+// recording them as a change someone made
+async function saveQuietly(entityKey, record, data) {
+    const entity = ENTITIES[entityKey];
+    if (entity.model) {
+        await db()[entity.model].update({ where: { id: record.id }, data: toDb(entityKey, data, false) });
+    }
+    Object.assign(record, data);
+}
+
+
 // ===== HTML HELPERS =====
 
 // Escape anything that came from the data or from a user before it goes into HTML
@@ -728,14 +892,14 @@ const ENTITIES = {
             { name: "estimatedHours", label: "Estimated hours", type: "number", min: 0 },
             { name: "notes", label: "Notes", type: "textarea" }
         ],
-        afterCreate: (project, { actorId }) => {
+        afterCreate: async (project, { actorId }) => {
             if (isInProgress(project.mainBoardStatusId)) {
-                initializeWorkspace(project, actorId);
+                await initializeWorkspace(project, actorId);
             }
         },
-        afterUpdate: (project, before, { actorId }) => {
+        afterUpdate: async (project, before, { actorId }) => {
             if (project.mainBoardStatusId !== before.mainBoardStatusId && isInProgress(project.mainBoardStatusId)) {
-                initializeWorkspace(project, actorId);
+                await initializeWorkspace(project, actorId);
             }
         }
     },
@@ -743,13 +907,14 @@ const ENTITIES = {
         label: "status",
         plural: "statuses",
         store: statuses,
+        model: "status",
         display: status => status.name,
         recordActor: true,
         sort: byOrder,
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
             { name: "description", label: "Description", type: "textarea", required: true },
-            { name: "order", label: "Board order", type: "number", min: 0 }
+            { name: "order", label: "Board order", type: "number", min: 0, integer: true }
         ],
         defaults: () => ({ order: nextOrder(statuses) })
     },
@@ -1038,10 +1203,10 @@ const ENTITIES = {
             const thread = findById("threads", message.threadId);
             return thread && thread.channelId !== message.channelId ? ["Channel must be the thread's channel"] : [];
         },
-        afterCreate: message => {
+        afterCreate: async message => {
             const thread = findById("threads", message.threadId);
             if (thread && String(message.postedAt) > String(thread.lastActivityAt)) {
-                thread.lastActivityAt = message.postedAt;
+                await saveQuietly("threads", thread, { lastActivityAt: message.postedAt });
             }
         }
     },
@@ -1088,9 +1253,9 @@ const ENTITIES = {
             return duplicate ? [`${displayOf("people", row.personId)} is already a ${row.role} on this project`] : [];
         },
         afterCreate: (row, { actorId }) => syncWorkspaceMember(row.projectId, row.personId, actorId),
-        afterUpdate: (row, before, { actorId }) => {
-            syncWorkspaceMember(before.projectId, before.personId, actorId);
-            syncWorkspaceMember(row.projectId, row.personId, actorId);
+        afterUpdate: async (row, before, { actorId }) => {
+            await syncWorkspaceMember(before.projectId, before.personId, actorId);
+            await syncWorkspaceMember(row.projectId, row.personId, actorId);
         },
         afterDelete: (row, { actorId }) => syncWorkspaceMember(row.projectId, row.personId, actorId)
     }
@@ -1152,7 +1317,7 @@ function renderField(field, value) {
         return `<label for="${id}">${label}<input id="${id}" type="datetime-local" name="${esc(field.name)}" value="${esc(String(value ?? "").slice(0, 16))}"${required}></label>`;
     default: {
         const type = { number: "number", date: "date", email: "email", url: "text" }[field.type] || "text";
-        const extra = field.type === "number" ? ` step="any"${field.min !== undefined ? ` min="${field.min}"` : ""}` : "";
+        const extra = field.type === "number" ? ` step="${field.integer ? 1 : "any"}"${field.min !== undefined ? ` min="${field.min}"` : ""}` : "";
         return `<label for="${id}">${label}<input id="${id}" type="${type}" name="${esc(field.name)}" value="${esc(value)}"${extra}${required}></label>`;
     }
     }
@@ -1222,6 +1387,9 @@ function parseValue(field, raw) {
         }
         if (field.min !== undefined && number < field.min) {
             return { error: `must be at least ${field.min}` };
+        }
+        if (field.integer && !Number.isInteger(number)) {
+            return { error: "must be a whole number" };
         }
         return { value: number };
     }
@@ -1302,8 +1470,10 @@ function recordChange(entityKey, action, record, actorId, changes) {
         at: new Date().toISOString(),
         changes: changes || {}
     };
-    changeHistory.push(entry);
-    (CHANGE_LISTENERS[entityKey] || []).forEach(listener => listener(entry, record));
+    afterCommit(() => {
+        changeHistory.push(entry);
+        (CHANGE_LISTENERS[entityKey] || []).forEach(listener => listener(entry, record));
+    });
     return entry;
 }
 
@@ -1321,53 +1491,75 @@ function stampUpdated(entityKey, record, actorId) {
 }
 
 function createRecord(entityKey, data, actorId) {
-    const entity = ENTITIES[entityKey];
-    const defaults = entity.defaults ? entity.defaults(data) : {};
-    const values = { ...data };
-    for (const [key, value] of Object.entries(defaults)) {
-        if (values[key] === null || values[key] === undefined) {
-            values[key] = value;
+    return inTransaction(async () => {
+        const entity = ENTITIES[entityKey];
+        const defaults = entity.defaults ? entity.defaults(data) : {};
+        const values = { ...data };
+        for (const [key, value] of Object.entries(defaults)) {
+            if (values[key] === null || values[key] === undefined) {
+                values[key] = value;
+            }
         }
-    }
 
-    const errors = entity.validate ? entity.validate(values, null) : [];
-    if (errors.length) {
-        return { errors };
-    }
+        const errors = entity.validate ? entity.validate(values, null) : [];
+        if (errors.length) {
+            return { errors };
+        }
 
-    const record = { id: nextId(entity.store), ...values };
-    stampCreated(entityKey, record, actorId);
-    entity.store.push(record);
-    recordChange(entityKey, "created", record, actorId);
-    if (entity.afterCreate) {
-        entity.afterCreate(record, { actorId });
-    }
-    return { record };
+        let record = { ...values };
+        stampCreated(entityKey, record, actorId);
+        if (entity.model) {
+            const saved = await db()[entity.model].create({ data: toDb(entityKey, record, true), include: entity.include });
+            record = fromDb(entityKey, saved);
+        } else {
+            record = { id: nextId(entity.store), ...record };
+        }
+        entity.store.push(record);
+        recordChange(entityKey, "created", record, actorId);
+        if (entity.afterCreate) {
+            await entity.afterCreate(record, { actorId });
+        }
+        return { record };
+    });
 }
 
 function updateRecord(entityKey, record, data, actorId) {
-    const entity = ENTITIES[entityKey];
-    const errors = entity.validate ? entity.validate({ ...record, ...data }, record) : [];
-    if (errors.length) {
-        return { errors };
-    }
+    return inTransaction(async () => {
+        const entity = ENTITIES[entityKey];
+        const errors = entity.validate ? entity.validate({ ...record, ...data }, record) : [];
+        if (errors.length) {
+            return { errors };
+        }
 
-    const before = { ...record };
-    Object.assign(record, data);
-    const changes = changedFields(entityKey, before, record);
-    if (Object.keys(changes).length) {
-        stampUpdated(entityKey, record, actorId);
-        recordChange(entityKey, "updated", record, actorId, changes);
-    }
-    if (entity.afterUpdate) {
-        entity.afterUpdate(record, before, { actorId, changes });
-    }
-    return { record, before, changes };
+        const before = { ...record };
+        const after = { ...record, ...data };
+        const changes = changedFields(entityKey, before, after);
+        if (Object.keys(changes).length) {
+            stampUpdated(entityKey, after, actorId);
+            if (entity.model) {
+                const changed = Object.fromEntries(Object.keys(changes).map(name => [name, after[name]]));
+                if (after.audit) {
+                    changed.audit = after.audit;
+                }
+                await db()[entity.model].update({ where: { id: record.id }, data: toDb(entityKey, changed, false) });
+            }
+            Object.assign(record, after);
+            recordChange(entityKey, "updated", record, actorId, changes);
+        }
+        if (entity.afterUpdate) {
+            await entity.afterUpdate(record, before, { actorId, changes });
+        }
+        return { record, before, changes };
+    });
 }
 
 // Records that belong to this one (cascade) are deleted with it, ids in
 // multi-selects are pulled out, and anything else pointing at it blocks the delete.
 function deleteRecord(entityKey, record, actorId) {
+    return inTransaction(() => deleteWithinTransaction(entityKey, record, actorId));
+}
+
+async function deleteWithinTransaction(entityKey, record, actorId) {
     const entity = ENTITIES[entityKey];
     const blockers = [];
     let blockingCount = 0;
@@ -1401,7 +1593,10 @@ function deleteRecord(entityKey, record, actorId) {
 
     // Children go first so their history entries can still name this record
     for (const [otherKey, dependent] of dependents) {
-        deleteRecord(otherKey, dependent, actorId);
+        await deleteWithinTransaction(otherKey, dependent, actorId);
+    }
+    if (entity.model) {
+        await db()[entity.model].delete({ where: { id: record.id } });
     }
     entity.store.splice(entity.store.indexOf(record), 1);
     recordChange(entityKey, "deleted", record, actorId);
@@ -1414,7 +1609,7 @@ function deleteRecord(entityKey, record, actorId) {
     }
 
     if (entity.afterDelete) {
-        entity.afterDelete(record, { actorId });
+        await entity.afterDelete(record, { actorId });
     }
     return {};
 }
@@ -1447,12 +1642,12 @@ function projectMemberIds(project) {
     return [...new Set(ids)];
 }
 
-function initializeWorkspace(project, actorId) {
+async function initializeWorkspace(project, actorId) {
     // Default board columns, in the order the statuses are normally used
     if (!projectStatuses.some(row => row.projectId === project.id)) {
-        [...statuses].sort(byOrder).forEach((status, index) => {
-            createRecord("projectStatuses", { projectId: project.id, statusId: status.id, order: index + 1 }, actorId);
-        });
+        for (const [index, status] of [...statuses].sort(byOrder).entries()) {
+            await createRecord("projectStatuses", { projectId: project.id, statusId: status.id, order: index + 1 }, actorId);
+        }
     }
 
     // The #general channel, with every project member in it
@@ -1460,10 +1655,10 @@ function initializeWorkspace(project, actorId) {
     if (channel) {
         const participantPersonIds = [...new Set([...channel.participantPersonIds, ...projectMemberIds(project)])];
         if (participantPersonIds.length !== channel.participantPersonIds.length) {
-            updateRecord("channels", channel, { participantPersonIds }, actorId);
+            await updateRecord("channels", channel, { participantPersonIds }, actorId);
         }
     } else {
-        const { record } = createRecord("channels", {
+        const { record } = await createRecord("channels", {
             name: "general",
             type: "Team",
             url: null,
@@ -1471,17 +1666,17 @@ function initializeWorkspace(project, actorId) {
             participantPersonIds: projectMemberIds(project),
             createdDate: today()
         }, actorId);
-        record.url = `/channels/${record.id}`;
+        await saveQuietly("channels", record, { url: `/channels/${record.id}` });
     }
 
     if (!project.workspaceInitializedAt) {
-        project.workspaceInitializedAt = new Date().toISOString();
+        await saveQuietly("projects", project, { workspaceInitializedAt: new Date().toISOString() });
         recordChange("projects", "created the workspace for", project, actorId);
     }
 }
 
 // Keep a person's access to a project's #general channel in step with their assignment
-function syncWorkspaceMember(projectId, personId, actorId) {
+async function syncWorkspaceMember(projectId, personId, actorId) {
     const project = findById("projects", projectId);
     const channel = generalChannel(projectId);
     if (!project || !channel) {
@@ -1490,9 +1685,9 @@ function syncWorkspaceMember(projectId, personId, actorId) {
     const isMember = projectMemberIds(project).includes(personId);
     const hasAccess = channel.participantPersonIds.includes(personId);
     if (isMember && !hasAccess) {
-        updateRecord("channels", channel, { participantPersonIds: [...channel.participantPersonIds, personId] }, actorId);
+        await updateRecord("channels", channel, { participantPersonIds: [...channel.participantPersonIds, personId] }, actorId);
     } else if (!isMember && hasAccess) {
-        updateRecord("channels", channel, { participantPersonIds: channel.participantPersonIds.filter(id => id !== personId) }, actorId);
+        await updateRecord("channels", channel, { participantPersonIds: channel.participantPersonIds.filter(id => id !== personId) }, actorId);
     }
 }
 
@@ -1512,13 +1707,12 @@ function projectProgress(projectId) {
 }
 
 // Marking a type primary on a project un-marks the project's other types
-function keepOnePrimaryType(row) {
+async function keepOnePrimaryType(row) {
     if (row.isPrimary) {
-        projectProjectTypes
-            .filter(other => other !== row && other.projectId === row.projectId)
-            .forEach(other => {
-                other.isPrimary = false;
-            });
+        const others = projectProjectTypes.filter(other => other !== row && other.projectId === row.projectId && other.isPrimary);
+        for (const other of others) {
+            await saveQuietly("projectProjectTypes", other, { isPrimary: false });
+        }
     }
 }
 
@@ -1646,9 +1840,9 @@ function sendEditPage(res, { entityKey, record, itemPath, backHref, omit = [], i
 }
 
 // Shared POST handlers. Each takes the paths to send the user to afterwards.
-function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.body, omit = [] }) {
+async function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.body, omit = [] }) {
     const { data, errors } = parseRecord(entityKey, input, { omit });
-    const result = errors.length ? { errors } : createRecord(entityKey, data, actingPersonId(req));
+    const result = errors.length ? { errors } : await createRecord(entityKey, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
@@ -1656,9 +1850,9 @@ function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.b
     res.redirect(typeof redirectTo === "function" ? redirectTo(result.record) : redirectTo);
 }
 
-function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input = req.body, omit = [] }) {
+async function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input = req.body, omit = [] }) {
     const { data, errors } = parseRecord(entityKey, input, { omit });
-    const result = errors.length ? { errors } : updateRecord(entityKey, record, data, actingPersonId(req));
+    const result = errors.length ? { errors } : await updateRecord(entityKey, record, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
@@ -1667,8 +1861,8 @@ function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input
     res.redirect(typeof redirectTo === "function" ? redirectTo(record) : redirectTo);
 }
 
-function handleDelete(entityKey, req, res, { record, backHref, redirectTo }) {
-    const result = deleteRecord(entityKey, record, actingPersonId(req));
+async function handleDelete(entityKey, req, res, { record, backHref, redirectTo }) {
+    const result = await deleteRecord(entityKey, record, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
@@ -1763,9 +1957,9 @@ app.get("/projects/new", (req, res) => {
 });
 
 // Save the new project from the create form
-app.post("/projects/new", (req, res) => {
+app.post("/projects/new", async (req, res) => {
     const { data, errors } = parseRecord("projects", req.body);
-    const result = errors.length ? { errors } : createRecord("projects", data, actingPersonId(req));
+    const result = errors.length ? { errors } : await createRecord("projects", data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, "/projects");
     }
@@ -1841,13 +2035,13 @@ app.get("/projects/edit/:id", (req, res) => {
 });
 
 // Save the edit form for one project
-app.post("/projects/edit/:id", (req, res) => {
+app.post("/projects/edit/:id", async (req, res) => {
     const project = findById("projects", req.params.id);
     if (!project) {
         return sendNotFound(res, "project", req.params.id);
     }
     const { data, errors } = parseRecord("projects", req.body, { omit: ["mainBoardStatusId"] });
-    const result = errors.length ? { errors } : updateRecord("projects", project, data, actingPersonId(req));
+    const result = errors.length ? { errors } : await updateRecord("projects", project, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
@@ -1856,7 +2050,7 @@ app.post("/projects/edit/:id", (req, res) => {
 });
 
 // Move a project to another column on the main board
-app.post("/projects/:id/status", (req, res) => {
+app.post("/projects/:id/status", async (req, res) => {
     const project = findById("projects", req.params.id);
     if (!project) {
         return sendNotFound(res, "project", req.params.id);
@@ -1865,7 +2059,7 @@ app.post("/projects/:id/status", (req, res) => {
     if (data.mainBoardStatusId === undefined && errors.length === 0) {
         errors.push("Status is required");
     }
-    const result = errors.length ? { errors } : updateRecord("projects", project, data, actingPersonId(req));
+    const result = errors.length ? { errors } : await updateRecord("projects", project, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
@@ -1875,12 +2069,12 @@ app.post("/projects/:id/status", (req, res) => {
 });
 
 // Delete one project by id, along with everything that belongs to it
-app.post("/projects/delete/:id", (req, res) => {
+app.post("/projects/delete/:id", async (req, res) => {
     const project = findById("projects", req.params.id);
     if (!project) {
         return sendNotFound(res, "project", req.params.id);
     }
-    const result = deleteRecord("projects", project, actingPersonId(req));
+    const result = await deleteRecord("projects", project, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, "/projects");
     }
@@ -1991,7 +2185,7 @@ app.get("/status/new", (req, res) => {
 });
 
 app.post("/status/new", (req, res) => {
-    handleCreate("statuses", req, res, { backHref: "/statuses", redirectTo: "/statuses" });
+    return handleCreate("statuses", req, res, { backHref: "/statuses", redirectTo: "/statuses" });
 });
 
 app.get("/status/edit/:id", (req, res) => {
@@ -2007,7 +2201,7 @@ app.post("/status/edit/:id", (req, res) => {
     if (!status) {
         return sendNotFound(res, "status", req.params.id);
     }
-    handleUpdate("statuses", req, res, { record: status, backHref: `/status/edit/${status.id}`, redirectTo: "/statuses" });
+    return handleUpdate("statuses", req, res, { record: status, backHref: `/status/edit/${status.id}`, redirectTo: "/statuses" });
 });
 
 app.post("/status/delete/:id", (req, res) => {
@@ -2015,7 +2209,7 @@ app.post("/status/delete/:id", (req, res) => {
     if (!status) {
         return sendNotFound(res, "status", req.params.id);
     }
-    handleDelete("statuses", req, res, { record: status, backHref: "/statuses", redirectTo: "/statuses" });
+    return handleDelete("statuses", req, res, { record: status, backHref: "/statuses", redirectTo: "/statuses" });
 });
 
 // View a specific status
@@ -2042,7 +2236,7 @@ app.get("/main-board-statuses/new", (req, res) => {
 });
 
 app.post("/main-board-statuses/new", (req, res) => {
-    handleCreate("mainBoardStatuses", req, res, { backHref: "/main-board-statuses", redirectTo: "/main-board-statuses" });
+    return handleCreate("mainBoardStatuses", req, res, { backHref: "/main-board-statuses", redirectTo: "/main-board-statuses" });
 });
 
 // View all main board statuses as columns in board order
@@ -2080,7 +2274,7 @@ app.post("/main-board-statuses/edit/:id", (req, res) => {
     if (!status) {
         return sendNotFound(res, "main board status", req.params.id);
     }
-    handleUpdate("mainBoardStatuses", req, res, { record: status, backHref: `/main-board-statuses/edit/${status.id}`, redirectTo: "/main-board-statuses" });
+    return handleUpdate("mainBoardStatuses", req, res, { record: status, backHref: `/main-board-statuses/edit/${status.id}`, redirectTo: "/main-board-statuses" });
 });
 
 // Remove a status from the main board (only once no project sits in it)
@@ -2089,7 +2283,7 @@ app.post("/main-board-statuses/delete/:id", (req, res) => {
     if (!status) {
         return sendNotFound(res, "main board status", req.params.id);
     }
-    handleDelete("mainBoardStatuses", req, res, { record: status, backHref: "/main-board-statuses", redirectTo: "/main-board-statuses" });
+    return handleDelete("mainBoardStatuses", req, res, { record: status, backHref: "/main-board-statuses", redirectTo: "/main-board-statuses" });
 });
 
 app.get("/main-board-statuses/:id", (req, res) => {
@@ -2150,7 +2344,7 @@ app.get("/project-statuses", (req, res) => {
 
 // Save an association picked from the project and status dropdowns
 app.post("/project-statuses/new", (req, res) => {
-    handleCreate("projectStatuses", req, res, { backHref: "/project-statuses", redirectTo: "/project-statuses" });
+    return handleCreate("projectStatuses", req, res, { backHref: "/project-statuses", redirectTo: "/project-statuses" });
 });
 
 // View all statuses used by a project
@@ -2181,7 +2375,7 @@ app.post("/projects/:projectid/statuses/new", (req, res) => {
         return sendNotFound(res, "project", req.params.projectid);
     }
     const back = `/projects/${project.id}/statuses`;
-    handleCreate("projectStatuses", req, res, { input: { ...req.body, projectId: project.id }, backHref: back, redirectTo: back });
+    return handleCreate("projectStatuses", req, res, { input: { ...req.body, projectId: project.id }, backHref: back, redirectTo: back });
 });
 
 // Form to update a project's status (e.g. its order in the workflow)
@@ -2199,7 +2393,7 @@ app.post("/projects/:projectid/statuses/edit/:id", (req, res) => {
     if (!row) {
         return sendNotFound(res, "project status association", req.params.id);
     }
-    handleUpdate("projectStatuses", req, res, {
+    return handleUpdate("projectStatuses", req, res, {
         record: row,
         backHref: `/projects/${row.projectId}/statuses/edit/${row.id}`,
         redirectTo: saved => `/projects/${saved.projectId}/statuses`
@@ -2212,7 +2406,7 @@ app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
     if (!row) {
         return sendNotFound(res, "project status association", req.params.id);
     }
-    handleDelete("projectStatuses", req, res, { record: row, backHref: `/projects/${row.projectId}/statuses`, redirectTo: `/projects/${row.projectId}/statuses` });
+    return handleDelete("projectStatuses", req, res, { record: row, backHref: `/projects/${row.projectId}/statuses`, redirectTo: `/projects/${row.projectId}/statuses` });
 });
 
 // View one status association on a project
@@ -2275,7 +2469,7 @@ app.get("/project-people", (req, res) => {
 
 // Save an association picked from the project and person dropdowns
 app.post("/project-people/new", (req, res) => {
-    handleCreate("projectPeople", req, res, { backHref: "/project-people", redirectTo: "/project-people" });
+    return handleCreate("projectPeople", req, res, { backHref: "/project-people", redirectTo: "/project-people" });
 });
 
 // View all people associated with a project
@@ -2300,13 +2494,13 @@ app.get("/projects/:projectid/people/new", (req, res) => {
 });
 
 // Save new relationship (also used by the add mentor / add student modals on the project edit page)
-app.post("/projects/:projectid/people/new", (req, res) => {
+app.post("/projects/:projectid/people/new", async (req, res) => {
     const project = findById("projects", req.params.projectid);
     if (!project) {
         return sendNotFound(res, "project", req.params.projectid);
     }
     const { data, errors } = parseRecord("projectPeople", { ...req.body, projectId: project.id });
-    const result = errors.length ? { errors } : createRecord("projectPeople", data, actingPersonId(req));
+    const result = errors.length ? { errors } : await createRecord("projectPeople", data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
@@ -2326,7 +2520,7 @@ app.get("/projects/:projectid/people/edit/:id", (req, res) => {
 app.post("/projects/:projectid/people/edit/:id", (req, res) => {
     const row = findProjectPerson(req, res);
     if (row) {
-        handleUpdate("projectPeople", req, res, {
+        return handleUpdate("projectPeople", req, res, {
             record: row,
             backHref: `/projects/${row.projectId}/people/edit/${row.id}`,
             redirectTo: saved => `/projects/${saved.projectId}/people`
@@ -2335,10 +2529,10 @@ app.post("/projects/:projectid/people/edit/:id", (req, res) => {
 });
 
 // Delete a relationship
-app.post("/projects/:projectid/people/delete/:id", (req, res) => {
+app.post("/projects/:projectid/people/delete/:id", async (req, res) => {
     const row = findProjectPerson(req, res);
     if (row) {
-        deleteRecord("projectPeople", row, actingPersonId(req));
+        await deleteRecord("projectPeople", row, actingPersonId(req));
         flash(req, "success", `Removed ${displayOf("people", row.personId)} from ${displayOf("projects", row.projectId)}.`);
         redirectBack(res, req.body.returnTo, `/projects/${row.projectId}/people`);
     }
@@ -2378,7 +2572,7 @@ app.get("/mentors/new", (req, res) => {
 });
 
 app.post("/mentors/new", (req, res) => {
-    handleCreate("mentors", req, res, { backHref: "/mentors", redirectTo: mentor => `/mentors/${mentor.id}` });
+    return handleCreate("mentors", req, res, { backHref: "/mentors", redirectTo: mentor => `/mentors/${mentor.id}` });
 });
 
 app.get("/mentors", (req, res) => {
@@ -2407,14 +2601,14 @@ app.get("/mentors/edit/:id", (req, res) => {
 app.post("/mentors/edit/:id", (req, res) => {
     const mentor = findMentor(req, res);
     if (mentor) {
-        handleUpdate("mentors", req, res, { record: mentor, backHref: `/mentors/edit/${mentor.id}`, redirectTo: `/mentors/${mentor.id}` });
+        return handleUpdate("mentors", req, res, { record: mentor, backHref: `/mentors/edit/${mentor.id}`, redirectTo: `/mentors/${mentor.id}` });
     }
 });
 
 app.post("/mentors/delete/:id", (req, res) => {
     const mentor = findMentor(req, res);
     if (mentor) {
-        handleDelete("mentors", req, res, { record: mentor, backHref: `/mentors/${mentor.id}`, redirectTo: "/mentors" });
+        return handleDelete("mentors", req, res, { record: mentor, backHref: `/mentors/${mentor.id}`, redirectTo: "/mentors" });
     }
 });
 
@@ -2462,7 +2656,7 @@ app.get("/students/new", (req, res) => {
 });
 
 app.post("/students/new", (req, res) => {
-    handleCreate("students", req, res, { backHref: "/students", redirectTo: student => `/students/${student.id}` });
+    return handleCreate("students", req, res, { backHref: "/students", redirectTo: student => `/students/${student.id}` });
 });
 
 app.get("/students", (req, res) => {
@@ -2492,14 +2686,14 @@ app.get("/students/edit/:id", (req, res) => {
 app.post("/students/edit/:id", (req, res) => {
     const student = findStudent(req, res);
     if (student) {
-        handleUpdate("students", req, res, { record: student, backHref: `/students/edit/${student.id}`, redirectTo: `/students/${student.id}` });
+        return handleUpdate("students", req, res, { record: student, backHref: `/students/edit/${student.id}`, redirectTo: `/students/${student.id}` });
     }
 });
 
 app.post("/students/delete/:id", (req, res) => {
     const student = findStudent(req, res);
     if (student) {
-        handleDelete("students", req, res, { record: student, backHref: `/students/${student.id}`, redirectTo: "/students" });
+        return handleDelete("students", req, res, { record: student, backHref: `/students/${student.id}`, redirectTo: "/students" });
     }
 });
 
@@ -2566,7 +2760,7 @@ app.get("/channels/new", (req, res) => {
 
 // Save a new communication channel
 app.post("/channels/new", (req, res) => {
-    handleCreate("channels", req, res, { backHref: "/channels/all", redirectTo: channel => `/channels/${channel.id}` });
+    return handleCreate("channels", req, res, { backHref: "/channels/all", redirectTo: channel => `/channels/${channel.id}` });
 });
 
 // Edit a specific communication channel
@@ -2581,7 +2775,7 @@ app.get("/channels/edit/:id", (req, res) => {
 app.post("/channels/edit/:id", (req, res) => {
     const channel = findChannel(req, res);
     if (channel) {
-        handleUpdate("channels", req, res, { record: channel, backHref: `/channels/edit/${channel.id}`, redirectTo: `/channels/${channel.id}` });
+        return handleUpdate("channels", req, res, { record: channel, backHref: `/channels/edit/${channel.id}`, redirectTo: `/channels/${channel.id}` });
     }
 });
 
@@ -2589,7 +2783,7 @@ app.post("/channels/edit/:id", (req, res) => {
 app.post("/channels/delete/:id", (req, res) => {
     const channel = findChannel(req, res);
     if (channel) {
-        handleDelete("channels", req, res, { record: channel, backHref: `/channels/${channel.id}`, redirectTo: "/channels/all" });
+        return handleDelete("channels", req, res, { record: channel, backHref: `/channels/${channel.id}`, redirectTo: "/channels/all" });
     }
 });
 
@@ -2678,7 +2872,7 @@ app.get("/threads/new", (req, res) => {
 });
 
 app.post("/threads/new", (req, res) => {
-    handleCreate("threads", req, res, {
+    return handleCreate("threads", req, res, {
         input: { ...req.body, createdByPersonId: actingPersonId(req) },
         backHref: "/threads",
         redirectTo: thread => `/threads/${thread.id}`
@@ -2718,7 +2912,7 @@ app.get("/threads/edit/:id", (req, res) => {
 app.post("/threads/edit/:id", (req, res) => {
     const thread = findThread(req, res);
     if (thread) {
-        handleUpdate("threads", req, res, {
+        return handleUpdate("threads", req, res, {
             record: thread,
             input: { ...thread, name: req.body.name },
             backHref: "/threads",
@@ -2730,7 +2924,7 @@ app.post("/threads/edit/:id", (req, res) => {
 app.post("/threads/delete/:id", (req, res) => {
     const thread = findThread(req, res);
     if (thread) {
-        handleDelete("threads", req, res, { record: thread, backHref: "/threads", redirectTo: `/threads?channelId=${thread.channelId}` });
+        return handleDelete("threads", req, res, { record: thread, backHref: "/threads", redirectTo: `/threads?channelId=${thread.channelId}` });
     }
 });
 
@@ -2861,7 +3055,7 @@ app.post("/messages/new", (req, res) => {
     if (!thread) {
         return sendErrors(res, ["Pick a thread to post in"], "/messages");
     }
-    handleCreate("messages", req, res, {
+    return handleCreate("messages", req, res, {
         input: { threadId: thread.id, channelId: thread.channelId, senderPersonId: actingPersonId(req), body: req.body.body, postedAt: nowStamp() },
         backHref: `/messages?threadId=${thread.id}`,
         redirectTo: message => `/messages?threadId=${thread.id}#message-${message.id}`
@@ -2879,7 +3073,7 @@ app.get("/messages/edit/:id", (req, res) => {
 app.post("/messages/edit/:id", (req, res) => {
     const message = findMessage(req, res);
     if (message && requireSender(req, res, message)) {
-        handleUpdate("messages", req, res, {
+        return handleUpdate("messages", req, res, {
             record: message,
             input: { ...message, body: req.body.body, editedAt: nowStamp() },
             backHref: `/messages?threadId=${message.threadId}`,
@@ -2891,7 +3085,7 @@ app.post("/messages/edit/:id", (req, res) => {
 app.post("/messages/delete/:id", (req, res) => {
     const message = findMessage(req, res);
     if (message && requireSender(req, res, message)) {
-        handleDelete("messages", req, res, { record: message, backHref: `/messages?threadId=${message.threadId}`, redirectTo: `/messages?threadId=${message.threadId}` });
+        return handleDelete("messages", req, res, { record: message, backHref: `/messages?threadId=${message.threadId}`, redirectTo: `/messages?threadId=${message.threadId}` });
     }
 });
 
@@ -2949,7 +3143,7 @@ app.get("/requirements/new", (req, res) => {
 });
 
 app.post("/requirements/new", (req, res) => {
-    handleCreate("requirements", req, res, {
+    return handleCreate("requirements", req, res, {
         backHref: "/requirements",
         redirectTo: requirement => `/requirements?projectId=${requirement.projectId}`
     });
@@ -3012,7 +3206,7 @@ app.get("/requirements/edit/:id", (req, res) => {
 app.post("/requirements/edit/:id", (req, res) => {
     const requirement = findRequirement(req, res);
     if (requirement) {
-        handleUpdate("requirements", req, res, {
+        return handleUpdate("requirements", req, res, {
             record: requirement,
             omit: ["statusId"],
             backHref: `/requirements/edit/${requirement.id}`,
@@ -3025,7 +3219,7 @@ app.post("/requirements/edit/:id", (req, res) => {
 app.post("/requirements/:id/status", (req, res) => {
     const requirement = findRequirement(req, res);
     if (requirement) {
-        handleUpdate("requirements", req, res, {
+        return handleUpdate("requirements", req, res, {
             record: requirement,
             input: { ...requirement, statusId: req.body.statusId },
             backHref: `/requirements/edit/${requirement.id}`,
@@ -3037,7 +3231,7 @@ app.post("/requirements/:id/status", (req, res) => {
 app.post("/requirements/delete/:id", (req, res) => {
     const requirement = findRequirement(req, res);
     if (requirement) {
-        handleDelete("requirements", req, res, {
+        return handleDelete("requirements", req, res, {
             record: requirement,
             backHref: `/requirements/${requirement.id}`,
             redirectTo: `/requirements?projectId=${requirement.projectId}`
@@ -3076,7 +3270,7 @@ app.get("/skills/new", (req, res) => {
 });
 
 app.post("/skills/new", (req, res) => {
-    handleCreate("skills", req, res, { backHref: "/skills", redirectTo: "/skills" });
+    return handleCreate("skills", req, res, { backHref: "/skills", redirectTo: "/skills" });
 });
 
 // View all skills grouped by category
@@ -3109,14 +3303,14 @@ app.get("/skills/edit/:id", (req, res) => {
 app.post("/skills/edit/:id", (req, res) => {
     const skill = findSkill(req, res);
     if (skill) {
-        handleUpdate("skills", req, res, { record: skill, backHref: `/skills/edit/${skill.id}`, redirectTo: `/skills/${skill.id}` });
+        return handleUpdate("skills", req, res, { record: skill, backHref: `/skills/edit/${skill.id}`, redirectTo: `/skills/${skill.id}` });
     }
 });
 
 app.post("/skills/delete/:id", (req, res) => {
     const skill = findSkill(req, res);
     if (skill) {
-        handleDelete("skills", req, res, { record: skill, backHref: `/skills/${skill.id}`, redirectTo: "/skills" });
+        return handleDelete("skills", req, res, { record: skill, backHref: `/skills/${skill.id}`, redirectTo: "/skills" });
     }
 });
 
@@ -3160,7 +3354,7 @@ app.get("/project-skills/new", (req, res) => {
 });
 
 app.post("/project-skills/new", (req, res) => {
-    handleCreate("projectSkills", req, res, { backHref: "/project-skills", redirectTo: "/project-skills" });
+    return handleCreate("projectSkills", req, res, { backHref: "/project-skills", redirectTo: "/project-skills" });
 });
 
 app.get("/project-skills", (req, res) => {
@@ -3189,14 +3383,14 @@ app.get("/project-skills/edit/:id", (req, res) => {
 app.post("/project-skills/edit/:id", (req, res) => {
     const row = findProjectSkill(req, res);
     if (row) {
-        handleUpdate("projectSkills", req, res, { record: row, backHref: `/project-skills/edit/${row.id}`, redirectTo: "/project-skills" });
+        return handleUpdate("projectSkills", req, res, { record: row, backHref: `/project-skills/edit/${row.id}`, redirectTo: "/project-skills" });
     }
 });
 
 app.post("/project-skills/delete/:id", (req, res) => {
     const row = findProjectSkill(req, res);
     if (row) {
-        handleDelete("projectSkills", req, res, { record: row, backHref: "/project-skills", redirectTo: "/project-skills" });
+        return handleDelete("projectSkills", req, res, { record: row, backHref: "/project-skills", redirectTo: "/project-skills" });
     }
 });
 
@@ -3227,7 +3421,7 @@ app.get("/person-skill/new", (req, res) => {
 });
 
 app.post("/person-skill/new", (req, res) => {
-    handleCreate("personSkills", req, res, { backHref: "/person-skill/all", redirectTo: "/person-skill/all" });
+    return handleCreate("personSkills", req, res, { backHref: "/person-skill/all", redirectTo: "/person-skill/all" });
 });
 
 app.get("/person-skill/all", (req, res) => {
@@ -3257,14 +3451,14 @@ app.get("/person-skill/edit/:id", (req, res) => {
 app.post("/person-skill/edit/:id", (req, res) => {
     const row = findPersonSkill(req, res);
     if (row) {
-        handleUpdate("personSkills", req, res, { record: row, backHref: `/person-skill/edit/${row.id}`, redirectTo: "/person-skill/all" });
+        return handleUpdate("personSkills", req, res, { record: row, backHref: `/person-skill/edit/${row.id}`, redirectTo: "/person-skill/all" });
     }
 });
 
 app.post("/person-skill/delete/:id", (req, res) => {
     const row = findPersonSkill(req, res);
     if (row) {
-        handleDelete("personSkills", req, res, { record: row, backHref: "/person-skill/all", redirectTo: "/person-skill/all" });
+        return handleDelete("personSkills", req, res, { record: row, backHref: "/person-skill/all", redirectTo: "/person-skill/all" });
     }
 });
 
@@ -3295,7 +3489,7 @@ app.get("/project-types/new", (req, res) => {
 });
 
 app.post("/project-types/new", (req, res) => {
-    handleCreate("projectTypes", req, res, { backHref: "/project-types", redirectTo: "/project-types" });
+    return handleCreate("projectTypes", req, res, { backHref: "/project-types", redirectTo: "/project-types" });
 });
 
 app.get("/project-types", (req, res) => {
@@ -3323,14 +3517,14 @@ app.get("/project-types/edit/:id", (req, res) => {
 app.post("/project-types/edit/:id", (req, res) => {
     const type = findProjectType(req, res);
     if (type) {
-        handleUpdate("projectTypes", req, res, { record: type, backHref: `/project-types/edit/${type.id}`, redirectTo: `/project-types/${type.id}` });
+        return handleUpdate("projectTypes", req, res, { record: type, backHref: `/project-types/edit/${type.id}`, redirectTo: `/project-types/${type.id}` });
     }
 });
 
 app.post("/project-types/delete/:id", (req, res) => {
     const type = findProjectType(req, res);
     if (type) {
-        handleDelete("projectTypes", req, res, { record: type, backHref: `/project-types/${type.id}`, redirectTo: "/project-types" });
+        return handleDelete("projectTypes", req, res, { record: type, backHref: `/project-types/${type.id}`, redirectTo: "/project-types" });
     }
 });
 
@@ -3362,7 +3556,7 @@ app.get("/project-project-types/new", (req, res) => {
 });
 
 app.post("/project-project-types/new", (req, res) => {
-    handleCreate("projectProjectTypes", req, res, { backHref: "/project-project-types", redirectTo: "/project-project-types" });
+    return handleCreate("projectProjectTypes", req, res, { backHref: "/project-project-types", redirectTo: "/project-project-types" });
 });
 
 app.get("/project-project-types", (req, res) => {
@@ -3389,14 +3583,14 @@ app.get("/project-project-types/edit/:id", (req, res) => {
 app.post("/project-project-types/edit/:id", (req, res) => {
     const row = findProjectProjectType(req, res);
     if (row) {
-        handleUpdate("projectProjectTypes", req, res, { record: row, backHref: `/project-project-types/edit/${row.id}`, redirectTo: "/project-project-types" });
+        return handleUpdate("projectProjectTypes", req, res, { record: row, backHref: `/project-project-types/edit/${row.id}`, redirectTo: "/project-project-types" });
     }
 });
 
 app.post("/project-project-types/delete/:id", (req, res) => {
     const row = findProjectProjectType(req, res);
     if (row) {
-        handleDelete("projectProjectTypes", req, res, { record: row, backHref: "/project-project-types", redirectTo: "/project-project-types" });
+        return handleDelete("projectProjectTypes", req, res, { record: row, backHref: "/project-project-types", redirectTo: "/project-project-types" });
     }
 });
 
@@ -3444,7 +3638,7 @@ app.get("/clients/new", (req, res) => {
 
 // Form submission for creating a new client
 app.post("/clients/new", (req, res) => {
-    handleCreate("clients", req, res, { backHref: "/clients/all", redirectTo: client => `/clients/${client.id}` });
+    return handleCreate("clients", req, res, { backHref: "/clients/all", redirectTo: client => `/clients/${client.id}` });
 });
 
 // Edit client page by id
@@ -3459,7 +3653,7 @@ app.get("/clients/edit/:id", (req, res) => {
 app.post("/clients/edit/:id", (req, res) => {
     const client = findClient(req, res);
     if (client) {
-        handleUpdate("clients", req, res, { record: client, backHref: `/clients/edit/${client.id}`, redirectTo: `/clients/${client.id}` });
+        return handleUpdate("clients", req, res, { record: client, backHref: `/clients/edit/${client.id}`, redirectTo: `/clients/${client.id}` });
     }
 });
 
@@ -3467,7 +3661,7 @@ app.post("/clients/edit/:id", (req, res) => {
 app.post("/clients/delete/:id", (req, res) => {
     const client = findClient(req, res);
     if (client) {
-        handleDelete("clients", req, res, { record: client, backHref: `/clients/${client.id}`, redirectTo: "/clients/all" });
+        return handleDelete("clients", req, res, { record: client, backHref: `/clients/${client.id}`, redirectTo: "/clients/all" });
     }
 });
 
@@ -3511,7 +3705,7 @@ app.get("/documents/new", (req, res) => {
 
 app.post("/documents/new", (req, res) => {
     // Whoever adds a document is its uploader unless someone else is picked
-    handleCreate("documents", req, res, {
+    return handleCreate("documents", req, res, {
         input: { ...req.body, personId: req.body.personId || actingPersonId(req) },
         backHref: "/documents",
         redirectTo: document => `/documents?projectId=${document.projectId}`
@@ -3556,14 +3750,14 @@ app.get("/documents/edit/:id", (req, res) => {
 app.post("/documents/edit/:id", (req, res) => {
     const document = findDocument(req, res);
     if (document) {
-        handleUpdate("documents", req, res, { record: document, backHref: `/documents/edit/${document.id}`, redirectTo: `/documents/${document.id}` });
+        return handleUpdate("documents", req, res, { record: document, backHref: `/documents/edit/${document.id}`, redirectTo: `/documents/${document.id}` });
     }
 });
 
 app.post("/documents/delete/:id", (req, res) => {
     const document = findDocument(req, res);
     if (document) {
-        handleDelete("documents", req, res, { record: document, backHref: `/documents/${document.id}`, redirectTo: `/documents?projectId=${document.projectId}` });
+        return handleDelete("documents", req, res, { record: document, backHref: `/documents/${document.id}`, redirectTo: `/documents?projectId=${document.projectId}` });
     }
 });
 
@@ -3594,7 +3788,7 @@ app.get("/people/new", (req, res) => {
 });
 
 app.post("/people/new", (req, res) => {
-    handleCreate("people", req, res, { backHref: "/people", redirectTo: person => `/people/${person.id}` });
+    return handleCreate("people", req, res, { backHref: "/people", redirectTo: person => `/people/${person.id}` });
 });
 
 app.get("/people", (req, res) => {
@@ -3621,14 +3815,14 @@ app.get("/people/edit/:id", (req, res) => {
 app.post("/people/edit/:id", (req, res) => {
     const person = findPerson(req, res);
     if (person) {
-        handleUpdate("people", req, res, { record: person, backHref: `/people/edit/${person.id}`, redirectTo: `/people/${person.id}` });
+        return handleUpdate("people", req, res, { record: person, backHref: `/people/edit/${person.id}`, redirectTo: `/people/${person.id}` });
     }
 });
 
 app.post("/people/delete/:id", (req, res) => {
     const person = findPerson(req, res);
     if (person) {
-        handleDelete("people", req, res, { record: person, backHref: `/people/${person.id}`, redirectTo: "/people" });
+        return handleDelete("people", req, res, { record: person, backHref: `/people/${person.id}`, redirectTo: "/people" });
     }
 });
 
@@ -3702,14 +3896,14 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
         }
         return record;
     };
-    const save = (req, res, record, partial) => {
+    const save = async (req, res, record, partial) => {
         const denied = authorize(req, record);
         if (denied) {
             return sendApiErrors(res, 403, [denied]);
         }
         const input = prepare(req.body || {}, req, record);
         const { data, errors } = parseRecord(entityKey, input, { partial });
-        const result = errors.length ? { errors } : updateRecord(entityKey, record, data, actingPersonId(req));
+        const result = errors.length ? { errors } : await updateRecord(entityKey, record, data, actingPersonId(req));
         if (result.errors) {
             return sendApiErrors(res, 400, result.errors);
         }
@@ -3727,10 +3921,10 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
         }
     });
 
-    api.post(path, (req, res) => {
+    api.post(path, async (req, res) => {
         const input = prepare(req.body || {}, req, null);
         const { data, errors } = parseRecord(entityKey, input);
-        const result = errors.length ? { errors } : createRecord(entityKey, data, actingPersonId(req));
+        const result = errors.length ? { errors } : await createRecord(entityKey, data, actingPersonId(req));
         if (result.errors) {
             return sendApiErrors(res, 400, result.errors);
         }
@@ -3740,18 +3934,18 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
     api.put(`${path}/:id`, (req, res) => {
         const record = findOr404(req, res);
         if (record) {
-            save(req, res, record, false);
+            return save(req, res, record, false);
         }
     });
 
     api.patch(`${path}/:id`, (req, res) => {
         const record = findOr404(req, res);
         if (record) {
-            save(req, res, record, true);
+            return save(req, res, record, true);
         }
     });
 
-    api.delete(`${path}/:id`, (req, res) => {
+    api.delete(`${path}/:id`, async (req, res) => {
         const record = findOr404(req, res);
         if (!record) {
             return;
@@ -3760,7 +3954,7 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
         if (denied) {
             return sendApiErrors(res, 403, [denied]);
         }
-        const result = deleteRecord(entityKey, record, actingPersonId(req));
+        const result = await deleteRecord(entityKey, record, actingPersonId(req));
         if (result.errors) {
             return sendApiErrors(res, 409, result.errors);
         }

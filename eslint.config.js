@@ -14,6 +14,8 @@ const js = require("@eslint/js");
 const globals = require("globals");
 
 module.exports = [
+    // Generated Prisma client code and local agent worktrees aren't ours to lint
+    { ignores: ["generated/**", ".claude/**"] },
     {
         languageOptions: {
             globals: globals.node

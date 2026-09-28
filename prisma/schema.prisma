@@ -1,0 +1,21 @@
+// Database schema for the ASC project management app.
+// After changing it, run:  npx prisma migrate dev --name <what-changed>
+// Each model's audit column holds who created and last changed the record.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Task statuses: the columns on a project workspace's board (Issue #40)
+model Status {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String
+  order       Int?
+  audit       Json?
+}

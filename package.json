@@ -29,9 +29,15 @@
     "test": "npm run lint",
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "postinstall": "prisma generate",
+    "db:up": "docker compose up -d",
+    "db:migrate": "prisma migrate deploy && prisma generate",
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "mongoose": "^9.10.2"
@@ -40,6 +46,7 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "prisma": "^7.10.0"
   }
 }
