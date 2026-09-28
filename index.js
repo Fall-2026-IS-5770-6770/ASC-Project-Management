@@ -487,6 +487,7 @@ const ENTITIES = {
         plural: "students",
         store: students,
         display: student => displayOf("people", student.personId),
+        recordActor: true,
         fields: [
             { name: "personId", label: "Person", type: "select", ref: "people", required: true },
             { name: "major", label: "Major", type: "text" },
