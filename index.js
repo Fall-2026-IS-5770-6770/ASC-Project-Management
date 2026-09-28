@@ -800,7 +800,30 @@ function navVisible(link) {
     if (link.href === "/activity") {
         return can("activity:all");
     }
-    return true;
+    const projectResource = NAV_PROJECT_RESOURCES[link.href];
+    return !projectResource || canViewAny(projectResource);
+}
+
+// Project-level pages in the navigation, and what they list
+const NAV_PROJECT_RESOURCES = {
+    "/project-statuses": "projectStatuses",
+    "/project-people": "projectPeople",
+    "/channels/all": "channels",
+    "/threads": "channels",
+    "/messages": "channels",
+    "/requirements": "requirements",
+    "/project-skills": "projectSkills",
+    "/project-project-types": "projectProjectTypes",
+    "/documents": "documents"
+};
+
+// Could the person see this kind of record on any project?
+function canViewAny(entityKey) {
+    const rule = ACCESS[entityKey].view;
+    if (typeof rule === "function") {
+        return ENTITIES[entityKey].store.length > 0;
+    }
+    return projects.some(project => can(rule, project.id));
 }
 
 function flashMessage(message) {
@@ -1852,8 +1875,8 @@ const PROJECT_ACTIONS = [
     "activity:view"
 ];
 
-// What each project role may do on a project it's on (and nothing on anyone
-// else's). Roles that aren't narrowed yet may still do everything.
+// What each project role may do on a project it's on, and nothing on anyone
+// else's. Anything a role doesn't list is denied.
 const PROJECT_ROLE_PERMISSIONS = {
     // Issue #126: coordinates the project: manages its members, creates and
     // assigns tasks, manages its board and channels, updates its status, and
@@ -1888,7 +1911,11 @@ const PROJECT_ROLE_PERMISSIONS = {
         "documents:view", "documents:upload",
         "details:view"
     ],
-    "Sponsor": PROJECT_ACTIONS
+    // Issue #129: an outside stakeholder with read-only access to the board,
+    // requirements, and documents of projects they sponsor. No conversations,
+    // no team or activity details, and no changes anywhere. Anything not
+    // listed here is denied.
+    "Sponsor": ["project:view", "board:view", "tasks:view", "documents:view"]
 };
 
 // Organization actions:
@@ -2038,9 +2065,9 @@ function canCreateAny(entityKey) {
     return projects.some(project => allowed(entityKey, "create", { projectId: project.id }));
 }
 
-// People and clients the person can't list are still shown by name where a
-// record they can see points at them (a task's assignee, a project's client)
-const SHOWN_BY_REFERENCE = ["people", "clients"];
+// Records the person can't list are still shown where a record they can see
+// points at them: a task's assignee, a project's client, the columns of a board
+const SHOWN_BY_REFERENCE = ["people", "clients", "statuses", "mainBoardStatuses"];
 
 // Trim the request's snapshot to what the signed-in person may see
 function limitSnapshotToUser(data) {
@@ -2781,10 +2808,10 @@ app.get("/projects/:id", (req, res) => {
                 <dt>Last changed</dt><dd>${esc(auditLine(project.audit.updatedBy, project.audit.updatedAt))}</dd>` : ""}
             </dl>
         </section>
-        <section class="panel">
+        ${can("team:view", project.id) ? `<section class="panel">
             <h2>Team</h2>
             ${team.length ? `<ul>${team.map(row => `<li>${esc(displayOf("people", row.personId))} <span class="muted">— ${esc(row.role)}</span></li>`).join("")}</ul>` : `<p class="muted">Nobody is assigned yet.</p>`}
-        </section>
+        </section>` : ""}
         <section class="panel">
             <h2>Workspace</h2>
             ${workspace}
