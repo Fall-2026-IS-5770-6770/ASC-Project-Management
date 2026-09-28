@@ -2025,6 +2025,14 @@ registerAuthProvider("microsoft", dummyProvider("microsoft", {
     emailHint: "a USU (@usu.edu)"
 }));
 
+// Issue #119: GitHub, for students on development projects and contributors outside USU
+registerAuthProvider("github", dummyProvider("github", {
+    label: "GitHub",
+    description: "developers and outside contributors",
+    emailRule: /.+/,
+    emailHint: "any email"
+}));
+
 // Match a provider profile to a person (see the rules above) and remember the
 // account, so the next sign-in through this provider finds the same person
 function resolvePerson(provider, profile) {
