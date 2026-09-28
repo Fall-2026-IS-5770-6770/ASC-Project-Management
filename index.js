@@ -115,26 +115,63 @@ if (!IS_PRODUCTION) {
     });
 }
 
-// ===== MONGODB LOGS =====
-// Logs are written to MongoDB through Mongoose models. The connection string
-// comes from MONGODB_URI. Without it (or while MongoDB is unreachable) the app
-// keeps working and log entries are skipped, with a warning at startup.
-// Writes are fire-and-forget so a slow or failing log never breaks a route.
+// ===== MONGODB =====
+// Messages and the logs live in MongoDB, reached through Mongoose models. The
+// connection string comes from MONGODB_URI. Without it (or while MongoDB is
+// unreachable) the rest of the app keeps working: log entries are skipped and
+// messages can't be read or posted. Log writes are fire-and-forget so a slow
+// or failing log never breaks a route.
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// Fail fast instead of queueing log writes while disconnected
+// Fail fast instead of queueing writes while disconnected
 mongoose.set("bufferCommands", false);
 
-if (MONGODB_URI) {
-    mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
-        .then(() => console.log("Connected to MongoDB for logs"))
-        .catch(error => console.error(`Couldn't connect to MongoDB, so logs won't be saved: ${error.message}`));
-} else {
-    console.warn("MONGODB_URI is not set, so logs won't be saved.");
+// Issue #77: messages are high volume, written far more often than they're
+// read back in bulk, and don't need the relational shape of everything else,
+// so they're stored in MongoDB. Each keeps a numeric id like every other
+// record (its URL and API id), handed out by a counter.
+const Message = mongoose.models.Message || mongoose.model("Message", new mongoose.Schema({
+    id: { type: Number, required: true, unique: true },
+    threadId: { type: Number, required: true, index: true },
+    // Kept on the message so a channel's messages can be read without its threads
+    channelId: { type: Number, required: true, index: true },
+    senderPersonId: { type: Number, required: true, index: true },
+    body: { type: String, required: true },
+    postedAt: { type: Date, required: true },
+    // Stays null until someone edits the message
+    editedAt: { type: Date, default: null },
+    audit: { type: mongoose.Schema.Types.Mixed, default: null }
+}, { versionKey: false }));
+
+// Next id for each collection that uses numeric ids
+const Counter = mongoose.models.Counter || mongoose.model("Counter", new mongoose.Schema({
+    _id: String,
+    seq: { type: Number, default: 0 }
+}, { versionKey: false }));
+
+async function nextMongoId(Model) {
+    const counter = await Counter.findOneAndUpdate({ _id: Model.collection.name }, { $inc: { seq: 1 } }, { upsert: true, new: true });
+    return counter.seq;
 }
 
+// The server starts listening once this settles (see the bottom of the file)
+const mongoConnected = MONGODB_URI
+    ? mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+        .then(async () => {
+            // Keep the counter past ids that were copied in or seeded by hand
+            const newest = await Message.findOne().sort({ id: -1 }).lean();
+            await Counter.updateOne({ _id: Message.collection.name }, { $max: { seq: newest?.id || 0 } }, { upsert: true });
+            console.log("Connected to MongoDB for messages and logs");
+        })
+        .catch(error => console.error(`Couldn't connect to MongoDB, so messages are unavailable and logs won't be saved: ${error.message}`))
+    : Promise.resolve(console.warn("MONGODB_URI is not set, so messages are unavailable and logs won't be saved."));
+
 function logsEnabled() {
+    return mongoose.connection.readyState === 1;
+}
+
+function mongoAvailable() {
     return mongoose.connection.readyState === 1;
 }
 
@@ -574,17 +611,57 @@ async function inTransaction(work) {
         return work();
     }
     const committed = [];
+    const rollbacks = [];
     try {
-        const result = await prisma.$transaction(tx => requestContext.run({ ...context, tx, committed }, work), { timeout: 15000 });
+        const result = await prisma.$transaction(tx => requestContext.run({ ...context, tx, committed, rollbacks }, work), { timeout: 15000 });
         committed.forEach(task => task());
         return result;
     } catch (error) {
+        // MongoDB isn't part of the Postgres transaction, so undo its writes by hand
+        for (const undo of rollbacks.reverse()) {
+            await undo().catch(undoError => console.error(`Couldn't undo a MongoDB write: ${undoError.message}`));
+        }
         // A unique constraint the checks above didn't catch (for example a race)
         if (error.code === "P2002") {
             return { errors: [`That ${[].concat(error.meta?.target || "value").join(", ")} is already in use.`] };
         }
         throw error;
     }
+}
+
+// Register how to undo a MongoDB write if the transaction around it fails
+function onRollback(undo) {
+    requestContext.getStore()?.rollbacks?.push(undo);
+}
+
+function requireMongo(entityKey) {
+    if (!mongoAvailable()) {
+        const error = new Error(`${ENTITIES[entityKey].plural} are stored in MongoDB, which isn't connected right now.`);
+        error.status = 503;
+        throw error;
+    }
+}
+
+// MongoDB documents to and from the plain values the app works with
+function fromMongo(entityKey, doc) {
+    const record = { ...doc };
+    delete record._id;
+    for (const field of ENTITIES[entityKey].fields) {
+        if (record[field.name] instanceof Date) {
+            record[field.name] = field.type === "date" ? record[field.name].toISOString().slice(0, 10) : record[field.name].toISOString().slice(0, 19);
+        }
+    }
+    return record;
+}
+
+function toMongo(entityKey, values) {
+    const doc = { ...values };
+    for (const field of ENTITIES[entityKey].fields) {
+        if ((field.type === "date" || field.type === "datetime") && doc[field.name] !== undefined) {
+            doc[field.name] = doc[field.name] ? new Date(field.type === "date" ? `${doc[field.name]}T00:00:00Z` : `${doc[field.name]}Z`) : null;
+        }
+    }
+    return doc;
 }
 
 function afterCommit(task) {
@@ -644,8 +721,14 @@ function toDb(entityKey, values, creating) {
 async function loadSnapshot() {
     const data = {};
     await Promise.all(Object.entries(ENTITIES)
-        .filter(([, entity]) => entity.model)
+        .filter(([, entity]) => entity.model || entity.mongo)
         .map(async ([entityKey, entity]) => {
+            if (entity.mongo) {
+                // Without MongoDB the rest of the app still works, just without these
+                const docs = mongoAvailable() ? await entity.mongo.find().sort({ id: 1 }).lean() : [];
+                data[entityKey] = docs.map(doc => fromMongo(entityKey, doc));
+                return;
+            }
             const rows = await prisma[entity.model].findMany({ orderBy: { id: "asc" }, include: entity.include });
             data[entityKey] = rows.map(row => fromDb(entityKey, row));
         }));
@@ -658,6 +741,11 @@ async function saveQuietly(entityKey, record, data) {
     const entity = ENTITIES[entityKey];
     if (entity.model) {
         await db()[entity.model].update({ where: { id: record.id }, data: toDb(entityKey, data, false) });
+    } else if (entity.mongo) {
+        requireMongo(entityKey);
+        const previous = Object.fromEntries(Object.keys(data).map(name => [name, record[name] ?? null]));
+        await entity.mongo.updateOne({ id: record.id }, { $set: toMongo(entityKey, data) });
+        onRollback(() => entity.mongo.updateOne({ id: record.id }, { $set: toMongo(entityKey, previous) }));
     }
     Object.assign(record, data);
 }
@@ -1258,7 +1346,8 @@ const ENTITIES = {
         label: "message",
         plural: "messages",
         store: messages,
-        model: "message",
+        // Stored in MongoDB through the Message model (Issue #77)
+        mongo: Message,
         display: message => `${displayOf("people", message.senderPersonId)}: ${message.body.slice(0, 40)}`,
         recordActor: true,
         fields: [
@@ -1613,6 +1702,12 @@ function createRecord(entityKey, data, actorId) {
         if (entity.model) {
             const saved = await db()[entity.model].create({ data: toDb(entityKey, record, true), include: entity.include });
             record = fromDb(entityKey, saved);
+        } else if (entity.mongo) {
+            requireMongo(entityKey);
+            const id = await nextMongoId(entity.mongo);
+            const saved = await entity.mongo.create(toMongo(entityKey, { id, ...record }));
+            onRollback(() => entity.mongo.deleteOne({ id }));
+            record = fromMongo(entityKey, saved.toObject());
         } else {
             record = { id: nextId(entity.store), ...record };
         }
@@ -1644,6 +1739,14 @@ function updateRecord(entityKey, record, data, actorId) {
                     changed.audit = after.audit;
                 }
                 await db()[entity.model].update({ where: { id: record.id }, data: toDb(entityKey, changed, false) });
+            } else if (entity.mongo) {
+                requireMongo(entityKey);
+                const changed = Object.fromEntries(Object.keys(changes).map(name => [name, after[name]]));
+                const previous = Object.fromEntries(Object.keys(changes).map(name => [name, before[name] ?? null]));
+                changed.audit = after.audit ?? null;
+                previous.audit = before.audit ?? null;
+                await entity.mongo.updateOne({ id: record.id }, { $set: toMongo(entityKey, changed) });
+                onRollback(() => entity.mongo.updateOne({ id: record.id }, { $set: toMongo(entityKey, previous) }));
             }
             Object.assign(record, after);
             recordChange(entityKey, "updated", record, actorId, changes);
@@ -1699,6 +1802,10 @@ async function deleteWithinTransaction(entityKey, record, actorId) {
     }
     if (entity.model) {
         await db()[entity.model].delete({ where: { id: record.id } });
+    } else if (entity.mongo) {
+        requireMongo(entityKey);
+        await entity.mongo.deleteOne({ id: record.id });
+        onRollback(() => entity.mongo.create(toMongo(entityKey, record)));
     }
     entity.store.splice(entity.store.indexOf(record), 1);
     recordChange(entityKey, "deleted", record, actorId);
@@ -3699,6 +3806,9 @@ function conversation(threadMessages, currentId) {
 // View all messages, a conversation per thread. ?threadId= shows one thread
 // with the textbox for posting to it.
 app.get("/messages", (req, res) => {
+    if (!mongoAvailable()) {
+        return sendPage(res, "Messages unavailable", `<h1>Messages unavailable</h1><div class="errors">Messages are stored in MongoDB, which isn't connected right now. Check MONGODB_URI and that the container is running.</div>`, 503);
+    }
     const currentId = actingPersonId(req);
     const thread = req.query.threadId ? findById("threads", req.query.threadId) : undefined;
     if (req.query.threadId && !thread) {
@@ -4985,6 +5095,9 @@ app.use((error, req, res, next) => {
 
 
 // Start listening
-app.listen(PORT, () => {
-    console.log(`App is listening on http://localhost:${PORT}`);
+// Wait for the MongoDB connection attempt, so the first requests already see messages
+mongoConnected.finally(() => {
+    app.listen(PORT, () => {
+        console.log(`App is listening on http://localhost:${PORT}`);
+    });
 });

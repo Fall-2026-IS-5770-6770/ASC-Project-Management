@@ -10,6 +10,7 @@ if (fs.existsSync(envFile)) {
     process.loadEnvFile(envFile);
 }
 
+const mongoose = require("mongoose");
 const { PrismaClient } = require("../generated/prisma");
 const { PrismaPg } = require("@prisma/adapter-pg");
 
@@ -104,12 +105,6 @@ const tables = [
         })
     },
     {
-        model: "message",
-        table: "Message",
-        rows: require("../data/messages.js").messages,
-        map: row => ({ ...row, postedAt: time(row.postedAt), editedAt: time(row.editedAt) })
-    },
-    {
         model: "requirement",
         table: "Requirement",
         rows: require("../data/requirements.js"),
@@ -131,10 +126,25 @@ async function seedTable({ model, table, rows, map }) {
     console.log(`${table}: ${missing.length} added, ${rows.length - missing.length} already there`);
 }
 
+// Messages live in MongoDB (Issue #77), in the collection the Message model
+// in index.js uses. The app moves its id counter past these on startup.
+async function seedMessages() {
+    await mongoose.connect(process.env.MONGODB_URI);
+    const collection = mongoose.connection.collection("messages");
+    const rows = require("../data/messages.js").messages;
+    const existing = new Set((await collection.find({}, { projection: { id: 1 } }).toArray()).map(doc => doc.id));
+    const missing = rows.filter(row => !existing.has(row.id));
+    if (missing.length) {
+        await collection.insertMany(missing.map(row => ({ ...row, postedAt: time(row.postedAt), editedAt: time(row.editedAt), audit: null })));
+    }
+    console.log(`messages (MongoDB): ${missing.length} added, ${rows.length - missing.length} already there`);
+}
+
 async function main() {
     for (const table of tables) {
         await seedTable(table);
     }
+    await seedMessages();
 }
 
 main()
@@ -142,5 +152,8 @@ main()
         console.error(error);
         process.exitCode = 1;
     })
-    .finally(() => prisma.$disconnect());
+    .finally(async () => {
+        await prisma.$disconnect();
+        await mongoose.disconnect();
+    });
 

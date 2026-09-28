@@ -33,7 +33,8 @@
     "postinstall": "prisma generate",
     "db:up": "docker compose up -d",
     "db:migrate": "prisma migrate deploy && prisma generate",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:move-messages": "node prisma/move-messages-to-mongo.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
