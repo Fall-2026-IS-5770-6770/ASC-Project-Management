@@ -43,6 +43,7 @@ model Person {
 
   managedProjects Project[] @relation("ProjectManager")
   mentor          Mentor?
+  student         Student?
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -55,18 +56,20 @@ model Skill {
 
   projectTypes ProjectType[] @relation("ProjectTypeSkills")
   mentors      Mentor[]      @relation("MentorSkills")
+  students     Student[]     @relation("StudentSkills")
 }
 
 // Kinds of work a project can involve, such as Full-Stack or Data Visualization (Issue #50)
 model ProjectType {
-  id                   Int      @id @default(autoincrement())
-  name                 String   @unique
+  id                   Int       @id @default(autoincrement())
+  name                 String    @unique
   description          String?
   typicalDurationWeeks Int?
   typicalDeliverables  String[]
-  typicalSkills        Skill[]  @relation("ProjectTypeSkills")
+  typicalSkills        Skill[]   @relation("ProjectTypeSkills")
   audit                Json?
-  preferredByMentors   Mentor[] @relation("MentorPreferredType")
+  preferredByMentors   Mentor[]  @relation("MentorPreferredType")
+  preferredByStudents  Student[] @relation("StudentPreferredType")
 }
 
 // Organizations and individuals who request projects: profit, non-profit, or internal (Issue #52)
@@ -119,5 +122,23 @@ model Mentor {
   preferredProjectTypeId Int?
   preferredProjectType   ProjectType? @relation("MentorPreferredType", fields: [preferredProjectTypeId], references: [id], onDelete: Restrict)
   skills                 Skill[]      @relation("MentorSkills")
+  audit                  Json?
+}
+
+// Team members who do the work on projects. A student is a person plus these details (Issue #45)
+model Student {
+  id                     Int          @id @default(autoincrement())
+  personId               Int          @unique
+  person                 Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
+  major                  String?
+  graduationDate         DateTime?    @db.Date
+  resumeUrl              String?
+  minHoursPerWeek        Float?
+  maxHoursPerWeek        Float?
+  workApprovalStatus     String
+  availability           String?
+  preferredProjectTypeId Int?
+  preferredProjectType   ProjectType? @relation("StudentPreferredType", fields: [preferredProjectTypeId], references: [id], onDelete: Restrict)
+  skills                 Skill[]      @relation("StudentSkills")
   audit                  Json?
 }

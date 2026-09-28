@@ -24,7 +24,7 @@ const mainBoardStatuses = databaseTable("mainBoardStatuses");
 const clients = databaseTable("clients");
 const people = databaseTable("people");
 const mentors = databaseTable("mentors");
-const students = require("./data/students.js");
+const students = databaseTable("students");
 const projectPeople = require("./data/projectPeople.js");
 const projectStatuses = require("./data/projectStatuses.js");
 const requirements = require("./data/requirements.js");
@@ -1020,6 +1020,8 @@ const ENTITIES = {
         label: "student",
         plural: "students",
         store: students,
+        model: "student",
+        include: { skills: { select: { id: true } } },
         display: student => displayOf("people", student.personId),
         recordActor: true,
         fields: [
@@ -1032,7 +1034,7 @@ const ENTITIES = {
             { name: "workApprovalStatus", label: "Work approval status", type: "select", options: ["Approved", "Pending", "Not Approved"], required: true },
             { name: "availability", label: "Availability", type: "text" },
             { name: "preferredProjectTypeId", label: "Preferred project type", type: "select", ref: "projectTypes" },
-            { name: "skillIds", label: "Skills", type: "multiselect", ref: "skills" }
+            { name: "skillIds", label: "Skills", type: "multiselect", ref: "skills", relation: "skills" }
         ],
         validate: (student, existing) => {
             const errors = [];

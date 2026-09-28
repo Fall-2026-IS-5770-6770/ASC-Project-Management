@@ -49,6 +49,12 @@ const tables = [
         table: "Mentor",
         rows: require("../data/mentors.js"),
         map: ({ skillIds, ...row }) => ({ ...row, skills: connect(skillIds) })
+    },
+    {
+        model: "student",
+        table: "Student",
+        rows: require("../data/students.js"),
+        map: ({ skillIds, ...row }) => ({ ...row, graduationDate: date(row.graduationDate), skills: connect(skillIds) })
     }
 ];
 
