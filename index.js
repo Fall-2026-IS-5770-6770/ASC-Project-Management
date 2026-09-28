@@ -98,6 +98,30 @@ function flash(req, type, text) {
     req.session.flash = { type, text };
 }
 
+// ----- Acting person -----
+// Sign-in doesn't exist yet, so the application puts a stand-in person on the
+// session itself: the dummy data's currentPersonId by default. Routes read the
+// acting person from the session and record them on every change. Replace
+// this with the signed-in user once authentication lands.
+app.use((req, res, next) => {
+    if (!people.some(person => person.id === req.session.personId)) {
+        req.session.personId = people.some(person => person.id === DEFAULT_PERSON_ID) ? DEFAULT_PERSON_ID : people[0]?.id;
+    }
+    res.locals.actingPersonId = req.session.personId;
+    next();
+});
+
+// Development-only switch for acting as someone else
+if (!IS_PRODUCTION) {
+    app.post("/dev/act-as", (req, res) => {
+        const personId = Number(req.body.personId);
+        if (people.some(person => person.id === personId)) {
+            req.session.personId = personId;
+        }
+        redirectBack(res, req.body.returnTo, "/");
+    });
+}
+
 app.use((req, res, next) => {
     if (req.session.flash) {
         res.locals.flash = req.session.flash;
@@ -133,6 +157,8 @@ const STYLES = `
     body > header { background: var(--accent); color: #fff; padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; }
     body > header a { color: #fff; text-decoration: none; opacity: .9; }
     body > header a:hover { opacity: 1; text-decoration: underline; }
+    .acting-as { margin-left: auto; font-size: .85rem; }
+    .acting-as select { padding: .15rem; }
     body > header .brand { font-weight: 700; opacity: 1; margin-right: .5rem; }
     main { padding: 1rem; max-width: 1400px; margin: 0 auto; }
     h1 { font-size: 1.5rem; margin: .5rem 0 1rem; }
@@ -204,10 +230,28 @@ function sendPage(res, title, body, statusCode = 200) {
     <header>
         <a class="brand" href="/">ASC Project Management</a>
         ${NAV.map(link => `<a href="${esc(link.href)}">${esc(link.label)}</a>`).join("")}
+        ${actingAsControl(res)}
     </header>
     <main>${flashMessage(res.locals.flash)}${body}</main>
 </body>
 </html>`);
+}
+
+// Who the app thinks is making changes. In development it can be switched.
+function actingAsControl(res) {
+    const personId = res.locals.actingPersonId;
+    if (!personId) {
+        return "";
+    }
+    if (IS_PRODUCTION) {
+        return `<span class="acting-as">Acting as ${esc(displayOf("people", personId))}</span>`;
+    }
+    const options = [...people].sort(ENTITIES.people.sort).map(person => ({ value: person.id, label: ENTITIES.people.display(person) }));
+    return `<form class="acting-as" method="POST" action="/dev/act-as">
+        <input type="hidden" name="returnTo" value="${esc(res.req.originalUrl)}">
+        <label>Acting as <select name="personId" onchange="this.form.submit()">${selectOptions(options, personId)}</select></label>
+        <noscript><button type="submit">Switch</button></noscript>
+    </form>`;
 }
 
 function flashMessage(message) {
@@ -282,10 +326,9 @@ function nowStamp() {
     return new Date().toISOString().slice(0, 19);
 }
 
-// The person making the request. Until sign-in exists this is the stand-in
-// user from the dummy data.
-function actingPersonId() {
-    return DEFAULT_PERSON_ID;
+// The person making the request, read from the session (see "Acting person")
+function actingPersonId(req) {
+    return req.session.personId;
 }
 
 
@@ -309,6 +352,7 @@ const ENTITIES = {
         plural: "projects",
         store: projects,
         display: project => project.name,
+        recordActor: true,
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
             { name: "description", label: "Description", type: "textarea" },
@@ -322,14 +366,14 @@ const ENTITIES = {
             { name: "estimatedHours", label: "Estimated hours", type: "number", min: 0 },
             { name: "notes", label: "Notes", type: "textarea" }
         ],
-        afterCreate: project => {
+        afterCreate: (project, { actorId }) => {
             if (isInProgress(project.mainBoardStatusId)) {
-                initializeWorkspace(project);
+                initializeWorkspace(project, actorId);
             }
         },
-        afterUpdate: (project, before) => {
+        afterUpdate: (project, before, { actorId }) => {
             if (project.mainBoardStatusId !== before.mainBoardStatusId && isInProgress(project.mainBoardStatusId)) {
-                initializeWorkspace(project);
+                initializeWorkspace(project, actorId);
             }
         }
     },
@@ -845,7 +889,57 @@ function parseRecord(entityKey, input = {}, { partial = false, omit = [] } = {})
     return { data, errors };
 }
 
-function createRecord(entityKey, data) {
+// ----- Who changed what -----
+// Every create, edit, and delete on a resource with recordActor set is
+// attributed to the person on the session. Records carry who created and last
+// changed them, and each change (deletes included) is kept in changeHistory.
+
+const changeHistory = [];
+
+// Fields whose values differ between two versions of a record
+function changedFields(entityKey, before, after) {
+    const changes = {};
+    for (const field of ENTITIES[entityKey].fields) {
+        if (JSON.stringify(before[field.name]) !== JSON.stringify(after[field.name])) {
+            changes[field.name] = { from: before[field.name] ?? null, to: after[field.name] ?? null };
+        }
+    }
+    return changes;
+}
+
+function recordChange(entityKey, action, record, actorId, changes) {
+    const entity = ENTITIES[entityKey];
+    if (!entity.recordActor) {
+        return null;
+    }
+    const entry = {
+        id: changeHistory.length + 1,
+        entity: entityKey,
+        recordId: record.id,
+        action,
+        summary: entity.display(record),
+        actorPersonId: actorId ?? null,
+        at: new Date().toISOString(),
+        changes: changes || {}
+    };
+    changeHistory.push(entry);
+    return entry;
+}
+
+function stampCreated(entityKey, record, actorId) {
+    if (ENTITIES[entityKey].recordActor) {
+        const at = new Date().toISOString();
+        record.audit = { createdBy: actorId ?? null, createdAt: at, updatedBy: actorId ?? null, updatedAt: at };
+    }
+}
+
+function stampUpdated(entityKey, record, actorId) {
+    if (ENTITIES[entityKey].recordActor) {
+        record.audit = { ...record.audit, updatedBy: actorId ?? null, updatedAt: new Date().toISOString() };
+    }
+}
+
+function createRecord(entityKey, data, actorId) {
     const entity = ENTITIES[entityKey];
     const defaults = entity.defaults ? entity.defaults(data) : {};
     const values = { ...data };
@@ -861,14 +955,16 @@ function createRecord(entityKey, data) {
     }
 
     const record = { id: nextId(entity.store), ...values };
+    stampCreated(entityKey, record, actorId);
     entity.store.push(record);
+    recordChange(entityKey, "created", record, actorId);
     if (entity.afterCreate) {
-        entity.afterCreate(record);
+        entity.afterCreate(record, { actorId });
     }
     return { record };
 }
 
-function updateRecord(entityKey, record, data) {
+function updateRecord(entityKey, record, data, actorId) {
     const entity = ENTITIES[entityKey];
     const errors = entity.validate ? entity.validate({ ...record, ...data }, record) : [];
     if (errors.length) {
@@ -877,15 +973,20 @@ function updateRecord(entityKey, record, data) {
 
     const before = { ...record };
     Object.assign(record, data);
-    if (entity.afterUpdate) {
-        entity.afterUpdate(record, before);
+    const changes = changedFields(entityKey, before, record);
+    if (Object.keys(changes).length) {
+        stampUpdated(entityKey, record, actorId);
+        recordChange(entityKey, "updated", record, actorId, changes);
     }
-    return { record, before };
+    if (entity.afterUpdate) {
+        entity.afterUpdate(record, before, { actorId, changes });
+    }
+    return { record, before, changes };
 }
 
 // Records that belong to this one (cascade) are deleted with it, ids in
 // multi-selects are pulled out, and anything else pointing at it blocks the delete.
-function deleteRecord(entityKey, record) {
+function deleteRecord(entityKey, record, actorId) {
     const entity = ENTITIES[entityKey];
     const blockers = [];
     let blockingCount = 0;
@@ -918,9 +1019,10 @@ function deleteRecord(entityKey, record) {
         return {};
     }
     entity.store.splice(index, 1);
+    recordChange(entityKey, "deleted", record, actorId);
 
     for (const [otherKey, dependent] of dependents) {
-        deleteRecord(otherKey, dependent);
+        deleteRecord(otherKey, dependent, actorId);
     }
     for (const other of Object.values(ENTITIES)) {
         for (const field of other.fields.filter(f => f.ref === entityKey && f.type === "multiselect")) {
@@ -931,7 +1033,7 @@ function deleteRecord(entityKey, record) {
     }
 
     if (entity.afterDelete) {
-        entity.afterDelete(record);
+        entity.afterDelete(record, { actorId });
     }
     return {};
 }
@@ -964,7 +1066,7 @@ function projectMemberIds(project) {
     return [...new Set(ids)];
 }
 
-function initializeWorkspace(project) {
+function initializeWorkspace(project, actorId) {
     // Default board columns, in the order the statuses are normally used
     if (!projectStatuses.some(row => row.projectId === project.id)) {
         [...statuses].sort(byOrder).forEach((status, index) => {
@@ -991,6 +1093,7 @@ function initializeWorkspace(project) {
 
     if (!project.workspaceInitializedAt) {
         project.workspaceInitializedAt = new Date().toISOString();
+        recordChange("projects", "created the workspace for", project, actorId);
     }
 }
 
@@ -1072,6 +1175,10 @@ function fieldText(field, value) {
     }
 }
 
+function auditLine(personId, at) {
+    return `${displayOf("people", personId)}, ${String(at || "").replace("T", " ").slice(0, 16)}`;
+}
+
 function fieldByName(entityKey, name) {
     return ENTITIES[entityKey].fields.find(field => field.name === name);
 }
@@ -1124,9 +1231,13 @@ function sendListPage(res, { entityKey, title, itemPath, columns, rows, intro = 
 function sendDetailPage(res, { entityKey, record, itemPath, listPath, extra = "" }) {
     const entity = ENTITIES[entityKey];
     const name = entity.display(record);
+    const audit = record.audit
+        ? `<dt>Created</dt><dd>${esc(auditLine(record.audit.createdBy, record.audit.createdAt))}</dd>
+           <dt>Last changed</dt><dd>${esc(auditLine(record.audit.updatedBy, record.audit.updatedAt))}</dd>`
+        : "";
     const rows = entity.fields
         .map(field => `<dt>${esc(field.label)}</dt><dd>${esc(fieldText(field, record[field.name]))}</dd>`)
-        .join("");
+        .join("") + audit;
     sendPage(res, name, `
         <div class="toolbar">
             <h1>${esc(name)}</h1>
@@ -1154,7 +1265,7 @@ function sendEditPage(res, { entityKey, record, itemPath, backHref, omit = [], i
 // Shared POST handlers. Each takes the paths to send the user to afterwards.
 function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.body, omit = [] }) {
     const { data, errors } = parseRecord(entityKey, input, { omit });
-    const result = errors.length ? { errors } : createRecord(entityKey, data);
+    const result = errors.length ? { errors } : createRecord(entityKey, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
@@ -1164,7 +1275,7 @@ function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.b
 
 function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input = req.body, omit = [] }) {
     const { data, errors } = parseRecord(entityKey, input, { omit });
-    const result = errors.length ? { errors } : updateRecord(entityKey, record, data);
+    const result = errors.length ? { errors } : updateRecord(entityKey, record, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
@@ -1174,13 +1285,47 @@ function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input
 }
 
 function handleDelete(entityKey, req, res, { record, backHref, redirectTo }) {
-    const result = deleteRecord(entityKey, record);
+    const result = deleteRecord(entityKey, record, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
     flash(req, "success", `Deleted ${ENTITIES[entityKey].display(record)}.`);
     res.redirect(redirectTo);
 }
+
+
+// ===== ACTIVITY (Issue #97) =====
+// Every recorded change, newest first, with the person who made it
+
+NAV.push({ href: "/activity", label: "Activity" });
+
+function activityList(entries) {
+    if (entries.length === 0) {
+        return `<p class="muted">No recorded changes yet.</p>`;
+    }
+    return `<ul>${entries.map(entry => {
+        const changed = Object.keys(entry.changes || {});
+        return `<li><span class="muted">${esc(entry.at.replace("T", " ").slice(0, 16))}</span>
+            ${esc(displayOf("people", entry.actorPersonId))} ${esc(entry.action)}
+            ${esc(ENTITIES[entry.entity].label)} <strong>${esc(entry.summary)}</strong>
+            ${changed.length ? `<span class="muted">(${esc(changed.map(name => fieldByName(entry.entity, name)?.label || name).join(", "))})</span>` : ""}</li>`;
+    }).join("")}</ul>`;
+}
+
+app.get("/activity", (req, res) => {
+    const entityKey = ENTITIES[req.query.entity] ? req.query.entity : undefined;
+    const entries = changeHistory.filter(entry => !entityKey || entry.entity === entityKey).slice().reverse();
+    const tracked = Object.entries(ENTITIES).filter(([, entity]) => entity.recordActor)
+        .map(([key, entity]) => ({ value: key, label: entity.plural }));
+    sendPage(res, "Activity", `
+        <h1>Activity</h1>
+        <form method="GET" action="/activity" class="actions">
+            <label>Show <select name="entity" onchange="this.form.submit()"><option value="">Everything</option>${selectOptions(tracked, entityKey)}</select></label>
+            <noscript><button type="submit">Filter</button></noscript>
+        </form>
+        <section class="panel">${activityList(entries)}</section>
+    `);
+});
 
 
 // ===== PROJECTS (Issues #1, #20) =====
@@ -1237,7 +1382,7 @@ app.get("/projects/new", (req, res) => {
 // Save the new project from the create form
 app.post("/projects/new", (req, res) => {
     const { data, errors } = parseRecord("projects", req.body);
-    const result = errors.length ? { errors } : createRecord("projects", data);
+    const result = errors.length ? { errors } : createRecord("projects", data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, "/projects");
     }
@@ -1319,7 +1464,7 @@ app.post("/projects/edit/:id", (req, res) => {
         return sendNotFound(res, "project", req.params.id);
     }
     const { data, errors } = parseRecord("projects", req.body, { omit: ["mainBoardStatusId"] });
-    const result = errors.length ? { errors } : updateRecord("projects", project, data);
+    const result = errors.length ? { errors } : updateRecord("projects", project, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
@@ -1337,7 +1482,7 @@ app.post("/projects/:id/status", (req, res) => {
     if (data.mainBoardStatusId === undefined && errors.length === 0) {
         errors.push("Status is required");
     }
-    const result = errors.length ? { errors } : updateRecord("projects", project, data);
+    const result = errors.length ? { errors } : updateRecord("projects", project, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
@@ -1352,7 +1497,7 @@ app.post("/projects/delete/:id", (req, res) => {
     if (!project) {
         return sendNotFound(res, "project", req.params.id);
     }
-    const result = deleteRecord("projects", project);
+    const result = deleteRecord("projects", project, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, "/projects");
     }
@@ -1403,6 +1548,8 @@ app.get("/projects/:id", (req, res) => {
                 <dt>Estimated hours</dt><dd>${esc(project.estimatedHours ?? "—")}</dd>
                 <dt>Progress</dt><dd>${progress === null ? "No requirements yet" : `${progress}% of requirements done`}</dd>
                 <dt>Notes</dt><dd>${esc(project.notes || "—")}</dd>
+                ${project.audit ? `<dt>Created</dt><dd>${esc(auditLine(project.audit.createdBy, project.audit.createdAt))}</dd>
+                <dt>Last changed</dt><dd>${esc(auditLine(project.audit.updatedBy, project.audit.updatedAt))}</dd>` : ""}
             </dl>
         </section>
         <section class="panel">
@@ -1412,6 +1559,11 @@ app.get("/projects/:id", (req, res) => {
         <section class="panel">
             <h2>Workspace</h2>
             ${workspace}
+        </section>
+        <section class="panel">
+            <h2>Recent activity</h2>
+            ${activityList(changeHistory.filter(entry => entry.entity === "projects" && entry.recordId === project.id).slice(-10).reverse())}
+            <p><a href="/activity">All activity</a></p>
         </section>
         <section class="panel">
             <h2>Documents</h2>
@@ -1771,7 +1923,7 @@ app.post("/projects/:projectid/people/new", (req, res) => {
         return sendNotFound(res, "project", req.params.projectid);
     }
     const { data, errors } = parseRecord("projectPeople", { ...req.body, projectId: project.id });
-    const result = errors.length ? { errors } : createRecord("projectPeople", data);
+    const result = errors.length ? { errors } : createRecord("projectPeople", data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
@@ -1803,7 +1955,7 @@ app.post("/projects/:projectid/people/edit/:id", (req, res) => {
 app.post("/projects/:projectid/people/delete/:id", (req, res) => {
     const row = findProjectPerson(req, res);
     if (row) {
-        deleteRecord("projectPeople", row);
+        deleteRecord("projectPeople", row, actingPersonId(req));
         flash(req, "success", `Removed ${displayOf("people", row.personId)} from ${displayOf("projects", row.projectId)}.`);
         redirectBack(res, req.body.returnTo, `/projects/${row.projectId}/people`);
     }
