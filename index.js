@@ -23,7 +23,7 @@ const statuses = databaseTable("statuses");
 const mainBoardStatuses = databaseTable("mainBoardStatuses");
 const clients = databaseTable("clients");
 const people = databaseTable("people");
-const mentors = require("./data/mentors.js");
+const mentors = databaseTable("mentors");
 const students = require("./data/students.js");
 const projectPeople = require("./data/projectPeople.js");
 const projectStatuses = require("./data/projectStatuses.js");
@@ -1000,15 +1000,17 @@ const ENTITIES = {
         label: "mentor",
         plural: "mentors",
         store: mentors,
+        model: "mentor",
+        include: { skills: { select: { id: true } } },
         display: mentor => displayOf("people", mentor.personId),
         recordActor: true,
         fields: [
             { name: "personId", label: "Person", type: "select", ref: "people", required: true },
             { name: "department", label: "Department", type: "text" },
             { name: "availability", label: "Availability", type: "text" },
-            { name: "maxProjectLoad", label: "Maximum project load", type: "number", min: 0 },
+            { name: "maxProjectLoad", label: "Maximum project load", type: "number", min: 0, integer: true },
             { name: "preferredProjectTypeId", label: "Preferred project type", type: "select", ref: "projectTypes" },
-            { name: "skillIds", label: "Skills", type: "multiselect", ref: "skills" }
+            { name: "skillIds", label: "Skills", type: "multiselect", ref: "skills", relation: "skills" }
         ],
         validate: (mentor, existing) => mentors.some(other => other !== existing && other.personId === mentor.personId)
             ? [`${displayOf("people", mentor.personId)} is already a mentor`]

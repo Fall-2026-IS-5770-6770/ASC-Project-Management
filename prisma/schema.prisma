@@ -42,6 +42,7 @@ model Person {
   audit     Json?
 
   managedProjects Project[] @relation("ProjectManager")
+  mentor          Mentor?
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -53,6 +54,7 @@ model Skill {
   audit       Json?
 
   projectTypes ProjectType[] @relation("ProjectTypeSkills")
+  mentors      Mentor[]      @relation("MentorSkills")
 }
 
 // Kinds of work a project can involve, such as Full-Stack or Data Visualization (Issue #50)
@@ -64,6 +66,7 @@ model ProjectType {
   typicalDeliverables  String[]
   typicalSkills        Skill[]  @relation("ProjectTypeSkills")
   audit                Json?
+  preferredByMentors   Mentor[] @relation("MentorPreferredType")
 }
 
 // Organizations and individuals who request projects: profit, non-profit, or internal (Issue #52)
@@ -102,5 +105,19 @@ model Project {
   notes                  String?
   // Set the first time the project moves into In Progress and its workspace is created
   workspaceInitializedAt DateTime?
+  audit                  Json?
+}
+
+// Faculty who oversee and advise projects. A mentor is a person plus these details (Issue #44)
+model Mentor {
+  id                     Int          @id @default(autoincrement())
+  personId               Int          @unique
+  person                 Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
+  department             String?
+  availability           String?
+  maxProjectLoad         Int?
+  preferredProjectTypeId Int?
+  preferredProjectType   ProjectType? @relation("MentorPreferredType", fields: [preferredProjectTypeId], references: [id], onDelete: Restrict)
+  skills                 Skill[]      @relation("MentorSkills")
   audit                  Json?
 }

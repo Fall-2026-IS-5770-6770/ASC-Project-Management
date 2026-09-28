@@ -1,5 +1,6 @@
-// Loads the dummy data in data/ into the database. Tables that already have
-// rows are left alone, so running it again is safe.
+// Loads the dummy data in data/ into the database. Rows are inserted with their
+// dummy data ids, and any id that already exists is left alone, so running it
+// again only fills in what's missing.
 //   npx prisma db seed
 const fs = require("fs");
 const path = require("path");
@@ -42,20 +43,24 @@ const tables = [
         table: "Project",
         rows: require("../data/projects.js"),
         map: row => ({ ...row, startDate: date(row.startDate), midpointDate: date(row.midpointDate), endDate: date(row.endDate) })
+    },
+    {
+        model: "mentor",
+        table: "Mentor",
+        rows: require("../data/mentors.js"),
+        map: ({ skillIds, ...row }) => ({ ...row, skills: connect(skillIds) })
     }
 ];
 
 async function seedTable({ model, table, rows, map }) {
-    if (await prisma[model].count() > 0) {
-        console.log(`${table}: already has rows, skipped`);
-        return;
-    }
-    for (const row of rows) {
+    const existing = new Set((await prisma[model].findMany({ select: { id: true } })).map(row => row.id));
+    const missing = rows.filter(row => !existing.has(row.id));
+    for (const row of missing) {
         await prisma[model].create({ data: map(row) });
     }
-    // Rows were inserted with their dummy data ids, so move the id counter past them
+    // Move the id counter past the ids inserted by hand
     await prisma.$executeRawUnsafe(`SELECT setval(pg_get_serial_sequence('"${table}"', 'id'), (SELECT COALESCE(MAX(id), 0) + 1 FROM "${table}"), false)`);
-    console.log(`${table}: ${rows.length} rows`);
+    console.log(`${table}: ${missing.length} added, ${rows.length - missing.length} already there`);
 }
 
 async function main() {
