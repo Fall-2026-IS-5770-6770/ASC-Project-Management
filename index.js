@@ -270,7 +270,19 @@ const ENTITIES = {
         plural: "people",
         store: people,
         display: person => `${person.firstName} ${person.lastName}`,
-        fields: []
+        sort: (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
+        fields: [
+            { name: "firstName", label: "First name", type: "text", required: true },
+            { name: "lastName", label: "Last name", type: "text", required: true },
+            { name: "email", label: "Email", type: "email", required: true },
+            { name: "phone", label: "Phone", type: "text" },
+            { name: "address", label: "Address", type: "address" }
+        ],
+        // Email identifies a person, so two people can't share one
+        validate: (person, existing) => people.some(other => other !== existing
+            && other.email.toLowerCase() === String(person.email).toLowerCase())
+            ? [`Someone already uses the email ${person.email}`]
+            : []
     },
     projectPeople: {
         label: "project assignment",
@@ -538,7 +550,7 @@ function deleteRecord(entityKey, record) {
     }
 
     if (blockers.length) {
-        return { errors: [`${entity.display(record)} can't be deleted while it is still used by ${blockers.join(", ")}.`] };
+        return { errors: [`Can't delete ${entity.display(record)}: ${blockers.join(", ")} still refer to this ${entity.label}.`] };
     }
 
     const index = entity.store.indexOf(record);
@@ -1796,36 +1808,86 @@ app.get("/documents/:id", (req, res) => {
 });
 
 
-// ===== PEOPLE (Issue #18) =====
+// ===== PEOPLE (Issues #18, #24) =====
+// Everyone involved with ASC projects. Mentors and students point at a person.
 
+NAV.push({ href: "/people", label: "People" });
+
+function findPerson(req, res) {
+    const person = findById("people", req.params.id);
+    if (!person) {
+        sendNotFound(res, "person", req.params.id);
+    }
+    return person;
+}
+
+// The create form lives in a modal on the list page
 app.get("/people/new", (req, res) => {
-    res.send("Create a new person");
+    res.redirect("/people");
 });
 
 app.post("/people/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new person");
+    handleCreate("people", req, res, { backHref: "/people", redirectTo: person => `/people/${person.id}` });
 });
 
 app.get("/people", (req, res) => {
-    res.send("View all people");
+    sendListPage(res, {
+        entityKey: "people",
+        title: "People",
+        itemPath: "/people",
+        columns: [
+            { label: "Name", html: person => `<a href="/people/${person.id}">${esc(ENTITIES.people.display(person))}</a>` },
+            fieldColumn("people", "email"),
+            fieldColumn("people", "phone")
+        ],
+        rows: [...people].sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName))
+    });
 });
 
 app.get("/people/edit/:id", (req, res) => {
-    res.send(`Edit a person with id: ${req.params.id}`);
+    const person = findPerson(req, res);
+    if (person) {
+        sendEditPage(res, { entityKey: "people", record: person, itemPath: "/people", backHref: `/people/${person.id}` });
+    }
 });
 
 app.post("/people/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saving edits on a person with id: ${req.params.id}`);
+    const person = findPerson(req, res);
+    if (person) {
+        handleUpdate("people", req, res, { record: person, backHref: `/people/edit/${person.id}`, redirectTo: `/people/${person.id}` });
+    }
 });
 
 app.post("/people/delete/:id", (req, res) => {
-    res.send(`Deleting a person with id: ${req.params.id}`);
+    const person = findPerson(req, res);
+    if (person) {
+        handleDelete("people", req, res, { record: person, backHref: `/people/${person.id}`, redirectTo: "/people" });
+    }
 });
 
 app.get("/people/:id", (req, res) => {
-    res.send(`View a specific person with id: ${req.params.id}`);
+    const person = findPerson(req, res);
+    if (!person) {
+        return;
+    }
+    const assignments = projectPeople.filter(row => row.personId === person.id);
+    const roles = [
+        mentors.some(mentor => mentor.personId === person.id) ? "Mentor" : null,
+        students.some(student => student.personId === person.id) ? "Student" : null
+    ].filter(Boolean);
+    sendDetailPage(res, {
+        entityKey: "people",
+        record: person,
+        itemPath: "/people",
+        listPath: "/people",
+        extra: `<section class="panel">
+            <h2>Projects</h2>
+            <p>${roles.map(role => `<span class="tag">${role}</span>`).join(" ")}</p>
+            ${assignments.length
+        ? `<ul>${assignments.map(row => `<li><a href="/projects/${row.projectId}">${esc(displayOf("projects", row.projectId))}</a> <span class="muted">— ${esc(row.role)}, ${esc(row.status)}</span></li>`).join("")}</ul>`
+        : `<p class="muted">Not assigned to any projects.</p>`}
+        </section>`
+    });
 });
 
 
