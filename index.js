@@ -261,6 +261,13 @@ logRecordChanges("StudentProfileLog", "students", "studentId", {
 });
 
 
+// Issue #83: changes to a mentor's availability, maximum project load, preferred type, and so on
+logRecordChanges("MentorProfileLog", "mentors", "mentorId", {
+    fields: { personId: { type: Number, index: true } },
+    extra: mentor => ({ personId: mentor.personId })
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
