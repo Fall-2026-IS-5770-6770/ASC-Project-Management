@@ -3775,6 +3775,9 @@ registerApi("/projects", "projects");
 // Issue #133: task statuses
 registerApi("/statuses", "statuses");
 
+// Issue #134: project status associations (a project's board columns)
+registerApi("/project-statuses", "projectStatuses");
+
 
 // ===== ERRORS (Issue #78) =====
 
