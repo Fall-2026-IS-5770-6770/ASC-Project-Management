@@ -27,7 +27,7 @@ const mentors = databaseTable("mentors");
 const students = databaseTable("students");
 const projectPeople = databaseTable("projectPeople");
 const projectStatuses = databaseTable("projectStatuses");
-const requirements = require("./data/requirements.js");
+const requirements = databaseTable("requirements");
 const channels = databaseTable("channels");
 const skills = databaseTable("skills");
 const projectTypes = databaseTable("projectTypes");
@@ -1236,6 +1236,7 @@ const ENTITIES = {
         label: "requirement",
         plural: "requirements",
         store: requirements,
+        model: "requirement",
         display: requirement => requirement.title,
         recordActor: true,
         fields: [

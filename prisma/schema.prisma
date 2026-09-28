@@ -19,6 +19,7 @@ model Status {
   order           Int?
   audit           Json?
   projectStatuses ProjectStatus[]
+  requirements    Requirement[]
 }
 
 // Columns on the main board that every project appears on (Issue #42)
@@ -42,15 +43,17 @@ model Person {
   address   Json?
   audit     Json?
 
-  managedProjects Project[]       @relation("ProjectManager")
-  mentor          Mentor?
-  student         Student?
-  projectPeople   ProjectPerson[]
-  personSkills    PersonSkill[]
-  documents       Document[]
-  channels        Channel[]       @relation("ChannelParticipants")
-  threads         Thread[]
-  messages        Message[]
+  managedProjects      Project[]       @relation("ProjectManager")
+  mentor               Mentor?
+  student              Student?
+  projectPeople        ProjectPerson[]
+  personSkills         PersonSkill[]
+  documents            Document[]
+  channels             Channel[]       @relation("ChannelParticipants")
+  threads              Thread[]
+  messages             Message[]
+  assignedRequirements Requirement[]   @relation("RequirementAssignee")
+  mentoredRequirements Requirement[]   @relation("RequirementMentor")
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -125,6 +128,7 @@ model Project {
   projectProjectTypes    ProjectProjectType[]
   documents              Document[]
   channels               Channel[]
+  requirements           Requirement[]
 }
 
 // Faculty who oversee and advise projects. A mentor is a person plus these details (Issue #44)
@@ -305,4 +309,26 @@ model Message {
   // Stays null until someone edits the message
   editedAt       DateTime?
   audit          Json?
+}
+
+// Requirements are the tasks on a project workspace's board (Issue #57)
+model Requirement {
+  id                 Int       @id @default(autoincrement())
+  projectId          Int
+  project            Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  statusId           Int
+  status             Status    @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  priority           String?
+  dueDate            DateTime? @db.Date
+  // The student doing the work
+  assignedPersonId   Int?
+  assignedPerson     Person?   @relation("RequirementAssignee", fields: [assignedPersonId], references: [id], onDelete: Restrict)
+  mentorPersonId     Int?
+  mentorPerson       Person?   @relation("RequirementMentor", fields: [mentorPersonId], references: [id], onDelete: Restrict)
+  acceptanceCriteria String?
+  estimatedHours     Float?
+  actualHours        Float?
+  audit              Json?
 }

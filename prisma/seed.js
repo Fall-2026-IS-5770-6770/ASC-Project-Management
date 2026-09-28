@@ -107,6 +107,12 @@ const tables = [
         table: "Message",
         rows: require("../data/messages.js").messages,
         map: row => ({ ...row, postedAt: time(row.postedAt), editedAt: time(row.editedAt) })
+    },
+    {
+        model: "requirement",
+        table: "Requirement",
+        rows: require("../data/requirements.js"),
+        map: row => ({ ...row, dueDate: date(row.dueDate) })
     }
 ];
 
