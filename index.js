@@ -251,7 +251,12 @@ const ENTITIES = {
         store: mainBoardStatuses,
         display: status => status.name,
         sort: byOrder,
-        fields: []
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "description", label: "Description", type: "textarea" },
+            { name: "order", label: "Board order", type: "number", min: 0 }
+        ],
+        defaults: () => ({ order: nextOrder(mainBoardStatuses) })
     },
     clients: {
         label: "client",
@@ -1088,38 +1093,85 @@ app.get("/status/:id", (req, res) => {
 });
 
 
-// ===== MAIN BOARD STATUSES (Issue #19) =====
+// ===== MAIN BOARD STATUSES (Issues #19, #23) =====
 // The columns on the one main board that every project appears on as a card.
 // These are separate from the task statuses used inside a project's own board.
 
+NAV.push({ href: "/main-board-statuses", label: "Main board statuses" });
+
+const IN_PROGRESS_NOTE = `<p class="muted">Moving a project into the column named <strong>In Progress</strong> is what sets up its workspace, so keep that name if you edit it.</p>`;
+
+// The create form lives in a modal on the list page
 app.get("/main-board-statuses/new", (req, res) => {
-    res.send("Send the page for adding a status to the main board");
+    res.redirect("/main-board-statuses");
 });
 
 app.post("/main-board-statuses/new", (req, res) => {
-    console.log(req.body);
-    res.send("Save the new status on the main board");
+    handleCreate("mainBoardStatuses", req, res, { backHref: "/main-board-statuses", redirectTo: "/main-board-statuses" });
 });
 
+// View all main board statuses as columns in board order
 app.get("/main-board-statuses", (req, res) => {
-    res.send("Send all of the statuses on the main board in board order");
+    const columns = [...mainBoardStatuses].sort(byOrder).map(status => {
+        const count = projects.filter(project => project.mainBoardStatusId === status.id).length;
+        return `<section class="column">
+            <h3>
+                <span><a href="/main-board-statuses/${status.id}">${esc(status.name)}</a> ${editButton(`/main-board-statuses/edit/${status.id}`, status.name)}</span>
+                ${deleteButton(`/main-board-statuses/delete/${status.id}`, status.name)}
+            </h3>
+            <p class="muted">${esc(status.description)}</p>
+            <p class="count">Column ${esc(status.order)} · ${count} project${count === 1 ? "" : "s"}</p>
+        </section>`;
+    });
+    sendListPage(res, {
+        entityKey: "mainBoardStatuses",
+        title: "Main board statuses",
+        itemPath: "/main-board-statuses",
+        intro: IN_PROGRESS_NOTE,
+        body: `<div class="board">${columns.join("")}</div>`
+    });
 });
 
 app.get("/main-board-statuses/edit/:id", (req, res) => {
-    res.send(`Send the page for updating (renaming or reordering) main board status ${req.params.id}`);
+    const status = findById("mainBoardStatuses", req.params.id);
+    if (!status) {
+        return sendNotFound(res, "main board status", req.params.id);
+    }
+    sendEditPage(res, { entityKey: "mainBoardStatuses", record: status, itemPath: "/main-board-statuses", backHref: "/main-board-statuses", intro: IN_PROGRESS_NOTE });
 });
 
 app.post("/main-board-statuses/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Save the update to main board status ${req.params.id}`);
+    const status = findById("mainBoardStatuses", req.params.id);
+    if (!status) {
+        return sendNotFound(res, "main board status", req.params.id);
+    }
+    handleUpdate("mainBoardStatuses", req, res, { record: status, backHref: `/main-board-statuses/edit/${status.id}`, redirectTo: "/main-board-statuses" });
 });
 
+// Remove a status from the main board (only once no project sits in it)
 app.post("/main-board-statuses/delete/:id", (req, res) => {
-    res.send(`Remove status ${req.params.id} from the main board`);
+    const status = findById("mainBoardStatuses", req.params.id);
+    if (!status) {
+        return sendNotFound(res, "main board status", req.params.id);
+    }
+    handleDelete("mainBoardStatuses", req, res, { record: status, backHref: "/main-board-statuses", redirectTo: "/main-board-statuses" });
 });
 
 app.get("/main-board-statuses/:id", (req, res) => {
-    res.send(`Send main board status ${req.params.id}`);
+    const status = findById("mainBoardStatuses", req.params.id);
+    if (!status) {
+        return sendNotFound(res, "main board status", req.params.id);
+    }
+    const cards = projects.filter(project => project.mainBoardStatusId === status.id);
+    sendDetailPage(res, {
+        entityKey: "mainBoardStatuses",
+        record: status,
+        itemPath: "/main-board-statuses",
+        listPath: "/main-board-statuses",
+        extra: `<section class="panel"><h2>Projects in this column</h2>${cards.length
+            ? `<ul>${cards.map(project => `<li><a href="/projects/${project.id}">${esc(project.name)}</a></li>`).join("")}</ul>`
+            : `<p class="muted">None</p>`}</section>`
+    });
 });
 
 
