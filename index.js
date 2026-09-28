@@ -687,6 +687,8 @@ const STYLES = `
     body > header a:hover { opacity: 1; text-decoration: underline; }
     .acting-as { margin-left: auto; font-size: .85rem; }
     .acting-as select { padding: .15rem; }
+    .muted-light { opacity: .8; }
+    .link-button { background: none; border: 1px solid rgba(255, 255, 255, .6); padding: .15rem .5rem; margin-left: .35rem; }
     body > header .brand { font-weight: 700; opacity: 1; margin-right: .5rem; }
     main { padding: 1rem; max-width: 1400px; margin: 0 auto; }
     h1 { font-size: 1.5rem; margin: .5rem 0 1rem; }
@@ -774,6 +776,15 @@ function actingAsControl(res) {
     const personId = res.locals.actingPersonId;
     if (!personId) {
         return "";
+    }
+    // Someone who actually signed in sees who they are and a way out
+    const provider = res.req.session?.provider;
+    if (provider) {
+        return `<form class="acting-as" method="POST" action="/signout">
+            Signed in as <strong>${esc(displayOf("people", personId))}</strong>
+            <span class="muted-light">(${esc(AUTH_PROVIDERS[provider]?.label || provider)})</span>
+            <button type="submit" class="link-button">Sign out</button>
+        </form>`;
     }
     if (IS_PRODUCTION) {
         return `<span class="acting-as">Acting as ${esc(displayOf("people", personId))}</span>`;
@@ -2075,6 +2086,14 @@ function resolvePerson(provider, profile) {
     });
 }
 
+// Issue #122: end the session on purpose (shared lab machines). The session is
+// destroyed, its cookie cleared, and the person lands back on the sign-in page.
+app.post("/signout", async (req, res) => {
+    await new Promise((resolve, reject) => req.session.destroy(error => (error ? reject(error) : resolve())));
+    res.clearCookie("asc.sid", { path: "/", httpOnly: true, sameSite: "lax", secure: IS_PRODUCTION });
+    res.redirect("/signin");
+});
+
 // The sign-in page: every supported provider, each starting its own sign-in flow
 app.get("/signin", (req, res) => {
     const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "";
@@ -2083,7 +2102,7 @@ app.get("/signin", (req, res) => {
         <a class="signin-button" href="/auth/${esc(key)}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}">Sign in with ${esc(provider.label)}</a>
         ${provider.description ? `<span class="muted">${esc(provider.description)}</span>` : ""}
     </p>`).join("");
-    const signedIn = req.session.personId ? findById("people", req.session.personId) : undefined;
+    const signedIn = req.session.provider ? findById("people", req.session.personId) : undefined;
 
     sendPage(res, "Sign in", `
         <section class="panel signin">
