@@ -30,7 +30,8 @@ function connect(ids) {
     return { connect: (ids || []).map(id => ({ id })) };
 }
 
-// In dependency order: a table only points at tables above it
+// In dependency order: a table only points at tables above it. The five roles
+// themselves are created by the add_roles migration.
 const tables = [
     { model: "status", table: "Status", rows: require("../data/statuses.js"), map: row => row },
     { model: "mainBoardStatus", table: "MainBoardStatus", rows: require("../data/mainBoardStatuses.js"), map: row => row },
@@ -113,7 +114,10 @@ const tables = [
         table: "Requirement",
         rows: require("../data/requirements.js"),
         map: row => ({ ...row, dueDate: date(row.dueDate) })
-    }
+    },
+    // The first ASC Administrator, so someone can grant everyone else's roles.
+    // Priya Raman runs the ASC (she's its contact on the client list).
+    { model: "organizationRole", table: "OrganizationRole", rows: [{ id: 1, personId: 3, roleName: "ASC Administrator" }], map: row => row }
 ];
 
 async function seedTable({ model, table, rows, map }) {

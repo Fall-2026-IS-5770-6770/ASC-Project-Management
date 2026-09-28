@@ -37,6 +37,8 @@ const projectProjectTypes = databaseTable("projectProjectTypes");
 const documents = databaseTable("documents");
 const threads = databaseTable("threads");
 const messages = databaseTable("messages");
+const roles = databaseTable("roles");
+const organizationRoles = databaseTable("organizationRoles");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -868,6 +870,9 @@ function actingPersonId(req) {
 // text stored as an array), and address.
 // A ref field marked cascade is deleted along with the record it points at.
 
+// The README's five roles (stored in the Role table). ASC Administrator is held
+// across the organization; the rest are held on one project.
+const ADMINISTRATOR = "ASC Administrator";
 const PROJECT_ROLES = ["Project Manager", "Faculty Mentor", "Student", "Sponsor"];
 const PROFICIENCIES = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
@@ -1249,6 +1254,34 @@ const ENTITIES = {
             { name: "estimatedHours", label: "Estimated hours", type: "number", min: 0 },
             { name: "actualHours", label: "Actual hours", type: "number", min: 0 }
         ]
+    },
+    roles: {
+        label: "role",
+        plural: "roles",
+        store: roles,
+        model: "role",
+        display: role => role.name,
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "description", label: "Description", type: "textarea", required: true },
+            { name: "scope", label: "Held on", type: "select", options: ["organization", "project"], required: true }
+        ]
+    },
+    organizationRoles: {
+        label: "organization role",
+        plural: "organization roles",
+        store: organizationRoles,
+        model: "organizationRole",
+        recordActor: true,
+        display: row => `${displayOf("people", row.personId)}: ${row.roleName}`,
+        fields: [
+            { name: "personId", label: "Person", type: "select", ref: "people", required: true, cascade: true },
+            { name: "roleName", label: "Role", type: "select", options: [ADMINISTRATOR], required: true }
+        ],
+        validate: (row, existing) => organizationRoles.some(other => other !== existing
+            && other.personId === row.personId && other.roleName === row.roleName)
+            ? [`${displayOf("people", row.personId)} is already an ${row.roleName}`]
+            : []
     },
     projectPeople: {
         label: "project assignment",
@@ -1735,6 +1768,33 @@ async function keepOnePrimaryType(row) {
             await saveQuietly("projectProjectTypes", other, { isPrimary: false });
         }
     }
+}
+
+// ----- Roles (Issue #124) -----
+// A person's roles: organization-wide ones, plus a role on each project they
+// are actively on (an assignment that isn't Completed or Removed, or being the
+// project's listed project manager).
+function rolesOf(personId) {
+    const projectRoles = new Map();
+    const hold = (projectId, role) => {
+        projectRoles.set(projectId, (projectRoles.get(projectId) || new Set()).add(role));
+    };
+    projectPeople
+        .filter(row => row.personId === personId && row.status !== "Completed" && row.status !== "Removed")
+        .forEach(row => hold(row.projectId, row.role));
+    projects
+        .filter(project => project.projectManagerId === personId)
+        .forEach(project => hold(project.id, "Project Manager"));
+    const organization = organizationRoles.filter(row => row.personId === personId).map(row => row.roleName);
+    return { organization, projectRoles, isAdmin: organization.includes(ADMINISTRATOR) };
+}
+
+function roleSummary(personId) {
+    const { organization, projectRoles } = rolesOf(personId);
+    return [
+        ...organization,
+        ...[...projectRoles].map(([projectId, held]) => `${[...held].join(" and ")} on ${displayOf("projects", projectId)}`)
+    ];
 }
 
 function projectTeam(projectId) {
@@ -4103,7 +4163,10 @@ app.get("/people/:id", async (req, res) => {
         record: person,
         itemPath: "/people",
         listPath: "/people",
-        extra: `<section class="panel"><h2>Sign-in accounts</h2>${accountList}</section>
+        extra: `<section class="panel"><h2>Roles</h2>${roleSummary(person.id).length
+            ? `<ul>${roleSummary(person.id).map(role => `<li>${esc(role)}</li>`).join("")}</ul>`
+            : `<p class="muted">No roles yet, so this person can't see any projects.</p>`}</section>
+        <section class="panel"><h2>Sign-in accounts</h2>${accountList}</section>
         <section class="panel">
             <h2>Projects</h2>
             <p>${roles.map(role => `<span class="tag">${role}</span>`).join(" ")}</p>

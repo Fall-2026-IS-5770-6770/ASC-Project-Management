@@ -43,18 +43,19 @@ model Person {
   address   Json?
   audit     Json?
 
-  managedProjects      Project[]       @relation("ProjectManager")
+  managedProjects      Project[]          @relation("ProjectManager")
   mentor               Mentor?
   student              Student?
   projectPeople        ProjectPerson[]
   personSkills         PersonSkill[]
   documents            Document[]
-  channels             Channel[]       @relation("ChannelParticipants")
+  channels             Channel[]          @relation("ChannelParticipants")
   threads              Thread[]
   messages             Message[]
-  assignedRequirements Requirement[]   @relation("RequirementAssignee")
-  mentoredRequirements Requirement[]   @relation("RequirementMentor")
+  assignedRequirements Requirement[]      @relation("RequirementAssignee")
+  mentoredRequirements Requirement[]      @relation("RequirementMentor")
   accounts             UserAccount[]
+  organizationRoles    OrganizationRole[]
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -186,8 +187,9 @@ model ProjectPerson {
   project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   personId       Int
   person         Person    @relation(fields: [personId], references: [id], onDelete: Restrict)
-  // Project Manager, Faculty Mentor, Student, or Sponsor
+  // A project role: Project Manager, Faculty Mentor, Student, or Sponsor
   role           String
+  projectRole    Role      @relation(fields: [role], references: [name], onDelete: Restrict, onUpdate: Cascade)
   startDate      DateTime? @db.Date
   endDate        DateTime? @db.Date
   assignedHours  Float?
@@ -348,4 +350,30 @@ model UserAccount {
   lastSignInAt      DateTime?
 
   @@unique([provider, providerAccountId])
+}
+
+// The five roles from the README. ASC Administrator is held across the whole
+// organization (OrganizationRole); the others are held on one project, as a
+// project person association (ProjectPerson.role) (Issue #124)
+model Role {
+  id          Int    @id @default(autoincrement())
+  name        String @unique
+  description String
+  // organization or project
+  scope       String
+
+  organizationRoles OrganizationRole[]
+  projectPeople     ProjectPerson[]
+}
+
+// An organization-wide role held by a person, such as ASC Administrator (Issue #124)
+model OrganizationRole {
+  id       Int    @id @default(autoincrement())
+  personId Int
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  roleName String
+  role     Role   @relation(fields: [roleName], references: [name], onDelete: Restrict, onUpdate: Cascade)
+  audit    Json?
+
+  @@unique([personId, roleName])
 }
