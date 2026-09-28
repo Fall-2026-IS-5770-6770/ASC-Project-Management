@@ -3808,6 +3808,9 @@ registerApi("/project-types", "projectTypes");
 // Issue #144: project type associations
 registerApi("/project-project-types", "projectProjectTypes");
 
+// Issue #145: clients
+registerApi("/clients", "clients");
+
 
 // ===== ERRORS (Issue #78) =====
 
