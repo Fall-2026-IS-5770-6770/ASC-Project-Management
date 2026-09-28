@@ -18,6 +18,7 @@ const skills = require("./data/skills.js");
 const projectTypes = require("./data/projectTypes.js");
 const projectSkills = require("./data/projectSkills.js");
 const personSkills = require("./data/personSkills.js");
+const projectProjectTypes = require("./data/projectProjectTypes.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -407,6 +408,23 @@ const ENTITIES = {
             ? [`A project type named ${type.name} already exists`]
             : []
     },
+    projectProjectTypes: {
+        label: "project type association",
+        plural: "project type associations",
+        store: projectProjectTypes,
+        display: row => `${displayOf("projects", row.projectId)}: ${displayOf("projectTypes", row.projectTypeId)}`,
+        fields: [
+            { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
+            { name: "projectTypeId", label: "Project type", type: "select", ref: "projectTypes", required: true, cascade: true },
+            { name: "isPrimary", label: "Primary type for this project", type: "checkbox" }
+        ],
+        validate: (row, existing) => projectProjectTypes.some(other => other !== existing
+            && other.projectId === row.projectId && other.projectTypeId === row.projectTypeId)
+            ? [`${displayOf("projects", row.projectId)} is already a ${displayOf("projectTypes", row.projectTypeId)} project`]
+            : [],
+        afterCreate: row => keepOnePrimaryType(row),
+        afterUpdate: row => keepOnePrimaryType(row)
+    },
     projectPeople: {
         label: "project assignment",
         plural: "project assignments",
@@ -786,6 +804,17 @@ function projectProgress(projectId) {
     }
     const done = projectRequirements.filter(requirement => isDoneStatus(requirement.statusId)).length;
     return Math.round((done / projectRequirements.length) * 100);
+}
+
+// Marking a type primary on a project un-marks the project's other types
+function keepOnePrimaryType(row) {
+    if (row.isPrimary) {
+        projectProjectTypes
+            .filter(other => other !== row && other.projectId === row.projectId)
+            .forEach(other => {
+                other.isPrimary = false;
+            });
+    }
 }
 
 function projectTeam(projectId) {
@@ -2155,37 +2184,69 @@ app.get("/project-types/:id", (req, res) => {
 });
 
 
-// ===== PROJECT TYPE ASSOCIATIONS (Issue #15) =====
-// Associates project types with a specific project (many-to-many)
+// ===== PROJECT TYPE ASSOCIATIONS (Issues #15, #32) =====
+// Associates project types with a specific project (many-to-many). One type
+// per project can be marked primary.
 
+NAV.push({ href: "/project-project-types", label: "Project type links" });
+
+function findProjectProjectType(req, res) {
+    const row = findById("projectProjectTypes", req.params.id);
+    if (!row) {
+        sendNotFound(res, "project type association", req.params.id);
+    }
+    return row;
+}
+
+// The create form lives in a modal on the list page
 app.get("/project-project-types/new", (req, res) => {
-    res.send("Send the page for associating a project type with a project");
+    res.redirect("/project-project-types");
 });
 
 app.post("/project-project-types/new", (req, res) => {
-    console.log(req.body);
-    res.send("Save the new project-project type association");
+    handleCreate("projectProjectTypes", req, res, { backHref: "/project-project-types", redirectTo: "/project-project-types" });
 });
 
 app.get("/project-project-types", (req, res) => {
-    res.send("Send all of the project-project type associations");
+    sendListPage(res, {
+        entityKey: "projectProjectTypes",
+        title: "Project type associations",
+        itemPath: "/project-project-types",
+        columns: [
+            { label: "Project", html: row => `<a href="/projects/${row.projectId}">${esc(displayOf("projects", row.projectId))}</a>` },
+            { label: "Project type", html: row => `<a href="/project-project-types/${row.id}">${esc(displayOf("projectTypes", row.projectTypeId))}</a>` },
+            { label: "Primary", html: row => (row.isPrimary ? `<span class="tag">Primary</span>` : "") }
+        ],
+        rows: [...projectProjectTypes].sort((a, b) => a.projectId - b.projectId || Number(b.isPrimary) - Number(a.isPrimary))
+    });
 });
 
 app.get("/project-project-types/edit/:id", (req, res) => {
-    res.send(`Send the edit page for project-project type association ${req.params.id}`);
+    const row = findProjectProjectType(req, res);
+    if (row) {
+        sendEditPage(res, { entityKey: "projectProjectTypes", record: row, itemPath: "/project-project-types", backHref: "/project-project-types" });
+    }
 });
 
 app.post("/project-project-types/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Save the edits to project-project type association ${req.params.id}`);
+    const row = findProjectProjectType(req, res);
+    if (row) {
+        handleUpdate("projectProjectTypes", req, res, { record: row, backHref: `/project-project-types/edit/${row.id}`, redirectTo: "/project-project-types" });
+    }
 });
 
 app.post("/project-project-types/delete/:id", (req, res) => {
-    res.send(`Delete project-project type association ${req.params.id}`);
+    const row = findProjectProjectType(req, res);
+    if (row) {
+        handleDelete("projectProjectTypes", req, res, { record: row, backHref: "/project-project-types", redirectTo: "/project-project-types" });
+    }
 });
 
 app.get("/project-project-types/:id", (req, res) => {
-    res.send(`Send project-project type association ${req.params.id}`);
+    const row = findProjectProjectType(req, res);
+    if (row) {
+        sendDetailPage(res, { entityKey: "projectProjectTypes", record: row, itemPath: "/project-project-types", listPath: "/project-project-types" });
+    }
 });
 
 
