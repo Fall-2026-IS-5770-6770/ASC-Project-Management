@@ -14,6 +14,8 @@ const projectPeople = require("./data/projectPeople.js");
 const projectStatuses = require("./data/projectStatuses.js");
 const requirements = require("./data/requirements.js");
 const channels = require("./data/channels.js");
+const skills = require("./data/skills.js");
+const projectTypes = require("./data/projectTypes.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -283,6 +285,37 @@ const ENTITIES = {
             && other.email.toLowerCase() === String(person.email).toLowerCase())
             ? [`Someone already uses the email ${person.email}`]
             : []
+    },
+    mentors: {
+        label: "mentor",
+        plural: "mentors",
+        store: mentors,
+        display: mentor => displayOf("people", mentor.personId),
+        fields: [
+            { name: "personId", label: "Person", type: "select", ref: "people", required: true },
+            { name: "department", label: "Department", type: "text" },
+            { name: "availability", label: "Availability", type: "text" },
+            { name: "maxProjectLoad", label: "Maximum project load", type: "number", min: 0 },
+            { name: "preferredProjectTypeId", label: "Preferred project type", type: "select", ref: "projectTypes" },
+            { name: "skillIds", label: "Skills", type: "multiselect", ref: "skills" }
+        ],
+        validate: (mentor, existing) => mentors.some(other => other !== existing && other.personId === mentor.personId)
+            ? [`${displayOf("people", mentor.personId)} is already a mentor`]
+            : []
+    },
+    skills: {
+        label: "skill",
+        plural: "skills",
+        store: skills,
+        display: skill => skill.name,
+        fields: []
+    },
+    projectTypes: {
+        label: "project type",
+        plural: "project types",
+        store: projectTypes,
+        display: type => type.name,
+        fields: []
     },
     projectPeople: {
         label: "project assignment",
@@ -1356,36 +1389,92 @@ app.get("/projects/:projectid/people/:id", (req, res) => {
 });
 
 
-// ===== MENTORS (Issue #4) =====
+// ===== MENTORS (Issues #4, #25) =====
+// A mentor is a person plus the mentor-only details. Deleting a mentor
+// removes the mentor record and leaves the person alone.
 
+NAV.push({ href: "/mentors", label: "Mentors" });
+
+function findMentor(req, res) {
+    const mentor = findById("mentors", req.params.id);
+    if (!mentor) {
+        sendNotFound(res, "mentor", req.params.id);
+    }
+    return mentor;
+}
+
+// Projects the person is actively mentoring right now
+function currentMentorLoad(personId) {
+    return projectPeople.filter(row => row.personId === personId && row.role === "Faculty Mentor" && row.status === "Active").length;
+}
+
+// The create form lives in a modal on the list page
 app.get("/mentors/new", (req, res) => {
-    res.send("Create mentors page");
+    res.redirect("/mentors");
 });
 
 app.post("/mentors/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new mentor");
+    handleCreate("mentors", req, res, { backHref: "/mentors", redirectTo: mentor => `/mentors/${mentor.id}` });
 });
 
 app.get("/mentors", (req, res) => {
-    res.send("Get all mentors");
+    sendListPage(res, {
+        entityKey: "mentors",
+        title: "Mentors",
+        itemPath: "/mentors",
+        intro: `<p class="muted">To add a mentor, pick someone from People and fill in their mentor details. Add them to <a href="/people">People</a> first if they aren't there yet.</p>`,
+        columns: [
+            { label: "Name", html: mentor => `<a href="/mentors/${mentor.id}">${esc(ENTITIES.mentors.display(mentor))}</a>` },
+            fieldColumn("mentors", "department"),
+            { label: "Project load", value: mentor => `${currentMentorLoad(mentor.personId)} of ${mentor.maxProjectLoad ?? "—"}` },
+            fieldColumn("mentors", "skillIds")
+        ],
+        rows: [...mentors].sort((a, b) => ENTITIES.mentors.display(a).localeCompare(ENTITIES.mentors.display(b)))
+    });
 });
 
 app.get("/mentors/edit/:id", (req, res) => {
-    res.send(`Edit mentor page for mentor ${req.params.id}`);
+    const mentor = findMentor(req, res);
+    if (mentor) {
+        sendEditPage(res, { entityKey: "mentors", record: mentor, itemPath: "/mentors", backHref: `/mentors/${mentor.id}` });
+    }
 });
 
 app.post("/mentors/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saving an edit on mentor ${req.params.id}`);
+    const mentor = findMentor(req, res);
+    if (mentor) {
+        handleUpdate("mentors", req, res, { record: mentor, backHref: `/mentors/edit/${mentor.id}`, redirectTo: `/mentors/${mentor.id}` });
+    }
 });
 
 app.post("/mentors/delete/:id", (req, res) => {
-    res.send(`Deleting mentor ${req.params.id}`);
+    const mentor = findMentor(req, res);
+    if (mentor) {
+        handleDelete("mentors", req, res, { record: mentor, backHref: `/mentors/${mentor.id}`, redirectTo: "/mentors" });
+    }
 });
 
 app.get("/mentors/:id", (req, res) => {
-    res.send(`Getting mentor ${req.params.id}`);
+    const mentor = findMentor(req, res);
+    if (!mentor) {
+        return;
+    }
+    const person = findById("people", mentor.personId);
+    const mentoring = projectPeople.filter(row => row.personId === mentor.personId && row.role === "Faculty Mentor");
+    sendDetailPage(res, {
+        entityKey: "mentors",
+        record: mentor,
+        itemPath: "/mentors",
+        listPath: "/mentors",
+        extra: `<section class="panel">
+            <h2>Contact</h2>
+            <p>${person ? `<a href="/people/${person.id}">${esc(person.email)}</a> · ${esc(person.phone || "no phone")}` : "—"}</p>
+            <h2>Projects mentored</h2>
+            ${mentoring.length
+        ? `<ul>${mentoring.map(row => `<li><a href="/projects/${row.projectId}">${esc(displayOf("projects", row.projectId))}</a> <span class="muted">— ${esc(row.status)}</span></li>`).join("")}</ul>`
+        : `<p class="muted">None yet.</p>`}
+        </section>`
+    });
 });
 
 
