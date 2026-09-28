@@ -13,9 +13,18 @@ datasource db {
 
 // Task statuses: the columns on a project workspace's board (Issue #40)
 model Status {
-  id          Int     @id @default(autoincrement())
+  id          Int    @id @default(autoincrement())
   name        String
   description String
+  order       Int?
+  audit       Json?
+}
+
+// Columns on the main board that every project appears on (Issue #42)
+model MainBoardStatus {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
   order       Int?
   audit       Json?
 }

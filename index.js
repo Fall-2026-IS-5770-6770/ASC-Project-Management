@@ -20,7 +20,7 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 // Each array is changed in place, so edits last until the server restarts.
 const projects = require("./data/projects.js");
 const statuses = databaseTable("statuses");
-const mainBoardStatuses = require("./data/mainBoardStatuses.js");
+const mainBoardStatuses = databaseTable("mainBoardStatuses");
 const clients = require("./data/clients.js");
 const people = require("./data/people.js");
 const mentors = require("./data/mentors.js");
@@ -940,13 +940,14 @@ const ENTITIES = {
         label: "main board status",
         plural: "main board statuses",
         store: mainBoardStatuses,
+        model: "mainBoardStatus",
         display: status => status.name,
         recordActor: true,
         sort: byOrder,
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
             { name: "description", label: "Description", type: "textarea" },
-            { name: "order", label: "Board order", type: "number", min: 0 }
+            { name: "order", label: "Board order", type: "number", min: 0, integer: true }
         ],
         defaults: () => ({ order: nextOrder(mainBoardStatuses) })
     },
