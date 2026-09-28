@@ -14,12 +14,23 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
+// Link a many-to-many relation to existing rows by id
+function connect(ids) {
+    return { connect: (ids || []).map(id => ({ id })) };
+}
+
 // In dependency order: a table only points at tables above it
 const tables = [
     { model: "status", table: "Status", rows: require("../data/statuses.js"), map: row => row },
     { model: "mainBoardStatus", table: "MainBoardStatus", rows: require("../data/mainBoardStatuses.js"), map: row => row },
     { model: "person", table: "Person", rows: require("../data/people.js"), map: row => row },
-    { model: "skill", table: "Skill", rows: require("../data/skills.js"), map: row => row }
+    { model: "skill", table: "Skill", rows: require("../data/skills.js"), map: row => row },
+    {
+        model: "projectType",
+        table: "ProjectType",
+        rows: require("../data/projectTypes.js"),
+        map: ({ typicalSkillIds, ...row }) => ({ ...row, typicalSkills: connect(typicalSkillIds) })
+    }
 ];
 
 async function seedTable({ model, table, rows, map }) {

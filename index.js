@@ -30,7 +30,7 @@ const projectStatuses = require("./data/projectStatuses.js");
 const requirements = require("./data/requirements.js");
 const channels = require("./data/channels.js");
 const skills = databaseTable("skills");
-const projectTypes = require("./data/projectTypes.js");
+const projectTypes = databaseTable("projectTypes");
 const projectSkills = require("./data/projectSkills.js");
 const personSkills = require("./data/personSkills.js");
 const projectProjectTypes = require("./data/projectProjectTypes.js");
@@ -1098,15 +1098,17 @@ const ENTITIES = {
         label: "project type",
         plural: "project types",
         store: projectTypes,
+        model: "projectType",
+        include: { typicalSkills: { select: { id: true } } },
         display: type => type.name,
         recordActor: true,
         sort: (a, b) => a.name.localeCompare(b.name),
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
             { name: "description", label: "Description", type: "textarea" },
-            { name: "typicalDurationWeeks", label: "Typical duration (weeks)", type: "number", min: 0 },
+            { name: "typicalDurationWeeks", label: "Typical duration (weeks)", type: "number", min: 0, integer: true },
             { name: "typicalDeliverables", label: "Typical deliverables", type: "list" },
-            { name: "typicalSkillIds", label: "Typical skills", type: "multiselect", ref: "skills" }
+            { name: "typicalSkillIds", label: "Typical skills", type: "multiselect", ref: "skills", relation: "typicalSkills" }
         ],
         validate: (type, existing) => projectTypes.some(other => other !== existing
             && other.name.toLowerCase() === String(type.name).toLowerCase())

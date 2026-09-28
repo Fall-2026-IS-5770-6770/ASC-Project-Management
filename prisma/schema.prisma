@@ -47,4 +47,17 @@ model Skill {
   category    String
   description String?
   audit       Json?
+
+  projectTypes ProjectType[] @relation("ProjectTypeSkills")
+}
+
+// Kinds of work a project can involve, such as Full-Stack or Data Visualization (Issue #50)
+model ProjectType {
+  id                   Int      @id @default(autoincrement())
+  name                 String   @unique
+  description          String?
+  typicalDurationWeeks Int?
+  typicalDeliverables  String[]
+  typicalSkills        Skill[]  @relation("ProjectTypeSkills")
+  audit                Json?
 }
