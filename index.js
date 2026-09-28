@@ -228,6 +228,23 @@ const ENTITIES = {
         ],
         defaults: () => ({ order: nextOrder(statuses) })
     },
+    projectStatuses: {
+        label: "project status",
+        plural: "project statuses",
+        store: projectStatuses,
+        display: row => `${displayOf("statuses", row.statusId)} on ${displayOf("projects", row.projectId)}`,
+        fields: [
+            { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
+            { name: "statusId", label: "Status", type: "select", ref: "statuses", required: true },
+            { name: "order", label: "Column order", type: "number", min: 0 }
+        ],
+        defaults: row => ({ order: nextOrder(projectStatuses.filter(other => other.projectId === row.projectId)) }),
+        // A project can't list the same status twice
+        validate: (row, existing) => projectStatuses.some(other => other !== existing
+            && other.projectId === row.projectId && other.statusId === row.statusId)
+            ? [`${displayOf("projects", row.projectId)} already uses the ${displayOf("statuses", row.statusId)} status`]
+            : []
+    },
     mainBoardStatuses: {
         label: "main board status",
         plural: "main board statuses",
@@ -455,7 +472,7 @@ function parseRecord(entityKey, input = {}, { partial = false, omit = [] } = {})
 
 function createRecord(entityKey, data) {
     const entity = ENTITIES[entityKey];
-    const defaults = entity.defaults ? entity.defaults() : {};
+    const defaults = entity.defaults ? entity.defaults(data) : {};
     const values = { ...data };
     for (const [key, value] of Object.entries(defaults)) {
         if (values[key] === null || values[key] === undefined) {
@@ -1106,39 +1123,118 @@ app.get("/main-board-statuses/:id", (req, res) => {
 });
 
 
-// ===== PROJECT STATUSES (Issue #3) =====
-// Associates statuses with a specific project
+// ===== PROJECT STATUSES (Issues #3, #22) =====
+// Associates statuses with a specific project. A project's associations, in
+// order, are the columns on the task board in its workspace.
+
+NAV.push({ href: "/project-statuses", label: "Project statuses" });
+
+function projectStatusColumns() {
+    return [
+        { label: "Project", html: row => `<a href="/projects/${row.projectId}/statuses">${esc(displayOf("projects", row.projectId))}</a>` },
+        { label: "Status", html: row => `<a href="/projects/${row.projectId}/statuses/${row.id}">${esc(displayOf("statuses", row.statusId))}</a>` },
+        fieldColumn("projectStatuses", "order", "Column order")
+    ];
+}
+
+function projectStatusActions(row) {
+    return recordActions("projectStatuses", `/projects/${row.projectId}/statuses`, row);
+}
+
+function sortedProjectStatuses(rows) {
+    return [...rows].sort((a, b) => a.projectId - b.projectId || a.order - b.order);
+}
+
+function findProjectStatus(req) {
+    const row = findById("projectStatuses", req.params.id);
+    return row && row.projectId === Number(req.params.projectid) ? row : undefined;
+}
+
+// View every project status association
+app.get("/project-statuses", (req, res) => {
+    sendListPage(res, {
+        entityKey: "projectStatuses",
+        title: "Project statuses",
+        itemPath: "/project-statuses",
+        intro: `<p class="muted">Each project picks its own statuses. In order, they are the columns on that project's task board.</p>`,
+        body: recordTable(projectStatusColumns(), sortedProjectStatuses(projectStatuses), projectStatusActions)
+    });
+});
+
+// Save an association picked from the project and status dropdowns
+app.post("/project-statuses/new", (req, res) => {
+    handleCreate("projectStatuses", req, res, { backHref: "/project-statuses", redirectTo: "/project-statuses" });
+});
 
 // View all statuses used by a project
 app.get("/projects/:projectid/statuses", (req, res) => {
-    res.send(`Show all statuses associated with project ${req.params.projectid}`);
+    const project = findById("projects", req.params.projectid);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.projectid);
+    }
+    sendListPage(res, {
+        entityKey: "projectStatuses",
+        title: `Statuses for ${project.name}`,
+        itemPath: `/projects/${project.id}/statuses`,
+        intro: `<p><a href="/projects/${project.id}">Back to ${esc(project.name)}</a> · <a href="/project-statuses">All project statuses</a></p>`,
+        body: recordTable(projectStatusColumns(), sortedProjectStatuses(projectStatuses.filter(row => row.projectId === project.id)), projectStatusActions),
+        createOptions: { omit: ["projectId"] }
+    });
 });
 
-// Form to add a status to a project
+// The create form lives in a modal on the list page
 app.get("/projects/:projectid/statuses/new", (req, res) => {
-    res.send(`Show the form for adding a status to project ${req.params.projectid}`);
+    res.redirect(`/projects/${req.params.projectid}/statuses`);
 });
 
 // Save a status added to a project
 app.post("/projects/:projectid/statuses/new", (req, res) => {
-    console.log(req.body);
-    res.send(`Saved a new status for project ${req.params.projectid}`);
+    const project = findById("projects", req.params.projectid);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.projectid);
+    }
+    const back = `/projects/${project.id}/statuses`;
+    handleCreate("projectStatuses", req, res, { input: { ...req.body, projectId: project.id }, backHref: back, redirectTo: back });
 });
 
 // Form to update a project's status (e.g. its order in the workflow)
 app.get("/projects/:projectid/statuses/edit/:id", (req, res) => {
-    res.send(`Show the form for editing status association ${req.params.id} on project ${req.params.projectid}`);
+    const row = findProjectStatus(req);
+    if (!row) {
+        return sendNotFound(res, "project status association", req.params.id);
+    }
+    sendEditPage(res, { entityKey: "projectStatuses", record: row, itemPath: `/projects/${row.projectId}/statuses`, backHref: `/projects/${row.projectId}/statuses` });
 });
 
 // Save the updated project status
 app.post("/projects/:projectid/statuses/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saved edits to status association ${req.params.id} on project ${req.params.projectid}`);
+    const row = findProjectStatus(req);
+    if (!row) {
+        return sendNotFound(res, "project status association", req.params.id);
+    }
+    handleUpdate("projectStatuses", req, res, {
+        record: row,
+        backHref: `/projects/${row.projectId}/statuses/edit/${row.id}`,
+        redirectTo: saved => `/projects/${saved.projectId}/statuses`
+    });
 });
 
 // Remove a status from a project
 app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
-    res.send(`Removed status association ${req.params.id} from project ${req.params.projectid}`);
+    const row = findProjectStatus(req);
+    if (!row) {
+        return sendNotFound(res, "project status association", req.params.id);
+    }
+    handleDelete("projectStatuses", req, res, { record: row, backHref: `/projects/${row.projectId}/statuses`, redirectTo: `/projects/${row.projectId}/statuses` });
+});
+
+// View one status association on a project
+app.get("/projects/:projectid/statuses/:id", (req, res) => {
+    const row = findProjectStatus(req);
+    if (!row) {
+        return sendNotFound(res, "project status association", req.params.id);
+    }
+    sendDetailPage(res, { entityKey: "projectStatuses", record: row, itemPath: `/projects/${row.projectId}/statuses`, listPath: "/project-statuses" });
 });
 
 
