@@ -146,6 +146,44 @@ const ErrorLog = logModel("ErrorLog", {
 });
 
 
+// Log writers subscribe to the changes recorded for a resource. Each listener
+// gets the change history entry (action, actorPersonId, changes) and the record.
+const CHANGE_LISTENERS = {};
+
+function onChange(entityKey, listener) {
+    (CHANGE_LISTENERS[entityKey] = CHANGE_LISTENERS[entityKey] || []).push(listener);
+}
+
+// Issue #79: every move of a project between main board columns
+const ProjectStatusLog = logModel("ProjectStatusLog", {
+    projectId: { type: Number, required: true, index: true },
+    projectName: String,
+    fromStatusId: { type: Number, default: null },
+    fromStatus: { type: String, default: null },
+    toStatusId: { type: Number, required: true },
+    toStatus: String
+});
+
+onChange("projects", (entry, project) => {
+    const move = entry.action === "created"
+        ? { from: null, to: project.mainBoardStatusId }
+        : entry.changes.mainBoardStatusId;
+    if (!move || (entry.action !== "created" && entry.action !== "updated")) {
+        return;
+    }
+    writeLog(ProjectStatusLog, {
+        action: entry.action === "created" ? "created" : "status changed",
+        projectId: project.id,
+        projectName: project.name,
+        fromStatusId: move.from,
+        fromStatus: move.from == null ? null : displayOf("mainBoardStatuses", move.from),
+        toStatusId: move.to,
+        toStatus: displayOf("mainBoardStatuses", move.to),
+        actorPersonId: entry.actorPersonId
+    });
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
@@ -994,6 +1032,7 @@ function recordChange(entityKey, action, record, actorId, changes) {
         changes: changes || {}
     };
     changeHistory.push(entry);
+    (CHANGE_LISTENERS[entityKey] || []).forEach(listener => listener(entry, record));
     return entry;
 }
 
