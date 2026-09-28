@@ -3790,6 +3790,9 @@ registerApi("/mentors", "mentors");
 // Issue #138: students
 registerApi("/students", "students");
 
+// Issue #139: project person associations (who is on which project)
+registerApi("/project-people", "projectPeople");
+
 
 // ===== ERRORS (Issue #78) =====
 
