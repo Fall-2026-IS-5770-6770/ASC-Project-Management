@@ -1868,7 +1868,16 @@ const PROJECT_ROLE_PERMISSIONS = {
         "details:view", "details:manage",
         "activity:view"
     ],
-    "Faculty Mentor": PROJECT_ACTIONS,
+    // Issue #127: oversees and advises: follows the project's activity and
+    // progress, takes part in its channels, and reviews tasks (moving them
+    // between columns), with none of the project manager's abilities
+    "Faculty Mentor": [
+        "project:view", "team:view", "board:view",
+        "tasks:view", "tasks:review",
+        "channels:view", "channels:participate",
+        "documents:view", "details:view",
+        "activity:view"
+    ],
     "Student": PROJECT_ACTIONS,
     "Sponsor": PROJECT_ACTIONS
 };
