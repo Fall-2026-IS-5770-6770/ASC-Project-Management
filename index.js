@@ -1363,17 +1363,78 @@ app.get("/projects/:projectid/statuses/:id", (req, res) => {
 });
 
 
-// ===== PROJECT PEOPLE (Issue #12) =====
-// Associates people (mentors and students) with a specific project
+// ===== PROJECT PEOPLE (Issues #12, #27) =====
+// Associates people (mentors and students) with a specific project. These
+// rows decide who gets access to a project's workspace. The add mentor / add
+// student modals on the project edit page write the same kind of record.
+
+NAV.push({ href: "/project-people", label: "Project people" });
+
+function projectPersonColumns() {
+    return [
+        { label: "Project", html: row => `<a href="/projects/${row.projectId}/people">${esc(displayOf("projects", row.projectId))}</a>` },
+        { label: "Person", html: row => `<a href="/projects/${row.projectId}/people/${row.id}">${esc(displayOf("people", row.personId))}</a>` },
+        fieldColumn("projectPeople", "role"),
+        fieldColumn("projectPeople", "status"),
+        { label: "Dates", value: row => `${row.startDate || "?"} to ${row.endDate || "?"}` },
+        fieldColumn("projectPeople", "assignedHours", "Hours")
+    ];
+}
+
+function projectPersonActions(row) {
+    return recordActions("projectPeople", `/projects/${row.projectId}/people`, row);
+}
+
+function sortedProjectPeople(rows) {
+    return [...rows].sort((a, b) => a.projectId - b.projectId
+        || PROJECT_ROLES.indexOf(a.role) - PROJECT_ROLES.indexOf(b.role)
+        || displayOf("people", a.personId).localeCompare(displayOf("people", b.personId)));
+}
+
+function findProjectPerson(req, res) {
+    const row = findById("projectPeople", req.params.id);
+    if (!row || row.projectId !== Number(req.params.projectid)) {
+        sendNotFound(res, "project person association", req.params.id);
+        return undefined;
+    }
+    return row;
+}
+
+// Standalone admin view of every association
+app.get("/project-people", (req, res) => {
+    sendListPage(res, {
+        entityKey: "projectPeople",
+        title: "Project people",
+        itemPath: "/project-people",
+        intro: `<p class="muted">Everyone listed on a project can reach that project's workspace once it is set up.</p>`,
+        body: recordTable(projectPersonColumns(), sortedProjectPeople(projectPeople), projectPersonActions)
+    });
+});
+
+// Save an association picked from the project and person dropdowns
+app.post("/project-people/new", (req, res) => {
+    handleCreate("projectPeople", req, res, { backHref: "/project-people", redirectTo: "/project-people" });
+});
 
 // View all people associated with a project
 app.get("/projects/:projectid/people", (req, res) => {
-    res.send(`Show all people associated with project ${req.params.projectid}`);
+    const project = findById("projects", req.params.projectid);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.projectid);
+    }
+    sendListPage(res, {
+        entityKey: "projectPeople",
+        title: `People on ${project.name}`,
+        itemPath: `/projects/${project.id}/people`,
+        intro: `<p><a href="/projects/${project.id}">Back to ${esc(project.name)}</a> · <a href="/project-people">All project people</a></p>`,
+        body: recordTable(projectPersonColumns(), sortedProjectPeople(projectPeople.filter(row => row.projectId === project.id)), projectPersonActions),
+        createOptions: { omit: ["projectId"] }
+    });
 });
 
-// Form to create a relationship
+// The create form lives in a modal on the list page
 app.get("/projects/:projectid/people/new", (req, res) => {
-    res.send(`Show the form for adding a person to project ${req.params.projectid}`);
+    res.redirect(`/projects/${req.params.projectid}/people`);
 });
 
 // Save new relationship (also used by the add mentor / add student modals on the project edit page)
@@ -1392,28 +1453,39 @@ app.post("/projects/:projectid/people/new", (req, res) => {
 
 // Form to edit a relationship
 app.get("/projects/:projectid/people/edit/:id", (req, res) => {
-    res.send(`Show the form for editing relationship ${req.params.id} on project ${req.params.projectid}`);
+    const row = findProjectPerson(req, res);
+    if (row) {
+        sendEditPage(res, { entityKey: "projectPeople", record: row, itemPath: `/projects/${row.projectId}/people`, backHref: `/projects/${row.projectId}/people` });
+    }
 });
 
 // Save edited relationship
 app.post("/projects/:projectid/people/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saved edits to relationship ${req.params.id} on project ${req.params.projectid}`);
+    const row = findProjectPerson(req, res);
+    if (row) {
+        handleUpdate("projectPeople", req, res, {
+            record: row,
+            backHref: `/projects/${row.projectId}/people/edit/${row.id}`,
+            redirectTo: saved => `/projects/${saved.projectId}/people`
+        });
+    }
 });
 
 // Delete a relationship
 app.post("/projects/:projectid/people/delete/:id", (req, res) => {
-    const row = findById("projectPeople", req.params.id);
-    if (!row || row.projectId !== Number(req.params.projectid)) {
-        return sendNotFound(res, "project assignment", req.params.id);
+    const row = findProjectPerson(req, res);
+    if (row) {
+        deleteRecord("projectPeople", row);
+        redirectBack(res, req.body.returnTo, `/projects/${row.projectId}/people`);
     }
-    deleteRecord("projectPeople", row);
-    redirectBack(res, req.body.returnTo, `/projects/${row.projectId}/people`);
 });
 
 // View a specific relationship
 app.get("/projects/:projectid/people/:id", (req, res) => {
-    res.send(`Show relationship ${req.params.id} between a person and project ${req.params.projectid}`);
+    const row = findProjectPerson(req, res);
+    if (row) {
+        sendDetailPage(res, { entityKey: "projectPeople", record: row, itemPath: `/projects/${row.projectId}/people`, listPath: "/project-people" });
+    }
 });
 
 
