@@ -125,6 +125,14 @@ staff and admins.
 - Every other page goes on `/manage`, grouped in `MANAGE_GROUPS` with a
   one-line description. When you add a page, `NAV.push` it and add it to a
   group there; don't put it in the top bar.
+- **Chat** is a Slack-style workspace per project at `/projects/:id/workspace`
+  (the PROJECT WORKSPACE (chat) section).
+  - Channels and threads are in the left sidebar; the selected thread's
+    messages fill the main pane, with the composer at the bottom.
+  - `WORKSPACE_SCRIPT` swaps the pane using `?partial=1`, and everything still
+    works without JavaScript.
+  - `/messages` lists your workspaces. `threadUrl(thread)` is the link to use
+    for any thread.
 - Possible next UX work:
   - Breadcrumbs on the detail and edit pages.
   - Drag and drop on the boards.
@@ -135,7 +143,7 @@ staff and admins.
 
 - 2026-09-28: first pass of all tickets, then Prisma, Docker, dummy sign-in and
   roles, then messages moved to Mongo, then the navigation cleanup (top bar plus
-  the /manage hub).
+  the /manage hub), then the Slack-style project workspace for chat.
 - **Open question for the owner:** the working tree has an uncommitted change
   to package.json and package-lock.json that downgrades the Prisma CLI to
   ^6.19.3 (the result of `npm audit fix --force`); it wasn't made by Claude.
