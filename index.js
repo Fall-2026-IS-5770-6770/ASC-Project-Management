@@ -254,6 +254,13 @@ function logRecordChanges(modelName, entityKey, idField, { ignore = [], fields =
 logRecordChanges("SkillUpdateLog", "skills", "skillId");
 
 
+// Issue #82: changes to a student's availability, hours, graduation date, approval, and so on
+logRecordChanges("StudentProfileLog", "students", "studentId", {
+    fields: { personId: { type: Number, index: true } },
+    extra: student => ({ personId: student.personId })
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
