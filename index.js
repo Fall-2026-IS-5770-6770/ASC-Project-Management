@@ -3784,6 +3784,9 @@ registerApi("/main-board-statuses", "mainBoardStatuses");
 // Issue #136: people
 registerApi("/people", "people");
 
+// Issue #137: mentors
+registerApi("/mentors", "mentors");
+
 
 // ===== ERRORS (Issue #78) =====
 
