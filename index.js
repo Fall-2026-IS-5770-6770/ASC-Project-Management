@@ -834,20 +834,76 @@ const STYLES = `
     ul.threads { list-style: none; padding: 0; margin: 0; }
     li.thread { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid var(--line); }
     .thread-link { font-weight: 600; }
-    .chat { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1rem; }
-    .msg { max-width: min(640px, 85%); background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: .5rem .75rem; align-self: flex-start; }
-    .msg.mine { align-self: flex-end; background: #e8f0fb; border-color: #c7d7f0; }
-    .msg header { display: flex; gap: .5rem; align-items: baseline; font-size: .85rem; }
-    .msg p { margin: .3rem 0; white-space: pre-wrap; }
     .edit-in-place summary { list-style: none; cursor: pointer; font-size: .85rem; }
     .edit-in-place summary::-webkit-details-marker { display: none; }
     .edit-in-place[open] { flex-basis: 100%; }
-    .composer { display: flex; gap: .5rem; align-items: flex-end; }
-    .composer textarea { flex: 1; }
     .signin { max-width: 520px; margin: 2rem auto; }
     ul.plain { list-style: none; padding: 0; display: grid; gap: .35rem; }
     .signin-button { display: inline-block; padding: .6rem 1rem; border: 1px solid var(--accent); border-radius: 6px; background: #fff; font-weight: 600; text-decoration: none; margin-right: .5rem; }
     .signin-button:hover { background: var(--accent); color: #fff; }
+    .workspace-list { list-style: none; padding: 0; display: grid; gap: .5rem; }
+    .workspace-list li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .75rem 1rem; display: flex; flex-wrap: wrap; gap: .25rem 1rem; align-items: baseline; }
+    main:has(.workspace) { max-width: none; padding: 0; }
+    main:has(.workspace) > .flash { margin: .5rem 1rem; }
+    .workspace { display: grid; grid-template-columns: 270px 1fr; height: calc(100vh - 3.25rem); }
+    .ws-sidebar { background: #1f2a44; color: #d6dcec; overflow-y: auto; padding: .75rem 0; }
+    .ws-sidebar a { color: inherit; text-decoration: none; }
+    .ws-project { padding: .25rem 1rem .9rem; border-bottom: 1px solid rgba(255, 255, 255, .1); margin-bottom: .5rem; display: grid; }
+    .ws-project a { color: #fff; font-weight: 700; font-size: 1.05rem; }
+    .ws-project span { font-size: .8rem; opacity: .7; }
+    .ws-channels, .ws-threads { list-style: none; margin: 0; padding: 0; }
+    .ws-channel { margin-bottom: .6rem; }
+    .ws-channel-link { display: block; padding: .3rem 1rem; font-weight: 600; color: #fff !important; }
+    .ws-threads a { display: flex; justify-content: space-between; gap: .5rem; padding: .25rem 1rem .25rem 1.9rem; font-size: .92rem; }
+    .ws-sidebar a:hover { background: rgba(255, 255, 255, .08); }
+    .ws-sidebar a[aria-current="page"] { background: #3b5bdb; color: #fff; }
+    .ws-thread-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ws-count { font-size: .75rem; opacity: .7; }
+    .ws-new-thread { padding: .15rem 1rem .15rem 1.9rem; font-size: .85rem; }
+    .ws-new-thread summary { cursor: pointer; opacity: .75; list-style: none; }
+    .ws-new-thread summary:hover { opacity: 1; }
+    .ws-new-thread form { display: flex; gap: .3rem; margin-top: .35rem; }
+    .ws-new-thread input { flex: 1; min-width: 0; padding: .25rem .4rem; }
+    .ws-new-thread button { padding: .25rem .5rem; }
+    .ws-pane { display: flex; flex-direction: column; min-width: 0; background: #fff; }
+    .ws-pane-header { padding: .75rem 1.25rem; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: .25rem 1rem; align-items: baseline; }
+    .ws-pane-header h1 { font-size: 1.15rem; margin: 0; }
+    .ws-pane-header h1 a { color: inherit; text-decoration: none; }
+    .ws-pane-header h1 a:hover { text-decoration: underline; }
+    .ws-sep { color: var(--muted); font-weight: normal; }
+    .ws-scroll { flex: 1; overflow-y: auto; padding: .5rem 0 1rem; }
+    .ws-empty { padding: 1rem 1.25rem; }
+    .ws-day { display: flex; align-items: center; gap: .75rem; margin: 1rem 1.25rem .25rem; font-size: .8rem; font-weight: 600; color: var(--muted); }
+    .ws-day::before, .ws-day::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+    .ws-message { display: grid; grid-template-columns: 2.5rem 1fr auto; gap: 0 .75rem; padding: .35rem 1.25rem; align-items: start; }
+    .ws-message:hover { background: #f6f7f9; }
+    .ws-continued { padding-top: .05rem; padding-bottom: .05rem; }
+    .ws-avatar { width: 2.25rem; height: 2.25rem; border-radius: 6px; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: .85rem; }
+    .ws-gutter-time { font-size: .7rem; color: var(--muted); visibility: hidden; text-align: right; padding-top: .2rem; }
+    .ws-continued:hover .ws-gutter-time { visibility: visible; }
+    .ws-message-body header { display: flex; gap: .5rem; align-items: baseline; }
+    .ws-message-body header time { font-size: .75rem; color: var(--muted); }
+    .ws-message-body p { margin: .1rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .ws-edited { font-size: .75rem; color: var(--muted); }
+    .ws-message-actions { display: flex; gap: .25rem; align-items: start; visibility: hidden; font-size: .85rem; }
+    .ws-message:hover .ws-message-actions, .ws-message-actions:focus-within, .ws-message-actions details[open] { visibility: visible; }
+    .ws-message-actions summary { cursor: pointer; list-style: none; padding: .15rem .4rem; border-radius: 4px; }
+    .ws-message-actions summary:hover { background: var(--column); }
+    .ws-message-actions details[open] { grid-column: 1 / -1; }
+    .ws-composer { margin: 0 1.25rem 1rem; border: 1px solid #b8c0cc; border-radius: 8px; display: grid; grid-template-columns: 1fr auto; gap: .25rem .5rem; padding: .5rem; }
+    .ws-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(15, 61, 122, .15); }
+    .ws-composer textarea { border: none; resize: none; min-height: 2.2rem; max-height: 10rem; field-sizing: content; }
+    .ws-composer textarea:focus { outline: none; }
+    .ws-hint { grid-column: 1 / -1; font-size: .75rem; }
+    .ws-readonly { margin: 0 1.25rem 1rem; }
+    .ws-thread-cards { list-style: none; margin: 0; padding: .5rem 1.25rem; display: grid; gap: .5rem; }
+    .ws-thread-cards a { display: grid; gap: .15rem; padding: .75rem 1rem; border: 1px solid var(--line); border-radius: 8px; color: inherit; text-decoration: none; }
+    .ws-thread-cards a:hover { border-color: var(--accent); background: #f6f8fc; }
+    @media (max-width: 720px) {
+        .workspace { grid-template-columns: 1fr; height: auto; }
+        .ws-sidebar { max-height: 40vh; }
+        .ws-pane { min-height: 70vh; }
+    }
     .tag { display: inline-block; background: var(--column); border-radius: 999px; padding: .05rem .5rem; font-size: .8rem; }
 `;
 
@@ -946,6 +1002,14 @@ function isCurrent(path, matches) {
     return matches.some(prefix => (prefix === "/" ? path === "/" : path === prefix || path.startsWith(`${prefix}/`)));
 }
 
+// A project's workspace belongs under Messages, not Board
+function currentPrimary(path) {
+    if (/^\/projects\/\d+\/workspace/.test(path)) {
+        return "/messages";
+    }
+    return PRIMARY_NAV.find(link => isCurrent(path, link.matches))?.href;
+}
+
 // Manage is for people who run projects; sponsors and people without roles
 // already reach everything they can see from the top bar
 function manageLinks() {
@@ -961,8 +1025,9 @@ function topNavigation(path) {
     }
     const primary = PRIMARY_NAV.filter(link => navVisible(link));
     const managePaths = ["/manage", ...manageLinks().map(link => link.href.replace(/\/all$/, ""))];
-    const onPrimary = primary.some(link => isCurrent(path, link.matches));
-    const links = primary.map(link => `<a href="${esc(link.href)}"${isCurrent(path, link.matches) ? ` aria-current="page"` : ""}>${esc(link.label)}</a>`);
+    const current = currentPrimary(path);
+    const onPrimary = Boolean(current);
+    const links = primary.map(link => `<a href="${esc(link.href)}"${link.href === current ? ` aria-current="page"` : ""}>${esc(link.label)}</a>`);
     if (manageLinks().length) {
         links.push(`<a href="/manage"${!onPrimary && isCurrent(path, managePaths) ? ` aria-current="page"` : ""}>Manage</a>`);
     }
@@ -2451,7 +2516,7 @@ function mayMoveTo(entityKey, record, data) {
 }
 
 // Shared POST handlers. Each takes the paths to send the user to afterwards.
-async function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.body, omit = [] }) {
+async function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.body, omit = [], quiet = false }) {
     const { data, errors } = parseRecord(entityKey, input, { omit });
     if (!errors.length && !allowed(entityKey, "create", data)) {
         return sendForbidden(res);
@@ -2460,11 +2525,13 @@ async function handleCreate(entityKey, req, res, { backHref, redirectTo, input =
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
-    flash(req, "success", `Created ${ENTITIES[entityKey].label} ${ENTITIES[entityKey].display(result.record)}.`);
+    if (!quiet) {
+        flash(req, "success", `Created ${ENTITIES[entityKey].label} ${ENTITIES[entityKey].display(result.record)}.`);
+    }
     res.redirect(typeof redirectTo === "function" ? redirectTo(result.record) : redirectTo);
 }
 
-async function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input = req.body, omit = [], permit = allowed(entityKey, "update", record) }) {
+async function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input = req.body, omit = [], permit = allowed(entityKey, "update", record), quiet = false }) {
     const { data, errors } = parseRecord(entityKey, input, { omit });
     if (!permit || (!errors.length && !mayMoveTo(entityKey, record, data))) {
         return sendForbidden(res);
@@ -2474,11 +2541,13 @@ async function handleUpdate(entityKey, req, res, { record, backHref, redirectTo,
         return sendErrors(res, result.errors, backHref);
     }
     console.log(`Updated ${ENTITIES[entityKey].label} ${record.id}: ${ENTITIES[entityKey].display(record)}`);
-    flash(req, "success", `Saved changes to ${ENTITIES[entityKey].display(record)}.`);
+    if (!quiet) {
+        flash(req, "success", `Saved changes to ${ENTITIES[entityKey].display(record)}.`);
+    }
     res.redirect(typeof redirectTo === "function" ? redirectTo(record) : redirectTo);
 }
 
-async function handleDelete(entityKey, req, res, { record, backHref, redirectTo }) {
+async function handleDelete(entityKey, req, res, { record, backHref, redirectTo, quiet = false }) {
     if (!allowed(entityKey, "delete", record)) {
         return sendForbidden(res);
     }
@@ -2486,7 +2555,9 @@ async function handleDelete(entityKey, req, res, { record, backHref, redirectTo 
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
-    flash(req, "success", `Deleted ${ENTITIES[entityKey].display(record)}.`);
+    if (!quiet) {
+        flash(req, "success", `Deleted ${ENTITIES[entityKey].display(record)}.`);
+    }
     res.redirect(redirectTo);
 }
 
@@ -3001,7 +3072,8 @@ app.get("/projects/:id", (req, res) => {
     const money = value => (value == null ? "—" : `$${Number(value).toLocaleString("en-US")}`);
 
     const workspace = hasWorkspace
-        ? `<p><a href="/requirements?projectId=${project.id}"><button type="button">Open the task board</button></a></p>
+        ? `<p class="actions"><a href="/requirements?projectId=${project.id}"><button type="button">Open the task board</button></a>
+           ${channels.some(channel => channel.projectId === project.id) ? `<a href="/projects/${project.id}/workspace"><button type="button" class="secondary">Open the workspace</button></a>` : ""}</p>
            <p><strong>Board columns:</strong> ${columns.map(row => `<span class="tag">${esc(displayOf("statuses", row.statusId))}</span>`).join(" ") || "—"}</p>
            <p><strong>Channels:</strong></p>
            <ul>${projectChannels.map(channel => `<li><a href="/channels/${channel.id}">#${esc(channel.name)}</a> <span class="muted">(${channel.participantPersonIds.length} member${channel.participantPersonIds.length === 1 ? "" : "s"})</span></li>`).join("") || "<li class=\"muted\">None</li>"}</ul>`
@@ -3784,7 +3856,7 @@ app.post("/threads/new", (req, res) => {
     return handleCreate("threads", req, res, {
         input: { ...req.body, createdByPersonId: actingPersonId(req) },
         backHref: "/threads",
-        redirectTo: thread => `/threads/${thread.id}`
+        redirectTo: thread => (req.body.returnTo === "workspace" ? threadUrl(thread) : `/threads/${thread.id}`)
     });
 });
 
@@ -3857,7 +3929,7 @@ app.get("/threads/:id", (req, res) => {
                 <dt>Messages</dt><dd>${count}</dd>
             </dl>
         </section>
-        <p><a href="/messages?threadId=${thread.id}"><button type="button">Open the conversation</button></a></p>
+        <p><a href="${esc(threadUrl(thread))}"><button type="button">Open in the workspace</button></a></p>
         <p><a href="/threads?channelId=${thread.channelId}">Back to the channel's threads</a></p>
     `);
 });
@@ -3887,73 +3959,30 @@ function requireSender(req, res, message) {
     return true;
 }
 
-function messageBubble(message, currentId) {
-    const isMine = message.senderPersonId === currentId;
-    const edited = message.editedAt ? ` <span class="muted" title="Edited ${esc(fieldText({ type: "datetime" }, message.editedAt))}">(edited)</span>` : "";
-    const controls = isMine && allowed("messages", "update", message)
-        ? `<div class="row-actions">
-            <details class="edit-in-place">
-                <summary class="icon-btn" title="Edit message" aria-label="Edit message">Edit</summary>
-                <form method="POST" action="/messages/edit/${message.id}" class="stack">
-                    <textarea name="body" rows="3" required aria-label="Message">${esc(message.body)}</textarea>
-                    <div class="actions"><button type="submit">Save</button></div>
-                </form>
-            </details>
-            ${deleteButton(`/messages/delete/${message.id}`, "this message")}
-        </div>`
-        : "";
-    return `<article class="msg${isMine ? " mine" : ""}" id="message-${message.id}">
-        <header><strong>${esc(displayOf("people", message.senderPersonId))}</strong>
-            <span class="muted">${esc(fieldText({ type: "datetime" }, message.postedAt))}</span>${edited}</header>
-        <p>${esc(message.body)}</p>
-        ${controls}
-    </article>`;
-}
-
-function conversation(threadMessages, currentId) {
-    const ordered = [...threadMessages].sort((a, b) => String(a.postedAt).localeCompare(String(b.postedAt)));
-    return ordered.length
-        ? `<div class="chat">${ordered.map(message => messageBubble(message, currentId)).join("")}</div>`
-        : `<p class="muted">No messages yet. Say hello below.</p>`;
-}
-
-// View all messages, a conversation per thread. ?threadId= shows one thread
-// with the textbox for posting to it.
+// Messages live in each project's workspace. /messages lists the workspaces
+// the person can open, and older links to a thread go straight to it.
 app.get("/messages", (req, res) => {
+    if (req.query.threadId) {
+        const thread = findById("threads", req.query.threadId);
+        return thread ? res.redirect(threadUrl(thread)) : sendNotFound(res, "thread", req.query.threadId);
+    }
     if (!mongoAvailable()) {
         return sendPage(res, "Messages unavailable", `<h1>Messages unavailable</h1><div class="errors">Messages are stored in MongoDB, which isn't connected right now. Check MONGODB_URI and that the container is running.</div>`, 503);
     }
-    const currentId = actingPersonId(req);
-    const thread = req.query.threadId ? findById("threads", req.query.threadId) : undefined;
-    if (req.query.threadId && !thread) {
-        return sendNotFound(res, "thread", req.query.threadId);
-    }
-
-    if (thread) {
-        return sendPage(res, thread.name, `
-            <h1>${esc(thread.name)}</h1>
-            <p class="muted"><a href="/channels/${thread.channelId}">${esc(displayOf("channels", thread.channelId))}</a> · <a href="/threads?channelId=${thread.channelId}">All threads in this channel</a></p>
-            <section class="panel">
-                ${conversation(messages.filter(message => message.threadId === thread.id), currentId)}
-                ${allowed("messages", "create", { threadId: thread.id, channelId: thread.channelId }) ? `<form method="POST" action="/messages/new" class="composer">
-                    ${hiddenInputs({ threadId: thread.id })}
-                    <textarea name="body" rows="2" placeholder="Write a message…" required aria-label="New message"></textarea>
-                    <button type="submit">Send</button>
-                </form>` : `<p class="muted">You can read this conversation but not post in it.</p>`}
-            </section>
-        `);
-    }
-
-    const threadsWithMessages = threads
-        .filter(candidate => messages.some(message => message.threadId === candidate.id))
-        .sort((a, b) => String(b.lastActivityAt).localeCompare(String(a.lastActivityAt)));
+    const workspaces = projects
+        .filter(project => channels.some(channel => channel.projectId === project.id))
+        .map(project => {
+            const projectThreads = threads.filter(thread => findById("channels", thread.channelId)?.projectId === project.id);
+            const latest = projectThreads.map(thread => thread.lastActivityAt).sort().pop();
+            return { project, latest, channelCount: channels.filter(channel => channel.projectId === project.id).length };
+        })
+        .sort((a, b) => String(b.latest || "").localeCompare(String(a.latest || "")));
     sendPage(res, "Messages", `
         <h1>Messages</h1>
-        <p class="muted">Every conversation, most recently active first. Open a thread to post in it.</p>
-        ${threadsWithMessages.map(shown => `<section class="panel">
-            <h2><a href="/messages?threadId=${shown.id}">${esc(shown.name)}</a> <span class="muted">· ${esc(displayOf("channels", shown.channelId))}</span></h2>
-            ${conversation(messages.filter(message => message.threadId === shown.id), currentId)}
-        </section>`).join("") || `<p class="muted">No messages yet.</p>`}
+        ${workspaces.length ? `<ul class="workspace-list">${workspaces.map(({ project, latest, channelCount }) => `<li>
+            <a href="/projects/${project.id}/workspace"><strong>${esc(project.name)}</strong></a>
+            <span class="muted">${channelCount} channel${channelCount === 1 ? "" : "s"}${latest ? ` · last active ${esc(fieldText({ type: "datetime" }, latest))}` : ""}</span>
+        </li>`).join("")}</ul>` : `<p class="muted">You aren't in any project conversations yet.</p>`}
     `);
 });
 
@@ -3970,7 +3999,8 @@ app.post("/messages/new", (req, res) => {
     return handleCreate("messages", req, res, {
         input: { threadId: thread.id, channelId: thread.channelId, senderPersonId: actingPersonId(req), body: req.body.body, postedAt: nowStamp() },
         backHref: `/messages?threadId=${thread.id}`,
-        redirectTo: message => `/messages?threadId=${thread.id}#message-${message.id}`
+        redirectTo: message => `${threadUrl(thread)}#message-${message.id}`,
+        quiet: true
     });
 });
 
@@ -3989,7 +4019,8 @@ app.post("/messages/edit/:id", (req, res) => {
             record: message,
             input: { ...message, body: req.body.body, editedAt: nowStamp() },
             backHref: `/messages?threadId=${message.threadId}`,
-            redirectTo: `/messages?threadId=${message.threadId}#message-${message.id}`
+            redirectTo: `${threadUrl(findById("threads", message.threadId))}#message-${message.id}`,
+            quiet: true
         });
     }
 });
@@ -3997,19 +4028,309 @@ app.post("/messages/edit/:id", (req, res) => {
 app.post("/messages/delete/:id", (req, res) => {
     const message = findMessage(req, res);
     if (message && requireSender(req, res, message)) {
-        return handleDelete("messages", req, res, { record: message, backHref: `/messages?threadId=${message.threadId}`, redirectTo: `/messages?threadId=${message.threadId}` });
+        return handleDelete("messages", req, res, { record: message, backHref: threadUrl(findById("threads", message.threadId)), redirectTo: threadUrl(findById("threads", message.threadId)), quiet: true });
     }
 });
 
 app.get("/messages/:id", (req, res) => {
     const message = findMessage(req, res);
     if (message) {
-        sendPage(res, "Message", `
-            <h1>Message</h1>
-            <section class="panel">${messageBubble(message, actingPersonId(req))}</section>
-            <p><a href="/messages?threadId=${message.threadId}">Open the conversation</a></p>
-        `);
+        res.redirect(`${threadUrl(findById("threads", message.threadId))}#message-${message.id}`);
     }
+});
+
+
+// ===== PROJECT WORKSPACE (chat) =====
+// The Slack-style half of a project's workspace. Channels and their threads
+// are listed on the left; the selected thread's messages fill the main pane,
+// with the composer underneath. Links are ordinary URLs, and a small script
+// swaps just the main pane when a thread is clicked or a message is sent, so
+// the page never has to reload (and still works without JavaScript).
+
+function workspaceUrl(projectId, { channelId, threadId } = {}) {
+    const query = threadId ? `?threadId=${threadId}` : channelId ? `?channelId=${channelId}` : "";
+    return `/projects/${projectId}/workspace${query}`;
+}
+
+function threadUrl(thread) {
+    if (!thread) {
+        return "/messages";
+    }
+    const channel = findById("channels", thread.channelId);
+    return channel ? workspaceUrl(channel.projectId, { threadId: thread.id }) : "/messages";
+}
+
+// #general first, then the rest alphabetically
+function workspaceChannels(projectId) {
+    return channels
+        .filter(channel => channel.projectId === projectId)
+        .sort((a, b) => Number(b.name.endsWith("general")) - Number(a.name.endsWith("general")) || a.name.localeCompare(b.name));
+}
+
+function channelThreads(channelId) {
+    return threads
+        .filter(thread => thread.channelId === channelId)
+        .sort((a, b) => String(b.lastActivityAt).localeCompare(String(a.lastActivityAt)));
+}
+
+function initials(personId) {
+    const person = findById("people", personId);
+    return person ? `${person.firstName[0] || ""}${person.lastName[0] || ""}`.toUpperCase() : "?";
+}
+
+// A steady avatar color per person
+function avatarHue(personId) {
+    return (Number(personId) * 137) % 360;
+}
+
+function shortTime(stamp) {
+    return String(stamp || "").slice(11, 16);
+}
+
+function dayLabel(stamp) {
+    const date = new Date(`${String(stamp).slice(0, 10)}T00:00:00Z`);
+    return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
+function workspaceSidebar(project, selectedChannel, selectedThread) {
+    const channelItems = workspaceChannels(project.id).map(channel => {
+        const threadLinks = channelThreads(channel.id).map(thread => `<li>
+            <a data-ws-link href="${esc(workspaceUrl(project.id, { threadId: thread.id }))}"${selectedThread?.id === thread.id ? ` aria-current="page"` : ""}>
+                <span class="ws-thread-name">${esc(thread.name)}</span>
+                <span class="ws-count">${threadMessageCount(thread.id)}</span>
+            </a>
+        </li>`).join("");
+        const newThread = allowed("threads", "create", { channelId: channel.id })
+            ? `<details class="ws-new-thread">
+                <summary>+ New thread</summary>
+                <form method="POST" action="/threads/new">
+                    ${hiddenInputs({ channelId: channel.id, returnTo: "workspace" })}
+                    <input type="text" name="name" placeholder="Thread name" required aria-label="New thread name in #${esc(channel.name)}">
+                    <button type="submit">Start</button>
+                </form>
+            </details>`
+            : "";
+        const isSelected = selectedChannel?.id === channel.id && !selectedThread;
+        return `<li class="ws-channel">
+            <a data-ws-link class="ws-channel-link" href="${esc(workspaceUrl(project.id, { channelId: channel.id }))}"${isSelected ? ` aria-current="page"` : ""}># ${esc(channel.name)}</a>
+            <ul class="ws-threads">${threadLinks}</ul>
+            ${newThread}
+        </li>`;
+    }).join("");
+
+    return `<aside class="ws-sidebar" aria-label="Channels and threads">
+        <div class="ws-project">
+            <a href="/projects/${project.id}">${esc(project.name)}</a>
+            <span>${esc(displayOf("mainBoardStatuses", project.mainBoardStatusId))}</span>
+        </div>
+        <ul class="ws-channels">${channelItems}</ul>
+    </aside>`;
+}
+
+function slackMessage(message, previous) {
+    // Messages from the same person within five minutes run together, as in Slack
+    const continues = previous && previous.senderPersonId === message.senderPersonId
+        && String(previous.postedAt).slice(0, 10) === String(message.postedAt).slice(0, 10)
+        && (Date.parse(`${message.postedAt}Z`) - Date.parse(`${previous.postedAt}Z`)) < 5 * 60 * 1000;
+    const mine = message.senderPersonId === currentUser()?.personId;
+    const actions = mine && allowed("messages", "update", message)
+        ? `<div class="ws-message-actions">
+            <details class="edit-in-place">
+                <summary title="Edit message">Edit</summary>
+                <form method="POST" action="/messages/edit/${message.id}" class="stack" data-ws-form>
+                    <textarea name="body" rows="3" required aria-label="Edit message">${esc(message.body)}</textarea>
+                    <div class="actions"><button type="submit">Save</button></div>
+                </form>
+            </details>
+            ${allowed("messages", "delete", message) ? `<form class="inline" method="POST" action="/messages/delete/${message.id}" data-ws-form onsubmit="return confirm('Delete this message?')"><button class="icon-btn" type="submit" title="Delete message" aria-label="Delete message">🗑️</button></form>` : ""}
+        </div>`
+        : "";
+    const edited = message.editedAt ? ` <span class="ws-edited" title="Edited ${esc(fieldText({ type: "datetime" }, message.editedAt))}">(edited)</span>` : "";
+    const body = `<p>${esc(message.body)}${edited}</p>`;
+
+    if (continues) {
+        return `<article class="ws-message ws-continued" id="message-${message.id}">
+            <time class="ws-gutter-time">${esc(shortTime(message.postedAt))}</time>
+            <div class="ws-message-body">${body}</div>
+            ${actions}
+        </article>`;
+    }
+    return `<article class="ws-message" id="message-${message.id}">
+        <span class="ws-avatar" style="background: hsl(${avatarHue(message.senderPersonId)} 45% 42%)" aria-hidden="true">${esc(initials(message.senderPersonId))}</span>
+        <div class="ws-message-body">
+            <header><strong>${esc(displayOf("people", message.senderPersonId))}</strong> <time>${esc(shortTime(message.postedAt))}</time></header>
+            ${body}
+        </div>
+        ${actions}
+    </article>`;
+}
+
+function workspacePane(project, channel, thread) {
+    if (!thread) {
+        const list = channelThreads(channel.id);
+        return `<div class="ws-pane-header">
+                <h1># ${esc(channel.name)}</h1>
+                <span class="muted">${channel.participantPersonIds.length} member${channel.participantPersonIds.length === 1 ? "" : "s"} · ${list.length} thread${list.length === 1 ? "" : "s"}</span>
+            </div>
+            <div class="ws-scroll">
+                ${list.length
+        ? `<ul class="ws-thread-cards">${list.map(item => `<li><a data-ws-link href="${esc(workspaceUrl(project.id, { threadId: item.id }))}">
+                    <strong>${esc(item.name)}</strong>
+                    <span class="muted">${threadMessageCount(item.id)} messages · started by ${esc(displayOf("people", item.createdByPersonId))} · last active ${esc(fieldText({ type: "datetime" }, item.lastActivityAt))}</span>
+                </a></li>`).join("")}</ul>`
+        : `<p class="muted ws-empty">No threads here yet. Start one from the sidebar.</p>`}
+            </div>`;
+    }
+
+    const ordered = messages
+        .filter(message => message.threadId === thread.id)
+        .sort((a, b) => String(a.postedAt).localeCompare(String(b.postedAt)));
+    let lastDay = "";
+    const items = ordered.map((message, index) => {
+        const day = String(message.postedAt).slice(0, 10);
+        const divider = day !== lastDay ? `<div class="ws-day" role="separator"><span>${esc(dayLabel(message.postedAt))}</span></div>` : "";
+        lastDay = day;
+        return divider + slackMessage(message, divider ? null : ordered[index - 1]);
+    }).join("");
+    const canPost = allowed("messages", "create", { threadId: thread.id, channelId: thread.channelId });
+
+    return `<div class="ws-pane-header">
+            <h1><a data-ws-link href="${esc(workspaceUrl(project.id, { channelId: channel.id }))}"># ${esc(channel.name)}</a> <span class="ws-sep">›</span> ${esc(thread.name)}</h1>
+            <span class="muted">started by ${esc(displayOf("people", thread.createdByPersonId))}</span>
+        </div>
+        <div class="ws-scroll" data-ws-scroll>
+            ${items || `<p class="muted ws-empty">No messages yet. Say hello below.</p>`}
+        </div>
+        ${canPost
+        ? `<form class="ws-composer" method="POST" action="/messages/new" data-ws-form>
+            ${hiddenInputs({ threadId: thread.id })}
+            <textarea name="body" rows="1" placeholder="Message ${esc(thread.name)}" required aria-label="Message ${esc(thread.name)}"></textarea>
+            <button type="submit">Send</button>
+            <span class="ws-hint muted">Enter to send · Shift+Enter for a new line</span>
+        </form>`
+        : `<p class="ws-readonly muted">You can read this thread but not post in it.</p>`}`;
+}
+
+// Swaps the main pane in place for thread links and chat forms
+const WORKSPACE_SCRIPT = `<script>
+(() => {
+    const pane = document.getElementById("ws-pane");
+    const sidebar = document.querySelector(".ws-sidebar");
+    const scrollToEnd = () => {
+        const scroller = pane.querySelector("[data-ws-scroll]");
+        const target = location.hash && document.querySelector(location.hash);
+        if (target) {
+            target.scrollIntoView({ block: "center" });
+        } else if (scroller) {
+            scroller.scrollTop = scroller.scrollHeight;
+        }
+        const box = pane.querySelector(".ws-composer textarea");
+        if (box) {
+            box.focus();
+        }
+    };
+    const markCurrent = () => {
+        sidebar.querySelectorAll("[data-ws-link]").forEach(link => {
+            const here = link.getAttribute("href") === location.pathname + location.search;
+            if (here) {
+                link.setAttribute("aria-current", "page");
+            } else {
+                link.removeAttribute("aria-current");
+            }
+        });
+    };
+    const load = async (url, push) => {
+        const response = await fetch(url + (url.includes("?") ? "&" : "?") + "partial=1", { headers: { Accept: "text/html" } });
+        if (!response.ok || response.redirected) {
+            window.location.href = url;
+            return;
+        }
+        pane.innerHTML = await response.text();
+        if (push) {
+            history.pushState({}, "", url);
+        }
+        markCurrent();
+        scrollToEnd();
+    };
+    document.addEventListener("click", event => {
+        const link = event.target.closest("a[data-ws-link]");
+        if (!link || event.metaKey || event.ctrlKey || event.shiftKey) {
+            return;
+        }
+        event.preventDefault();
+        load(link.getAttribute("href"), true);
+    });
+    pane.addEventListener("submit", async event => {
+        const form = event.target.closest("form[data-ws-form]");
+        if (!form || event.defaultPrevented) {
+            return;
+        }
+        event.preventDefault();
+        const response = await fetch(form.action, { method: "POST", body: new URLSearchParams(new FormData(form)) });
+        if (!response.ok) {
+            document.open();
+            document.write(await response.text());
+            document.close();
+            return;
+        }
+        const current = location.pathname + location.search;
+        history.replaceState({}, "", current);
+        await load(current, false);
+    });
+    pane.addEventListener("keydown", event => {
+        if (event.key === "Enter" && !event.shiftKey && event.target.matches(".ws-composer textarea")) {
+            event.preventDefault();
+            event.target.form.requestSubmit();
+        }
+    });
+    window.addEventListener("popstate", () => load(location.pathname + location.search, false));
+    scrollToEnd();
+})();
+</script>`;
+
+app.get("/projects/:id/workspace", (req, res) => {
+    const project = findById("projects", req.params.id);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.id);
+    }
+    if (!mongoAvailable()) {
+        return sendPage(res, "Messages unavailable", `<h1>Messages unavailable</h1><div class="errors">Messages are stored in MongoDB, which isn't connected right now. Check MONGODB_URI and that the container is running.</div>`, 503);
+    }
+    const available = workspaceChannels(project.id);
+    if (available.length === 0) {
+        return sendPage(res, `${project.name} workspace`, `
+            <h1>${esc(project.name)}</h1>
+            <p class="muted">${project.workspaceInitializedAt || channels.length
+        ? "You don't have access to any of this project's channels."
+        : "This project's workspace is created when it moves into In Progress."}</p>
+            <p><a href="/projects/${project.id}">Back to the project</a></p>`, 404);
+    }
+
+    // What to show: the thread asked for, else the channel asked for, else the
+    // most recently active thread of the first channel
+    const requestedThread = req.query.threadId ? findById("threads", req.query.threadId) : undefined;
+    const threadChannel = requestedThread && available.find(channel => channel.id === requestedThread.channelId);
+    if (req.query.threadId && !threadChannel) {
+        return sendNotFound(res, "thread", req.query.threadId);
+    }
+    const requestedChannel = req.query.channelId ? available.find(channel => channel.id === Number(req.query.channelId)) : undefined;
+    if (req.query.channelId && !requestedChannel) {
+        return sendNotFound(res, "channel", req.query.channelId);
+    }
+    const channel = threadChannel || requestedChannel || available[0];
+    const thread = requestedThread || (requestedChannel ? undefined : channelThreads(channel.id)[0]);
+
+    const pane = workspacePane(project, channel, thread);
+    if (req.query.partial) {
+        return res.send(pane);
+    }
+    sendPage(res, thread ? `${thread.name} · ${project.name}` : `#${channel.name} · ${project.name}`, `
+        <div class="workspace">
+            ${workspaceSidebar(project, channel, thread)}
+            <section class="ws-pane" id="ws-pane" aria-live="polite">${pane}</section>
+        </div>
+        ${WORKSPACE_SCRIPT}
+    `);
 });
 
 
