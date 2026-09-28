@@ -268,6 +268,63 @@ logRecordChanges("MentorProfileLog", "mentors", "mentorId", {
 });
 
 
+// Assignment logs follow project person associations for one role. A person
+// is "added" when a row gives them that role on a project and "removed" when
+// the row is deleted, its role changes away, or they roll off (status set to
+// Completed or Removed). Other edits to the row are "updated".
+function logAssignments(modelName, role) {
+    const Model = logModel(modelName, {
+        projectId: { type: Number, required: true, index: true },
+        projectName: String,
+        personId: { type: Number, required: true, index: true },
+        personName: String,
+        startDate: String,
+        endDate: String,
+        status: String,
+        changes: { type: mongoose.Schema.Types.Mixed, default: {} }
+    });
+    const rolledOff = status => status === "Completed" || status === "Removed";
+
+    onChange("projectPeople", (entry, row) => {
+        const before = {
+            role: entry.changes.role ? entry.changes.role.from : row.role,
+            status: entry.changes.status ? entry.changes.status.from : row.status,
+            projectId: entry.changes.projectId ? entry.changes.projectId.from : row.projectId,
+            personId: entry.changes.personId ? entry.changes.personId.from : row.personId
+        };
+        const wasOn = entry.action !== "created" && before.role === role && !rolledOff(before.status);
+        const isOn = entry.action !== "deleted" && row.role === role && !rolledOff(row.status);
+        const moved = before.projectId !== row.projectId || before.personId !== row.personId;
+
+        const write = (action, projectId, personId) => writeLog(Model, {
+            action,
+            projectId,
+            projectName: displayOf("projects", projectId),
+            personId,
+            personName: displayOf("people", personId),
+            startDate: row.startDate,
+            endDate: row.endDate,
+            status: row.status,
+            changes: entry.changes,
+            actorPersonId: entry.actorPersonId
+        });
+
+        if (wasOn && (!isOn || moved)) {
+            write("removed", before.projectId, before.personId);
+        }
+        if (isOn && (!wasOn || moved)) {
+            write("added", row.projectId, row.personId);
+        } else if (isOn && wasOn && entry.action === "updated") {
+            write("updated", row.projectId, row.personId);
+        }
+    });
+    return Model;
+}
+
+// Issue #84: who mentored which project, and when
+logAssignments("ProjectMentorAssignmentLog", "Faculty Mentor");
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
