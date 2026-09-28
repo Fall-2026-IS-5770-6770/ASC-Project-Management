@@ -59,10 +59,10 @@ const STYLES = `
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
-    header { background: var(--accent); color: #fff; padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; }
-    header a { color: #fff; text-decoration: none; opacity: .9; }
-    header a:hover { opacity: 1; text-decoration: underline; }
-    header .brand { font-weight: 700; opacity: 1; margin-right: .5rem; }
+    body > header { background: var(--accent); color: #fff; padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; }
+    body > header a { color: #fff; text-decoration: none; opacity: .9; }
+    body > header a:hover { opacity: 1; text-decoration: underline; }
+    body > header .brand { font-weight: 700; opacity: 1; margin-right: .5rem; }
     main { padding: 1rem; max-width: 1400px; margin: 0 auto; }
     h1 { font-size: 1.5rem; margin: .5rem 0 1rem; }
     a { color: var(--accent); }
@@ -103,6 +103,16 @@ const STYLES = `
     ul.threads { list-style: none; padding: 0; margin: 0; }
     li.thread { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid var(--line); }
     .thread-link { font-weight: 600; }
+    .chat { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1rem; }
+    .msg { max-width: min(640px, 85%); background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: .5rem .75rem; align-self: flex-start; }
+    .msg.mine { align-self: flex-end; background: #e8f0fb; border-color: #c7d7f0; }
+    .msg header { display: flex; gap: .5rem; align-items: baseline; font-size: .85rem; }
+    .msg p { margin: .3rem 0; white-space: pre-wrap; }
+    .edit-in-place summary { list-style: none; cursor: pointer; font-size: .85rem; }
+    .edit-in-place summary::-webkit-details-marker { display: none; }
+    .edit-in-place[open] { flex-basis: 100%; }
+    .composer { display: flex; gap: .5rem; align-items: flex-end; }
+    .composer textarea { flex: 1; }
     .tag { display: inline-block; background: var(--column); border-radius: 999px; padding: .05rem .5rem; font-size: .8rem; }
 `;
 
@@ -508,6 +518,32 @@ const ENTITIES = {
             { name: "lastActivityAt", label: "Last active", type: "datetime" }
         ],
         defaults: () => ({ createdAt: nowStamp(), lastActivityAt: nowStamp() })
+    },
+    messages: {
+        label: "message",
+        plural: "messages",
+        store: messages,
+        display: message => `${displayOf("people", message.senderPersonId)}: ${message.body.slice(0, 40)}`,
+        fields: [
+            { name: "threadId", label: "Thread", type: "select", ref: "threads", required: true, cascade: true },
+            { name: "channelId", label: "Channel", type: "select", ref: "channels", required: true, cascade: true },
+            { name: "senderPersonId", label: "Sender", type: "select", ref: "people", required: true },
+            { name: "body", label: "Message", type: "textarea", required: true },
+            { name: "postedAt", label: "Posted", type: "datetime" },
+            { name: "editedAt", label: "Edited", type: "datetime" }
+        ],
+        defaults: () => ({ postedAt: nowStamp() }),
+        // The channel is kept on the row for per-channel queries, so it has to match the thread's
+        validate: message => {
+            const thread = findById("threads", message.threadId);
+            return thread && thread.channelId !== message.channelId ? ["Channel must be the thread's channel"] : [];
+        },
+        afterCreate: message => {
+            const thread = findById("threads", message.threadId);
+            if (thread && String(message.postedAt) > String(thread.lastActivityAt)) {
+                thread.lastActivityAt = message.postedAt;
+            }
+        }
     },
     projectPeople: {
         label: "project assignment",
@@ -2075,41 +2111,156 @@ app.get("/threads/:id", (req, res) => {
                 <dt>Messages</dt><dd>${count}</dd>
             </dl>
         </section>
+        <p><a href="/messages?threadId=${thread.id}"><button type="button">Open the conversation</button></a></p>
         <p><a href="/threads?channelId=${thread.channelId}">Back to the channel's threads</a></p>
     `);
 });
 
 
-// ===== MESSAGES (Issue #8) =====
+// ===== MESSAGES (Issues #8, #37) =====
+// Chat inside a thread. Posting happens in the textbox under the
+// conversation, editing happens in place, and only the sender of a message
+// can edit or delete it.
 
+NAV.push({ href: "/messages", label: "Messages" });
+
+function findMessage(req, res) {
+    const message = findById("messages", req.params.id);
+    if (!message) {
+        sendNotFound(res, "message", req.params.id);
+    }
+    return message;
+}
+
+// Only the sender may change or remove a message
+function requireSender(req, res, message) {
+    if (message.senderPersonId !== actingPersonId(req)) {
+        sendPage(res, "Not allowed", `<h1>Not allowed</h1><p>Only the person who sent a message can change or delete it.</p><p><a href="/messages?threadId=${message.threadId}">Back to the conversation</a></p>`, 403);
+        return false;
+    }
+    return true;
+}
+
+function messageBubble(message, currentId) {
+    const isMine = message.senderPersonId === currentId;
+    const edited = message.editedAt ? ` <span class="muted" title="Edited ${esc(fieldText({ type: "datetime" }, message.editedAt))}">(edited)</span>` : "";
+    const controls = isMine
+        ? `<div class="row-actions">
+            <details class="edit-in-place">
+                <summary class="icon-btn" title="Edit message" aria-label="Edit message">Edit</summary>
+                <form method="POST" action="/messages/edit/${message.id}" class="stack">
+                    <textarea name="body" rows="3" required aria-label="Message">${esc(message.body)}</textarea>
+                    <div class="actions"><button type="submit">Save</button></div>
+                </form>
+            </details>
+            ${deleteButton(`/messages/delete/${message.id}`, "this message")}
+        </div>`
+        : "";
+    return `<article class="msg${isMine ? " mine" : ""}" id="message-${message.id}">
+        <header><strong>${esc(displayOf("people", message.senderPersonId))}</strong>
+            <span class="muted">${esc(fieldText({ type: "datetime" }, message.postedAt))}</span>${edited}</header>
+        <p>${esc(message.body)}</p>
+        ${controls}
+    </article>`;
+}
+
+function conversation(threadMessages, currentId) {
+    const ordered = [...threadMessages].sort((a, b) => String(a.postedAt).localeCompare(String(b.postedAt)));
+    return ordered.length
+        ? `<div class="chat">${ordered.map(message => messageBubble(message, currentId)).join("")}</div>`
+        : `<p class="muted">No messages yet. Say hello below.</p>`;
+}
+
+// View all messages, a conversation per thread. ?threadId= shows one thread
+// with the textbox for posting to it.
+app.get("/messages", (req, res) => {
+    const currentId = actingPersonId(req);
+    const thread = req.query.threadId ? findById("threads", req.query.threadId) : undefined;
+    if (req.query.threadId && !thread) {
+        return sendNotFound(res, "thread", req.query.threadId);
+    }
+
+    if (thread) {
+        return sendPage(res, thread.name, `
+            <h1>${esc(thread.name)}</h1>
+            <p class="muted"><a href="/channels/${thread.channelId}">${esc(displayOf("channels", thread.channelId))}</a> · <a href="/threads?channelId=${thread.channelId}">All threads in this channel</a></p>
+            <section class="panel">
+                ${conversation(messages.filter(message => message.threadId === thread.id), currentId)}
+                <form method="POST" action="/messages/new" class="composer">
+                    ${hiddenInputs({ threadId: thread.id })}
+                    <textarea name="body" rows="2" placeholder="Write a message…" required aria-label="New message"></textarea>
+                    <button type="submit">Send</button>
+                </form>
+            </section>
+        `);
+    }
+
+    const threadsWithMessages = threads
+        .filter(candidate => messages.some(message => message.threadId === candidate.id))
+        .sort((a, b) => String(b.lastActivityAt).localeCompare(String(a.lastActivityAt)));
+    sendPage(res, "Messages", `
+        <h1>Messages</h1>
+        <p class="muted">Every conversation, most recently active first. Open a thread to post in it.</p>
+        ${threadsWithMessages.map(shown => `<section class="panel">
+            <h2><a href="/messages?threadId=${shown.id}">${esc(shown.name)}</a> <span class="muted">· ${esc(displayOf("channels", shown.channelId))}</span></h2>
+            ${conversation(messages.filter(message => message.threadId === shown.id), currentId)}
+        </section>`).join("") || `<p class="muted">No messages yet.</p>`}
+    `);
+});
+
+// Messages are written in the textbox under a conversation
 app.get("/messages/new", (req, res) => {
-    res.send("Send the create message page");
+    res.redirect("/messages");
 });
 
 app.post("/messages/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new message");
+    const thread = findById("threads", req.body.threadId);
+    if (!thread) {
+        return sendErrors(res, ["Pick a thread to post in"], "/messages");
+    }
+    handleCreate("messages", req, res, {
+        input: { threadId: thread.id, channelId: thread.channelId, senderPersonId: actingPersonId(req), body: req.body.body, postedAt: nowStamp() },
+        backHref: `/messages?threadId=${thread.id}`,
+        redirectTo: message => `/messages?threadId=${thread.id}#message-${message.id}`
+    });
 });
 
-app.get("/messages", (req, res) => {
-    res.send("View all messages");
-});
-
+// Editing happens in place on the conversation
 app.get("/messages/edit/:id", (req, res) => {
-    res.send(`Edit message page for message ${req.params.id}`);
+    const message = findMessage(req, res);
+    if (message) {
+        res.redirect(`/messages?threadId=${message.threadId}#message-${message.id}`);
+    }
 });
 
 app.post("/messages/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saving edits to message ${req.params.id}`);
+    const message = findMessage(req, res);
+    if (message && requireSender(req, res, message)) {
+        handleUpdate("messages", req, res, {
+            record: message,
+            input: { ...message, body: req.body.body, editedAt: nowStamp() },
+            backHref: `/messages?threadId=${message.threadId}`,
+            redirectTo: `/messages?threadId=${message.threadId}#message-${message.id}`
+        });
+    }
 });
 
 app.post("/messages/delete/:id", (req, res) => {
-    res.send(`Deleting message ${req.params.id}`);
+    const message = findMessage(req, res);
+    if (message && requireSender(req, res, message)) {
+        handleDelete("messages", req, res, { record: message, backHref: `/messages?threadId=${message.threadId}`, redirectTo: `/messages?threadId=${message.threadId}` });
+    }
 });
 
 app.get("/messages/:id", (req, res) => {
-    res.send(`View message ${req.params.id}`);
+    const message = findMessage(req, res);
+    if (message) {
+        sendPage(res, "Message", `
+            <h1>Message</h1>
+            <section class="panel">${messageBubble(message, actingPersonId(req))}</section>
+            <p><a href="/messages?threadId=${message.threadId}">Open the conversation</a></p>
+        `);
+    }
 });
 
 
