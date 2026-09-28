@@ -459,8 +459,16 @@ function flash(req, type, text) {
 // this with the signed-in user once authentication lands.
 app.use((req, res, next) => {
     if (!people.some(person => person.id === req.session.personId)) {
-        req.session.personId = people.some(person => person.id === DEFAULT_PERSON_ID) ? DEFAULT_PERSON_ID : people[0]?.id;
+        const standIn = people.some(person => person.id === DEFAULT_PERSON_ID) ? DEFAULT_PERSON_ID : people[0]?.id;
+        // API calls from other programs usually have no session cookie, so
+        // don't start a session for each one; they act as the stand-in person
+        if (req.path.startsWith("/api/")) {
+            req.actingPersonId = standIn;
+            return next();
+        }
+        req.session.personId = standIn;
     }
+    req.actingPersonId = req.session.personId;
     res.locals.actingPersonId = req.session.personId;
     next();
 });
@@ -682,7 +690,7 @@ function nowStamp() {
 
 // The person making the request, read from the session (see "Acting person")
 function actingPersonId(req) {
-    return req.session.personId;
+    return req.actingPersonId;
 }
 
 
@@ -3650,7 +3658,148 @@ app.get("/people/:id", (req, res) => {
 });
 
 
+// ===== REST API (Issue #132 and following) =====
+// The same records as the pages, for other programs. Everything lives under
+// /api/v1, speaks JSON only, and goes through the same validation, delete
+// rules, change history, and workspace set-up as the pages.
+//   GET    /api/v1/things          list (filter with ?field=value)
+//   GET    /api/v1/things/:id      one record
+//   POST   /api/v1/things          create            201 + Location
+//   PUT    /api/v1/things/:id      replace           200
+//   PATCH  /api/v1/things/:id      change some fields 200
+//   DELETE /api/v1/things/:id      delete            204
+// Invalid input is 400, a missing record 404, and a delete that other records
+// still depend on 409.
+
+const api = express.Router();
+// The JSON parser sits inside the router so its errors (bad JSON) get JSON replies
+api.use(express.json());
+app.use("/api/v1", api);
+
+function sendApiErrors(res, statusCode, errors) {
+    res.status(statusCode).json({ errors });
+}
+
+// Keep only records whose fields match every ?field=value in the query
+function filterByQuery(entityKey, records, query) {
+    const fields = ENTITIES[entityKey].fields.filter(field => query[field.name] !== undefined);
+    return records.filter(record => fields.every(field => {
+        const wanted = String(query[field.name]);
+        const value = record[field.name];
+        return Array.isArray(value) ? value.map(String).includes(wanted) : String(value) === wanted;
+    }));
+}
+
+// Options:
+//   prepare(input, req, existing) -> input with server-set fields filled in
+//   authorize(req, record) -> an error message when the caller may not change the record
+function registerApi(path, entityKey, { prepare = input => input, authorize = () => null } = {}) {
+    const entity = ENTITIES[entityKey];
+    const findOr404 = (req, res) => {
+        const record = findById(entityKey, req.params.id);
+        if (!record) {
+            sendApiErrors(res, 404, [`No ${entity.label} with id ${req.params.id}`]);
+        }
+        return record;
+    };
+    const save = (req, res, record, partial) => {
+        const denied = authorize(req, record);
+        if (denied) {
+            return sendApiErrors(res, 403, [denied]);
+        }
+        const input = prepare(req.body || {}, req, record);
+        const { data, errors } = parseRecord(entityKey, input, { partial });
+        const result = errors.length ? { errors } : updateRecord(entityKey, record, data, actingPersonId(req));
+        if (result.errors) {
+            return sendApiErrors(res, 400, result.errors);
+        }
+        res.json(record);
+    };
+
+    api.get(path, (req, res) => {
+        res.json(filterByQuery(entityKey, entity.store, req.query));
+    });
+
+    api.get(`${path}/:id`, (req, res) => {
+        const record = findOr404(req, res);
+        if (record) {
+            res.json(record);
+        }
+    });
+
+    api.post(path, (req, res) => {
+        const input = prepare(req.body || {}, req, null);
+        const { data, errors } = parseRecord(entityKey, input);
+        const result = errors.length ? { errors } : createRecord(entityKey, data, actingPersonId(req));
+        if (result.errors) {
+            return sendApiErrors(res, 400, result.errors);
+        }
+        res.status(201).location(`/api/v1${path}/${result.record.id}`).json(result.record);
+    });
+
+    api.put(`${path}/:id`, (req, res) => {
+        const record = findOr404(req, res);
+        if (record) {
+            save(req, res, record, false);
+        }
+    });
+
+    api.patch(`${path}/:id`, (req, res) => {
+        const record = findOr404(req, res);
+        if (record) {
+            save(req, res, record, true);
+        }
+    });
+
+    api.delete(`${path}/:id`, (req, res) => {
+        const record = findOr404(req, res);
+        if (!record) {
+            return;
+        }
+        const denied = authorize(req, record);
+        if (denied) {
+            return sendApiErrors(res, 403, [denied]);
+        }
+        const result = deleteRecord(entityKey, record, actingPersonId(req));
+        if (result.errors) {
+            return sendApiErrors(res, 409, result.errors);
+        }
+        res.status(204).end();
+    });
+}
+
+// Issue #132: projects. Moving a project into In Progress through the API
+// sets up its workspace exactly like the main board does.
+registerApi("/projects", "projects");
+
+
 // ===== ERRORS (Issue #78) =====
+
+// Anything under /api/v1 that no API route answered, and API failures, get JSON
+api.use((req, res) => {
+    sendApiErrors(res, 404, [`No API route for ${req.method} ${req.originalUrl}`]);
+});
+
+api.use((error, req, res, next) => {
+    const statusCode = error.status || error.statusCode || 500;
+    if (statusCode >= 500) {
+        console.error(error);
+        writeLog(ErrorLog, {
+            action: "error",
+            message: error.message || String(error),
+            stack: error.stack,
+            method: req.method,
+            path: req.originalUrl,
+            statusCode,
+            actorPersonId: req.actingPersonId ?? null
+        });
+    }
+    if (res.headersSent) {
+        return next(error);
+    }
+    // Body parser errors (such as malformed JSON) are the caller's mistake
+    sendApiErrors(res, statusCode, [statusCode < 500 ? error.message : "Something went wrong on our end. The error has been logged."]);
+});
 
 // Development-only route that fails on purpose, to check the error log
 if (!IS_PRODUCTION) {
