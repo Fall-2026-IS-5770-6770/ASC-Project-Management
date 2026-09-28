@@ -449,6 +449,7 @@ const ENTITIES = {
         plural: "people",
         store: people,
         display: person => `${person.firstName} ${person.lastName}`,
+        recordActor: true,
         sort: (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
         fields: [
             { name: "firstName", label: "First name", type: "text", required: true },
