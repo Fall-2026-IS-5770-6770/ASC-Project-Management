@@ -217,6 +217,41 @@ app.get("/status/:id", (req, resp) => {
 });
 
 
+// ===== MAIN BOARD STATUSES (Issue #19) =====
+// The columns on the one main board that every project appears on as a card.
+// These are separate from the task statuses used inside a project's own board.
+
+app.get("/main-board-statuses/new", (req, res) => {
+    res.send("Send the page for adding a status to the main board");
+});
+
+app.post("/main-board-statuses/new", (req, res) => {
+    console.log(req.body);
+    res.send("Save the new status on the main board");
+});
+
+app.get("/main-board-statuses", (req, res) => {
+    res.send("Send all of the statuses on the main board in board order");
+});
+
+app.get("/main-board-statuses/edit/:id", (req, res) => {
+    res.send(`Send the page for updating (renaming or reordering) main board status ${req.params.id}`);
+});
+
+app.post("/main-board-statuses/edit/:id", (req, res) => {
+    console.log(req.body);
+    res.send(`Save the update to main board status ${req.params.id}`);
+});
+
+app.post("/main-board-statuses/delete/:id", (req, res) => {
+    res.send(`Remove status ${req.params.id} from the main board`);
+});
+
+app.get("/main-board-statuses/:id", (req, res) => {
+    res.send(`Send main board status ${req.params.id}`);
+});
+
+
 // ===== PROJECT STATUSES (Issue #3) =====
 // Associates statuses with a specific project
 
