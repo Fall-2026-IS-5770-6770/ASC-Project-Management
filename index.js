@@ -19,6 +19,7 @@ const projectTypes = require("./data/projectTypes.js");
 const projectSkills = require("./data/projectSkills.js");
 const personSkills = require("./data/personSkills.js");
 const projectProjectTypes = require("./data/projectProjectTypes.js");
+const documents = require("./data/documents.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -438,6 +439,24 @@ const ENTITIES = {
             : [],
         afterCreate: row => keepOnePrimaryType(row),
         afterUpdate: row => keepOnePrimaryType(row)
+    },
+    documents: {
+        label: "document",
+        plural: "documents",
+        store: documents,
+        display: document => document.name,
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
+            { name: "type", label: "Type", type: "select", options: ["Statement of Work", "Requirements", "Design", "Reference", "Handoff", "Other"], required: true },
+            { name: "fileName", label: "File name", type: "text" },
+            { name: "fileUrl", label: "File URL", type: "url" },
+            { name: "personId", label: "Uploaded by", type: "select", ref: "people" },
+            { name: "uploadedDate", label: "Uploaded on", type: "date" },
+            { name: "version", label: "Version", type: "text" },
+            { name: "status", label: "Status", type: "select", options: ["Draft", "In Review", "Approved", "Final"], required: true }
+        ],
+        defaults: () => ({ uploadedDate: today(), version: "1.0" })
     },
     projectPeople: {
         label: "project assignment",
@@ -1159,6 +1178,7 @@ app.get("/projects/:id", (req, res) => {
     const team = projectTeam(project.id);
     const progress = projectProgress(project.id);
     const projectChannels = channels.filter(channel => channel.projectId === project.id);
+    const projectDocuments = documents.filter(document => document.projectId === project.id);
     const columns = projectStatuses.filter(row => row.projectId === project.id).sort(byOrder);
     const hasWorkspace = Boolean(project.workspaceInitializedAt) || projectChannels.length > 0 || columns.length > 0;
     const money = value => (value == null ? "—" : `$${Number(value).toLocaleString("en-US")}`);
@@ -1199,6 +1219,13 @@ app.get("/projects/:id", (req, res) => {
         <section class="panel">
             <h2>Workspace</h2>
             ${workspace}
+        </section>
+        <section class="panel">
+            <h2>Documents</h2>
+            ${projectDocuments.length
+        ? `<ul>${projectDocuments.map(document => `<li><a href="/documents/${document.id}">${esc(document.name)}</a> <span class="muted">— v${esc(document.version)}, ${esc(document.status)}</span></li>`).join("")}</ul>`
+        : `<p class="muted">No documents yet.</p>`}
+            <p><a href="/documents?projectId=${project.id}">Manage documents</a></p>
         </section>
         <p><a href="/projects">Back to the main board</a></p>
     `);
@@ -2348,37 +2375,83 @@ app.get("/clients/:id", (req, res) => {
 });
 
 
-// ===== DOCUMENTS (Issue #17) =====
-// Documents always belong to a project
+// ===== DOCUMENTS (Issues #17, #34) =====
+// Documents always belong to a project. There's no real upload yet, so the
+// file name and URL are plain text fields.
 
+NAV.push({ href: "/documents", label: "Documents" });
+
+function findDocument(req, res) {
+    const document = findById("documents", req.params.id);
+    if (!document) {
+        sendNotFound(res, "document", req.params.id);
+    }
+    return document;
+}
+
+// The create form lives in a modal on the list page
 app.get("/documents/new", (req, res) => {
-    res.send("Send the create document page");
+    res.redirect("/documents");
 });
 
 app.post("/documents/new", (req, res) => {
-    console.log(req.body);
-    res.send("Save the new document");
+    handleCreate("documents", req, res, { backHref: "/documents", redirectTo: document => `/documents?projectId=${document.projectId}` });
 });
 
+// View all documents, or one project's with ?projectId=
 app.get("/documents", (req, res) => {
-    res.send("Send all of the documents");
+    const project = req.query.projectId ? findById("projects", req.query.projectId) : undefined;
+    const rows = documents
+        .filter(document => !project || document.projectId === project.id)
+        .sort((a, b) => a.projectId - b.projectId || String(b.uploadedDate).localeCompare(String(a.uploadedDate)));
+    const projectFilter = `<form method="GET" action="/documents" class="actions">
+        <label>Project <select name="projectId" onchange="this.form.submit()"><option value="">All projects</option>${selectOptions(optionsFor(fieldByName("documents", "projectId")), project?.id)}</select></label>
+        <noscript><button type="submit">Filter</button></noscript>
+    </form>`;
+
+    sendListPage(res, {
+        entityKey: "documents",
+        title: project ? `Documents for ${project.name}` : "Documents",
+        itemPath: "/documents",
+        intro: projectFilter,
+        columns: [
+            { label: "Name", html: document => `<a href="/documents/${document.id}">${esc(document.name)}</a>` },
+            { label: "Project", html: document => `<a href="/projects/${document.projectId}">${esc(displayOf("projects", document.projectId))}</a>` },
+            fieldColumn("documents", "version"),
+            fieldColumn("documents", "status"),
+            fieldColumn("documents", "uploadedDate", "Uploaded")
+        ],
+        rows,
+        createOptions: { record: { projectId: project?.id } }
+    });
 });
 
 app.get("/documents/edit/:id", (req, res) => {
-    res.send(`Send the edit page for document ${req.params.id}`);
+    const document = findDocument(req, res);
+    if (document) {
+        sendEditPage(res, { entityKey: "documents", record: document, itemPath: "/documents", backHref: `/documents/${document.id}` });
+    }
 });
 
 app.post("/documents/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Save the edits to document ${req.params.id}`);
+    const document = findDocument(req, res);
+    if (document) {
+        handleUpdate("documents", req, res, { record: document, backHref: `/documents/edit/${document.id}`, redirectTo: `/documents/${document.id}` });
+    }
 });
 
 app.post("/documents/delete/:id", (req, res) => {
-    res.send(`Delete document ${req.params.id}`);
+    const document = findDocument(req, res);
+    if (document) {
+        handleDelete("documents", req, res, { record: document, backHref: `/documents/${document.id}`, redirectTo: `/documents?projectId=${document.projectId}` });
+    }
 });
 
 app.get("/documents/:id", (req, res) => {
-    res.send(`Send document ${req.params.id}`);
+    const document = findDocument(req, res);
+    if (document) {
+        sendDetailPage(res, { entityKey: "documents", record: document, itemPath: "/documents", listPath: "/documents" });
+    }
 });
 
 
