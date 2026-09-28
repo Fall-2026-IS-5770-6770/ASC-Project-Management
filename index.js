@@ -625,6 +625,7 @@ const ENTITIES = {
         plural: "channels",
         store: channels,
         display: channel => `#${channel.name}`,
+        recordActor: true,
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
             { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
