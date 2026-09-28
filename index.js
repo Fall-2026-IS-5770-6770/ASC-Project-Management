@@ -638,6 +638,40 @@ app.get("/project-types/:id", (req, res) => {
 });
 
 
+// ===== PROJECT TYPE ASSOCIATIONS (Issue #15) =====
+// Associates project types with a specific project (many-to-many)
+
+app.get("/project-project-types/new", (req, res) => {
+    res.send("Send the page for associating a project type with a project");
+});
+
+app.post("/project-project-types/new", (req, res) => {
+    console.log(req.body);
+    res.send("Save the new project-project type association");
+});
+
+app.get("/project-project-types", (req, res) => {
+    res.send("Send all of the project-project type associations");
+});
+
+app.get("/project-project-types/edit/:id", (req, res) => {
+    res.send(`Send the edit page for project-project type association ${req.params.id}`);
+});
+
+app.post("/project-project-types/edit/:id", (req, res) => {
+    console.log(req.body);
+    res.send(`Save the edits to project-project type association ${req.params.id}`);
+});
+
+app.post("/project-project-types/delete/:id", (req, res) => {
+    res.send(`Delete project-project type association ${req.params.id}`);
+});
+
+app.get("/project-project-types/:id", (req, res) => {
+    res.send(`Send project-project type association ${req.params.id}`);
+});
+
+
 // ===== CLIENTS (Issue #16) =====
 
 // View all clients
