@@ -1861,10 +1861,24 @@ const PROJECT_ROLE_PERMISSIONS = {
     "Sponsor": PROJECT_ACTIONS
 };
 
-// Organization actions: projects:create, projects:delete, directory:view,
-// org:manage, clients:view, roles:manage, activity:all
-function organizationAllowed() {
-    return true;
+// Organization actions:
+//   projects:create, projects:delete   create and delete projects
+//   org:manage                         people, mentors, students, skills, statuses, project types, clients
+//   clients:view                       the client list and billing details
+//   roles:manage                       grant and revoke roles
+//   activity:all                       the full change history
+//   directory:view                     read the people, skills, statuses, and project types lists
+// Issue #125: all of these belong to the ASC Administrator, except that project
+// staff (anyone with a role other than Sponsor, or a mentor or student
+// record) may read the directory they need to staff and run projects.
+function organizationAllowed(user, action) {
+    if (action !== "directory:view") {
+        return false;
+    }
+    const staffRole = [...user.projectRoles.values()].some(held => [...held].some(role => role !== "Sponsor"));
+    return staffRole
+        || mentors.some(mentor => mentor.personId === user.personId)
+        || students.some(student => student.personId === user.personId);
 }
 
 function currentUser() {
@@ -1875,6 +1889,10 @@ function can(action, projectId) {
     const user = currentUser();
     if (!user) {
         return false;
+    }
+    // Issue #125: an ASC Administrator may do everything, on every project
+    if (user.isAdmin) {
+        return true;
     }
     if (!PROJECT_ACTIONS.includes(action)) {
         return organizationAllowed(user, action);
@@ -2469,6 +2487,10 @@ function activityList(entries) {
 }
 
 app.get("/activity", (req, res) => {
+    // The full history spans every project, so it's for administrators
+    if (!can("activity:all")) {
+        return sendForbidden(res, "The full activity history is only available to ASC Administrators.");
+    }
     const entityKey = ENTITIES[req.query.entity] ? req.query.entity : undefined;
     const entries = changeHistory.filter(entry => !entityKey || entry.entity === entityKey).slice().reverse();
     const tracked = Object.entries(ENTITIES).filter(([, entity]) => entity.recordActor)
