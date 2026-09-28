@@ -4,7 +4,9 @@ services:
   workspace:
     image: mcr.microsoft.com/devcontainers/javascript-node:5-24-trixie
     volumes:
-      - ..:/workspaces/ASC-Project-Management:cached
+      # Relative paths resolve from the first compose file (../docker-compose.yml,
+      # the repo root), so "." is the project folder
+      - .:/workspaces/ASC-Project-Management:cached
       # Linux node_modules live in a volume, so they never clash with a
       # node_modules folder installed on the host (Windows or macOS)
       - asc-node-modules:/workspaces/ASC-Project-Management/node_modules
