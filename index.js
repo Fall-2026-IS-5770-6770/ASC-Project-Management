@@ -742,6 +742,7 @@ const STYLES = `
     .composer { display: flex; gap: .5rem; align-items: flex-end; }
     .composer textarea { flex: 1; }
     .signin { max-width: 520px; margin: 2rem auto; }
+    ul.plain { list-style: none; padding: 0; display: grid; gap: .35rem; }
     .signin-button { display: inline-block; padding: .6rem 1rem; border: 1px solid var(--accent); border-radius: 6px; background: #fff; font-weight: 600; text-decoration: none; margin-right: .5rem; }
     .signin-button:hover { background: var(--accent); color: #fff; }
     .tag { display: inline-block; background: var(--column); border-radius: 999px; padding: .05rem .5rem; font-size: .8rem; }
@@ -1927,10 +1928,102 @@ async function handleDelete(entityKey, req, res, { record, backHref, redirectTo 
 
 const AUTH_PROVIDERS = {};
 
-// eslint-disable-next-line no-unused-vars -- the first provider registers itself in #118
 function registerAuthProvider(key, strategy) {
     AUTH_PROVIDERS[key] = strategy;
 }
+
+// ----- Dummy providers -----
+// Stand-ins for real OAuth providers. The "provider's sign-in page" is served by
+// this app at /auth/:provider/dummy: you say who you are, and it redirects back
+// to the callback with a one-time code, just like a real provider would. The
+// code is exchanged for the profile kept in the session. Anyone can sign in as
+// anyone this way, so dummy providers are off in production unless
+// ALLOW_DUMMY_SIGN_IN is set.
+
+const DUMMY_SIGN_IN_ENABLED = !IS_PRODUCTION || process.env.ALLOW_DUMMY_SIGN_IN === "true";
+
+function dummyProvider(key, { label, description, emailRule, emailHint }) {
+    return {
+        label,
+        description,
+        dummy: true,
+        emailRule,
+        emailHint,
+        authorizationUrl: state => `/auth/${key}/dummy?state=${encodeURIComponent(state)}`,
+        exchange: (code, req) => {
+            const codes = req.session.dummyCodes || {};
+            const profile = codes[code];
+            delete codes[code];
+            return profile || null;
+        }
+    };
+}
+
+// The stand-in for the provider's own sign-in page
+app.get("/auth/:provider/dummy", (req, res) => {
+    const provider = AUTH_PROVIDERS[req.params.provider];
+    if (!provider?.dummy || !DUMMY_SIGN_IN_ENABLED) {
+        return sendNotFound(res, "sign-in page", req.params.provider);
+    }
+    const suggestions = people
+        .filter(person => provider.emailRule.test(person.email))
+        .sort(ENTITIES.people.sort)
+        .map(person => `<li><button type="button" class="secondary" onclick="pick(${esc(JSON.stringify({ email: person.email, firstName: person.firstName, lastName: person.lastName }))})">${esc(ENTITIES.people.display(person))}</button> <span class="muted">${esc(person.email)}</span></li>`)
+        .join("");
+
+    sendPage(res, `${provider.label} sign-in`, `
+        <section class="panel signin">
+            <p class="tag">Stand-in page</p>
+            <h1>Sign in with ${esc(provider.label)}</h1>
+            <p class="muted">This page takes the place of ${esc(provider.label)}'s real sign-in until the ASC registers the app with ${esc(provider.label)}. Say who you are and it will send you back to the app.</p>
+            <form method="POST" action="/auth/${esc(req.params.provider)}/dummy" class="stack">
+                ${hiddenInputs({ state: req.query.state || "" })}
+                <label>Email <input type="email" name="email" required placeholder="${esc(provider.emailHint)}"></label>
+                <label>First name <input type="text" name="firstName"></label>
+                <label>Last name <input type="text" name="lastName"></label>
+                <div class="actions"><button type="submit">Continue</button> <a href="/signin">Cancel</a></div>
+            </form>
+            ${suggestions ? `<h2>Existing people</h2><ul class="plain">${suggestions}</ul>` : ""}
+        </section>
+        <script>
+            function pick(person) {
+                for (const name of ["email", "firstName", "lastName"]) {
+                    document.querySelector("[name=" + name + "]").value = person[name];
+                }
+            }
+        </script>
+    `);
+});
+
+// The stand-in provider confirms who you are and sends you back with a code
+app.post("/auth/:provider/dummy", (req, res) => {
+    const provider = AUTH_PROVIDERS[req.params.provider];
+    if (!provider?.dummy || !DUMMY_SIGN_IN_ENABLED) {
+        return sendNotFound(res, "sign-in page", req.params.provider);
+    }
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !provider.emailRule.test(email)) {
+        return sendPage(res, "Sign-in failed", `<h1>Sign-in failed</h1><p>${esc(provider.label)} only accepts ${esc(provider.emailHint)} addresses.</p><p><a href="/signin">Back to sign in</a></p>`, 400);
+    }
+    const code = crypto.randomBytes(16).toString("hex");
+    req.session.dummyCodes = req.session.dummyCodes || {};
+    req.session.dummyCodes[code] = {
+        // A real provider gives back its own stable id for the account
+        accountId: `${req.params.provider}-${crypto.createHash("sha256").update(email).digest("hex").slice(0, 16)}`,
+        email,
+        firstName: String(req.body.firstName || "").trim(),
+        lastName: String(req.body.lastName || "").trim()
+    };
+    res.redirect(`/auth/${req.params.provider}/callback?code=${code}&state=${encodeURIComponent(req.body.state || "")}`);
+});
+
+// Issue #118: Microsoft, which every USU student, faculty member, and staff member has
+registerAuthProvider("microsoft", dummyProvider("microsoft", {
+    label: "Microsoft",
+    description: "USU students, faculty, and staff",
+    emailRule: /@(\w+\.)*usu\.edu$/i,
+    emailHint: "a USU (@usu.edu)"
+}));
 
 // Match a provider profile to a person (see the rules above) and remember the
 // account, so the next sign-in through this provider finds the same person
