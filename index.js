@@ -3811,6 +3811,11 @@ registerApi("/project-project-types", "projectProjectTypes");
 // Issue #145: clients
 registerApi("/clients", "clients");
 
+// Issue #146: documents, which always belong to a project. The uploader defaults to the caller.
+registerApi("/documents", "documents", {
+    prepare: (input, req, existing) => (existing ? input : { ...input, personId: input.personId ?? actingPersonId(req) })
+});
+
 
 // ===== ERRORS (Issue #78) =====
 
