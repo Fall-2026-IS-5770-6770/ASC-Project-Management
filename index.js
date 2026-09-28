@@ -533,6 +533,7 @@ const ENTITIES = {
         plural: "project skills",
         store: projectSkills,
         display: row => `${displayOf("skills", row.skillId)} for ${displayOf("projects", row.projectId)}`,
+        recordActor: true,
         fields: [
             { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
             { name: "skillId", label: "Skill", type: "select", ref: "skills", required: true, cascade: true },
