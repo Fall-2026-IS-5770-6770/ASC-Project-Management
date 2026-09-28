@@ -3787,6 +3787,9 @@ registerApi("/people", "people");
 // Issue #137: mentors
 registerApi("/mentors", "mentors");
 
+// Issue #138: students
+registerApi("/students", "students");
+
 
 // ===== ERRORS (Issue #78) =====
 
