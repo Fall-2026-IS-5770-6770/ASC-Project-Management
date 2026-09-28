@@ -28,3 +28,14 @@ model MainBoardStatus {
   order       Int?
   audit       Json?
 }
+
+// Everyone involved with ASC projects: students, mentors, managers, and staff (Issue #43)
+model Person {
+  id        Int     @id @default(autoincrement())
+  firstName String
+  lastName  String
+  email     String  @unique
+  phone     String?
+  address   Json?
+  audit     Json?
+}

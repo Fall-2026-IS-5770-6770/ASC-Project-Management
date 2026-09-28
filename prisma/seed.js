@@ -17,7 +17,8 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: proc
 // In dependency order: a table only points at tables above it
 const tables = [
     { model: "status", table: "Status", rows: require("../data/statuses.js"), map: row => row },
-    { model: "mainBoardStatus", table: "MainBoardStatus", rows: require("../data/mainBoardStatuses.js"), map: row => row }
+    { model: "mainBoardStatus", table: "MainBoardStatus", rows: require("../data/mainBoardStatuses.js"), map: row => row },
+    { model: "person", table: "Person", rows: require("../data/people.js"), map: row => row }
 ];
 
 async function seedTable({ model, table, rows, map }) {

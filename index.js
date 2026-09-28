@@ -22,7 +22,7 @@ const projects = require("./data/projects.js");
 const statuses = databaseTable("statuses");
 const mainBoardStatuses = databaseTable("mainBoardStatuses");
 const clients = require("./data/clients.js");
-const people = require("./data/people.js");
+const people = databaseTable("people");
 const mentors = require("./data/mentors.js");
 const students = require("./data/students.js");
 const projectPeople = require("./data/projectPeople.js");
@@ -977,6 +977,7 @@ const ENTITIES = {
         label: "person",
         plural: "people",
         store: people,
+        model: "person",
         display: person => `${person.firstName} ${person.lastName}`,
         recordActor: true,
         sort: (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
