@@ -17,6 +17,7 @@ const channels = require("./data/channels.js");
 const skills = require("./data/skills.js");
 const projectTypes = require("./data/projectTypes.js");
 const projectSkills = require("./data/projectSkills.js");
+const personSkills = require("./data/personSkills.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -369,6 +370,23 @@ const ENTITIES = {
         validate: (row, existing) => projectSkills.some(other => other !== existing
             && other.projectId === row.projectId && other.skillId === row.skillId)
             ? [`${displayOf("projects", row.projectId)} already lists ${displayOf("skills", row.skillId)}`]
+            : []
+    },
+    personSkills: {
+        label: "person skill",
+        plural: "person skills",
+        store: personSkills,
+        display: row => `${displayOf("people", row.personId)}: ${displayOf("skills", row.skillId)}`,
+        fields: [
+            { name: "personId", label: "Person", type: "select", ref: "people", required: true, cascade: true },
+            { name: "skillId", label: "Skill", type: "select", ref: "skills", required: true, cascade: true },
+            { name: "proficiency", label: "Proficiency", type: "select", options: PROFICIENCIES, required: true },
+            { name: "yearsExperience", label: "Years of experience", type: "number", min: 0 },
+            { name: "lastUsed", label: "Last used", type: "date" }
+        ],
+        validate: (row, existing) => personSkills.some(other => other !== existing
+            && other.personId === row.personId && other.skillId === row.skillId)
+            ? [`${displayOf("people", row.personId)} already has ${displayOf("skills", row.skillId)}`]
             : []
     },
     projectTypes: {
@@ -1992,36 +2010,71 @@ app.get("/project-skills/:id", (req, res) => {
 });
 
 
-// ===== PERSON SKILLS (Issue #13) =====
+// ===== PERSON SKILLS (Issues #13, #30) =====
+// The skills each person has, and how well
 
+NAV.push({ href: "/person-skill/all", label: "Person skills" });
+
+function findPersonSkill(req, res) {
+    const row = findById("personSkills", req.params.id);
+    if (!row) {
+        sendNotFound(res, "person skill association", req.params.id);
+    }
+    return row;
+}
+
+// The create form lives in a modal on the list page
 app.get("/person-skill/new", (req, res) => {
-    res.send("Page to create new person-skill association");
+    res.redirect("/person-skill/all");
 });
 
 app.post("/person-skill/new", (req, res) => {
-    console.log(req.body);
-    res.send("Save new person-skill association");
+    handleCreate("personSkills", req, res, { backHref: "/person-skill/all", redirectTo: "/person-skill/all" });
 });
 
 app.get("/person-skill/all", (req, res) => {
-    res.send("Page to view all person-skill associations");
+    sendListPage(res, {
+        entityKey: "personSkills",
+        title: "Person skills",
+        itemPath: "/person-skill",
+        columns: [
+            { label: "Person", html: row => `<a href="/people/${row.personId}">${esc(displayOf("people", row.personId))}</a>` },
+            { label: "Skill", html: row => `<a href="/person-skill/${row.id}">${esc(displayOf("skills", row.skillId))}</a>` },
+            fieldColumn("personSkills", "proficiency"),
+            { label: "Experience", value: row => (row.yearsExperience == null ? "—" : `${row.yearsExperience} year${row.yearsExperience === 1 ? "" : "s"}`) },
+            fieldColumn("personSkills", "lastUsed")
+        ],
+        rows: [...personSkills].sort((a, b) => displayOf("people", a.personId).localeCompare(displayOf("people", b.personId))
+            || displayOf("skills", a.skillId).localeCompare(displayOf("skills", b.skillId)))
+    });
 });
 
 app.get("/person-skill/edit/:id", (req, res) => {
-    res.send(`Page to edit person-skill association with id ${req.params.id}`);
+    const row = findPersonSkill(req, res);
+    if (row) {
+        sendEditPage(res, { entityKey: "personSkills", record: row, itemPath: "/person-skill", backHref: "/person-skill/all" });
+    }
 });
 
 app.post("/person-skill/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Save edit to person-skill association with id ${req.params.id}`);
+    const row = findPersonSkill(req, res);
+    if (row) {
+        handleUpdate("personSkills", req, res, { record: row, backHref: `/person-skill/edit/${row.id}`, redirectTo: "/person-skill/all" });
+    }
 });
 
 app.post("/person-skill/delete/:id", (req, res) => {
-    res.send(`Delete person-skill association with id ${req.params.id}`);
+    const row = findPersonSkill(req, res);
+    if (row) {
+        handleDelete("personSkills", req, res, { record: row, backHref: "/person-skill/all", redirectTo: "/person-skill/all" });
+    }
 });
 
 app.get("/person-skill/:id", (req, res) => {
-    res.send(`Page to view person-skill association with id ${req.params.id}`);
+    const row = findPersonSkill(req, res);
+    if (row) {
+        sendDetailPage(res, { entityKey: "personSkills", record: row, itemPath: "/person-skill", listPath: "/person-skill/all" });
+    }
 });
 
 
