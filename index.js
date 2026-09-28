@@ -16,6 +16,7 @@ const requirements = require("./data/requirements.js");
 const channels = require("./data/channels.js");
 const skills = require("./data/skills.js");
 const projectTypes = require("./data/projectTypes.js");
+const projectSkills = require("./data/projectSkills.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -192,6 +193,7 @@ function today() {
 // A ref field marked cascade is deleted along with the record it points at.
 
 const PROJECT_ROLES = ["Project Manager", "Faculty Mentor", "Student", "Sponsor"];
+const PROFICIENCIES = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
 const ENTITIES = {
     projects: {
@@ -351,6 +353,22 @@ const ENTITIES = {
         validate: (skill, existing) => skills.some(other => other !== existing
             && other.name.toLowerCase() === String(skill.name).toLowerCase())
             ? [`A skill named ${skill.name} already exists`]
+            : []
+    },
+    projectSkills: {
+        label: "project skill",
+        plural: "project skills",
+        store: projectSkills,
+        display: row => `${displayOf("skills", row.skillId)} for ${displayOf("projects", row.projectId)}`,
+        fields: [
+            { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
+            { name: "skillId", label: "Skill", type: "select", ref: "skills", required: true, cascade: true },
+            { name: "importance", label: "Importance", type: "select", options: ["Required", "Preferred"], required: true },
+            { name: "minimumProficiency", label: "Minimum proficiency", type: "select", options: PROFICIENCIES }
+        ],
+        validate: (row, existing) => projectSkills.some(other => other !== existing
+            && other.projectId === row.projectId && other.skillId === row.skillId)
+            ? [`${displayOf("projects", row.projectId)} already lists ${displayOf("skills", row.skillId)}`]
             : []
     },
     projectTypes: {
@@ -1907,36 +1925,70 @@ app.get("/skills/:id", (req, res) => {
 });
 
 
-// ===== PROJECT SKILLS (Issue #11) =====
+// ===== PROJECT SKILLS (Issues #11, #29) =====
+// The skills a project needs, and how much it needs them
 
+NAV.push({ href: "/project-skills", label: "Project skills" });
+
+function findProjectSkill(req, res) {
+    const row = findById("projectSkills", req.params.id);
+    if (!row) {
+        sendNotFound(res, "project skill association", req.params.id);
+    }
+    return row;
+}
+
+// The create form lives in a modal on the list page
 app.get("/project-skills/new", (req, res) => {
-    res.send("Create project skill association page");
+    res.redirect("/project-skills");
 });
 
 app.post("/project-skills/new", (req, res) => {
-    console.log(req.body);
-    res.send("New project skill association saved");
+    handleCreate("projectSkills", req, res, { backHref: "/project-skills", redirectTo: "/project-skills" });
 });
 
 app.get("/project-skills", (req, res) => {
-    res.send("View all project skill associations");
+    sendListPage(res, {
+        entityKey: "projectSkills",
+        title: "Project skills",
+        itemPath: "/project-skills",
+        columns: [
+            { label: "Project", html: row => `<a href="/projects/${row.projectId}">${esc(displayOf("projects", row.projectId))}</a>` },
+            { label: "Skill", html: row => `<a href="/project-skills/${row.id}">${esc(displayOf("skills", row.skillId))}</a>` },
+            fieldColumn("projectSkills", "importance"),
+            fieldColumn("projectSkills", "minimumProficiency")
+        ],
+        rows: [...projectSkills].sort((a, b) => a.projectId - b.projectId
+            || a.importance.localeCompare(b.importance) || displayOf("skills", a.skillId).localeCompare(displayOf("skills", b.skillId)))
+    });
 });
 
 app.get("/project-skills/edit/:id", (req, res) => {
-    res.send(`Edit project skill association with id: ${req.params.id}`);
+    const row = findProjectSkill(req, res);
+    if (row) {
+        sendEditPage(res, { entityKey: "projectSkills", record: row, itemPath: "/project-skills", backHref: "/project-skills" });
+    }
 });
 
 app.post("/project-skills/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Project skill association with id: ${req.params.id} updated`);
+    const row = findProjectSkill(req, res);
+    if (row) {
+        handleUpdate("projectSkills", req, res, { record: row, backHref: `/project-skills/edit/${row.id}`, redirectTo: "/project-skills" });
+    }
 });
 
 app.post("/project-skills/delete/:id", (req, res) => {
-    res.send(`Project skill association with id: ${req.params.id} deleted`);
+    const row = findProjectSkill(req, res);
+    if (row) {
+        handleDelete("projectSkills", req, res, { record: row, backHref: "/project-skills", redirectTo: "/project-skills" });
+    }
 });
 
 app.get("/project-skills/:id", (req, res) => {
-    res.send(`View project skill association with id: ${req.params.id}`);
+    const row = findProjectSkill(req, res);
+    if (row) {
+        sendDetailPage(res, { entityKey: "projectSkills", record: row, itemPath: "/project-skills", listPath: "/project-skills" });
+    }
 });
 
 
