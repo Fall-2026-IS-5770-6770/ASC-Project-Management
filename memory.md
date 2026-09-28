@@ -119,10 +119,28 @@ These are the section markers (`// ===== NAME =====`), in order.
 
 ## UX
 
-The owner wants UX principles followed. The top bar was cluttered with about 20
-links; see the "UX cleanup" entry in the log below for what was done.
+The owner wants UX principles followed. The top bar is now deliberately short:
+Board, Tasks, Messages, and Documents (`PRIMARY_NAV`), plus Manage for project
+staff and admins.
+- Every other page goes on `/manage`, grouped in `MANAGE_GROUPS` with a
+  one-line description. When you add a page, `NAV.push` it and add it to a
+  group there; don't put it in the top bar.
+- Possible next UX work:
+  - Breadcrumbs on the detail and edit pages.
+  - Drag and drop on the boards.
+  - Moving the project-scoped association lists (project people, statuses,
+    skills, types) onto tabs of the project page itself.
 
 ## Log
 
 - 2026-09-28: first pass of all tickets, then Prisma, Docker, dummy sign-in and
-  roles, then messages moved to Mongo. Now: UX cleanup of the navigation.
+  roles, then messages moved to Mongo, then the navigation cleanup (top bar plus
+  the /manage hub).
+- **Open question for the owner:** the working tree has an uncommitted change
+  to package.json and package-lock.json that downgrades the Prisma CLI to
+  ^6.19.3 (the result of `npm audit fix --force`); it wasn't made by Claude.
+  `@prisma/client` and the adapter are still 7.10 and `prisma.config.js`
+  targets Prisma 7. The app runs on the already-generated client, but don't run
+  `prisma generate` or migrations on the mismatched CLI. Ask the owner whether
+  to revert it (`git checkout package.json package-lock.json && npm install`)
+  or move everything to Prisma 6.
