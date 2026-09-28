@@ -303,6 +303,34 @@ const ENTITIES = {
             ? [`${displayOf("people", mentor.personId)} is already a mentor`]
             : []
     },
+    students: {
+        label: "student",
+        plural: "students",
+        store: students,
+        display: student => displayOf("people", student.personId),
+        fields: [
+            { name: "personId", label: "Person", type: "select", ref: "people", required: true },
+            { name: "major", label: "Major", type: "text" },
+            { name: "graduationDate", label: "Graduation date", type: "date" },
+            { name: "resumeUrl", label: "Resume link", type: "url" },
+            { name: "minHoursPerWeek", label: "Minimum hours per week", type: "number", min: 0 },
+            { name: "maxHoursPerWeek", label: "Maximum hours per week", type: "number", min: 0 },
+            { name: "workApprovalStatus", label: "Work approval status", type: "select", options: ["Approved", "Pending", "Not Approved"], required: true },
+            { name: "availability", label: "Availability", type: "text" },
+            { name: "preferredProjectTypeId", label: "Preferred project type", type: "select", ref: "projectTypes" },
+            { name: "skillIds", label: "Skills", type: "multiselect", ref: "skills" }
+        ],
+        validate: (student, existing) => {
+            const errors = [];
+            if (students.some(other => other !== existing && other.personId === student.personId)) {
+                errors.push(`${displayOf("people", student.personId)} is already a student`);
+            }
+            if (student.minHoursPerWeek != null && student.maxHoursPerWeek != null && student.minHoursPerWeek > student.maxHoursPerWeek) {
+                errors.push("Minimum hours per week can't be more than the maximum");
+            }
+            return errors;
+        }
+    },
     skills: {
         label: "skill",
         plural: "skills",
@@ -1478,36 +1506,88 @@ app.get("/mentors/:id", (req, res) => {
 });
 
 
-// ===== STUDENTS (Issue #5) =====
+// ===== STUDENTS (Issues #5, #26) =====
+// A student is a person plus the student-only details. Deleting a student
+// removes the student record and leaves the person alone.
 
+NAV.push({ href: "/students", label: "Students" });
+
+function findStudent(req, res) {
+    const student = findById("students", req.params.id);
+    if (!student) {
+        sendNotFound(res, "student", req.params.id);
+    }
+    return student;
+}
+
+// The create form lives in a modal on the list page
 app.get("/students/new", (req, res) => {
-    res.send("This is the new student form page");
+    res.redirect("/students");
 });
 
 app.post("/students/new", (req, res) => {
-    console.log(req.body);
-    res.send("This saves the new student form data to the database");
+    handleCreate("students", req, res, { backHref: "/students", redirectTo: student => `/students/${student.id}` });
 });
 
 app.get("/students", (req, res) => {
-    res.send("This shows a list of all students");
+    sendListPage(res, {
+        entityKey: "students",
+        title: "Students",
+        itemPath: "/students",
+        intro: `<p class="muted">To add a student, pick someone from People and fill in their student details. Add them to <a href="/people">People</a> first if they aren't there yet.</p>`,
+        columns: [
+            { label: "Name", html: student => `<a href="/students/${student.id}">${esc(ENTITIES.students.display(student))}</a>` },
+            fieldColumn("students", "major"),
+            fieldColumn("students", "workApprovalStatus", "Work approval"),
+            { label: "Hours / week", value: student => `${student.minHoursPerWeek ?? "?"}–${student.maxHoursPerWeek ?? "?"}` },
+            fieldColumn("students", "graduationDate", "Graduates")
+        ],
+        rows: [...students].sort((a, b) => ENTITIES.students.display(a).localeCompare(ENTITIES.students.display(b)))
+    });
 });
 
 app.get("/students/edit/:id", (req, res) => {
-    res.send(`This is the edit form for student with id ${req.params.id}`);
+    const student = findStudent(req, res);
+    if (student) {
+        sendEditPage(res, { entityKey: "students", record: student, itemPath: "/students", backHref: `/students/${student.id}` });
+    }
 });
 
 app.post("/students/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`This updates the student with id ${req.params.id} in the database`);
+    const student = findStudent(req, res);
+    if (student) {
+        handleUpdate("students", req, res, { record: student, backHref: `/students/edit/${student.id}`, redirectTo: `/students/${student.id}` });
+    }
 });
 
 app.post("/students/delete/:id", (req, res) => {
-    res.send(`This deletes the student with id ${req.params.id} from the database`);
+    const student = findStudent(req, res);
+    if (student) {
+        handleDelete("students", req, res, { record: student, backHref: `/students/${student.id}`, redirectTo: "/students" });
+    }
 });
 
 app.get("/students/:id", (req, res) => {
-    res.send(`This shows the details for student with id ${req.params.id}`);
+    const student = findStudent(req, res);
+    if (!student) {
+        return;
+    }
+    const person = findById("people", student.personId);
+    const work = projectPeople.filter(row => row.personId === student.personId && row.role === "Student");
+    sendDetailPage(res, {
+        entityKey: "students",
+        record: student,
+        itemPath: "/students",
+        listPath: "/students",
+        extra: `<section class="panel">
+            <h2>Contact</h2>
+            <p>${person ? `<a href="/people/${person.id}">${esc(person.email)}</a> · ${esc(person.phone || "no phone")}` : "—"}</p>
+            <h2>Projects</h2>
+            ${work.length
+        ? `<ul>${work.map(row => `<li><a href="/projects/${row.projectId}">${esc(displayOf("projects", row.projectId))}</a> <span class="muted">— ${esc(row.status)}, ${esc(row.assignedHours ?? 0)} hours</span></li>`).join("")}</ul>`
+        : `<p class="muted">None yet.</p>`}
+        </section>`
+    });
 });
 
 
