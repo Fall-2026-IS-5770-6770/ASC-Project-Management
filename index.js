@@ -394,7 +394,18 @@ const ENTITIES = {
         plural: "project types",
         store: projectTypes,
         display: type => type.name,
-        fields: []
+        sort: (a, b) => a.name.localeCompare(b.name),
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "description", label: "Description", type: "textarea" },
+            { name: "typicalDurationWeeks", label: "Typical duration (weeks)", type: "number", min: 0 },
+            { name: "typicalDeliverables", label: "Typical deliverables", type: "list" },
+            { name: "typicalSkillIds", label: "Typical skills", type: "multiselect", ref: "skills" }
+        ],
+        validate: (type, existing) => projectTypes.some(other => other !== existing
+            && other.name.toLowerCase() === String(type.name).toLowerCase())
+            ? [`A project type named ${type.name} already exists`]
+            : []
     },
     projectPeople: {
         label: "project assignment",
@@ -2078,36 +2089,69 @@ app.get("/person-skill/:id", (req, res) => {
 });
 
 
-// ===== PROJECT TYPES (Issue #14) =====
+// ===== PROJECT TYPES (Issues #14, #31) =====
+// Categories for the kind of work a project involves
 
+NAV.push({ href: "/project-types", label: "Project types" });
+
+function findProjectType(req, res) {
+    const type = findById("projectTypes", req.params.id);
+    if (!type) {
+        sendNotFound(res, "project type", req.params.id);
+    }
+    return type;
+}
+
+// The create form lives in a modal on the list page
 app.get("/project-types/new", (req, res) => {
-    res.send("Create project type page");
+    res.redirect("/project-types");
 });
 
 app.post("/project-types/new", (req, res) => {
-    console.log(req.body);
-    res.send("Project type created");
+    handleCreate("projectTypes", req, res, { backHref: "/project-types", redirectTo: "/project-types" });
 });
 
 app.get("/project-types", (req, res) => {
-    res.send("List of the available types of projects");
+    sendListPage(res, {
+        entityKey: "projectTypes",
+        title: "Project types",
+        itemPath: "/project-types",
+        columns: [
+            { label: "Name", html: type => `<a href="/project-types/${type.id}">${esc(type.name)}</a>` },
+            fieldColumn("projectTypes", "description"),
+            { label: "Typical length", value: type => (type.typicalDurationWeeks == null ? "—" : `${type.typicalDurationWeeks} weeks`) },
+            fieldColumn("projectTypes", "typicalSkillIds", "Typical skills")
+        ],
+        rows: [...projectTypes].sort((a, b) => a.name.localeCompare(b.name))
+    });
 });
 
 app.get("/project-types/edit/:id", (req, res) => {
-    res.send(`Edit page for project type ${req.params.id}`);
+    const type = findProjectType(req, res);
+    if (type) {
+        sendEditPage(res, { entityKey: "projectTypes", record: type, itemPath: "/project-types", backHref: `/project-types/${type.id}` });
+    }
 });
 
 app.post("/project-types/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Project type ${req.params.id} updated`);
+    const type = findProjectType(req, res);
+    if (type) {
+        handleUpdate("projectTypes", req, res, { record: type, backHref: `/project-types/edit/${type.id}`, redirectTo: `/project-types/${type.id}` });
+    }
 });
 
 app.post("/project-types/delete/:id", (req, res) => {
-    res.send(`Project type ${req.params.id} deleted`);
+    const type = findProjectType(req, res);
+    if (type) {
+        handleDelete("projectTypes", req, res, { record: type, backHref: `/project-types/${type.id}`, redirectTo: "/project-types" });
+    }
 });
 
 app.get("/project-types/:id", (req, res) => {
-    res.send(`Project type ${req.params.id} details`);
+    const type = findProjectType(req, res);
+    if (type) {
+        sendDetailPage(res, { entityKey: "projectTypes", record: type, itemPath: "/project-types", listPath: "/project-types" });
+    }
 });
 
 
