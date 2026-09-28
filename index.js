@@ -1,11 +1,16 @@
 const express = require("express");
 const statuses = require("./data/statuses.js");
+const projectSkills = require("./data/projectSkills");
+const projects = require("./data/projects");
+const skills = require("./data/skills");    
 
 const app = express();
 const PORT = 3000;
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
+app.set("view engine", "ejs");
 
 // This is a server-rendered app, so browsers can only send GET and POST.
 // Every resource follows the same pattern:
@@ -505,12 +510,100 @@ app.get("/requirements/:id", (req, res) => {
     res.send(`View requirement page for ID: ${req.params.id}`);
 });
 
+// ===== PROJECT SKILLS EJS RENDERED (Issue #29) =====
+
+app.get("/project-skills", (req, res) => {
+    const enrichedProjectSkills = projectSkills.map(ps => {
+        const project = projects.find(p => p.id === Number(ps.projectId));
+        const skill = skills.find(s => s.id === Number(ps.skillId));
+        return {
+            ...ps,
+            projectName: project ? project.name : "Unknown Project",
+            skillName: skill ? skill.name : "Unknown Skill"
+        };
+    })
+    .sort((a, b) => {
+        // Primary sort: Compare Project IDs (Least to Greatest)
+        if (a.projectId !== b.projectId) {
+            return a.projectId - b.projectId;
+        }
+        // Secondary sort: If Project IDs are the same, compare Skill IDs (Least to Greatest)
+        return a.skillId - b.skillId;
+    });
+    
+    res.render("project-skills/index.ejs", { projectSkills: enrichedProjectSkills });
+});
+
+app.get("/project-skills/new", (req, res) => {
+    res.render("project-skills/create.ejs", { projects, skills })
+})
+
+app.post("/project-skills", (req, res) => {
+    console.log("Adding new project skill:", req.body);
+    const nextProjectSkillId = projectSkills.length > 0 
+        ? Math.max(...projectSkills.map(ps => ps.id)) + 1 
+        : 1;
+    const newProjectSkill = {
+        id: nextProjectSkillId,
+        projectId: Number(req.body.projectId),
+        skillId: Number(req.body.skillId),
+        importance: req.body.importance,
+        minimumProficiency: req.body.minimumProficiency
+    };
+
+    projectSkills.push(newProjectSkill);
+
+    res.redirect("/project-skills");
+});
+
+app.get("/project-skills/:id/edit", (req, res) => {
+    const ps = projectSkills.find(row => row.id === Number(req.params.id));
+    if (!ps) return res.status(404).send("Not found");
+    
+    res.render("project-skills/edit.ejs", { 
+        projectSkill: ps, 
+        projects, 
+        skills 
+    });
+});
+
+app.post("/project-skills/:id/edit", (req, res) => {
+    console.log(`Editing project skill ${req.params.id}:`, req.body);
+
+    const idToEdit = Number(req.params.id);
+    const skillIndex = projectSkills.findIndex(row => row.id === idToEdit);
+
+    if (skillIndex !== -1) {
+        // 2. Update its properties
+        projectSkills[skillIndex].projectId = Number(req.body.projectId);
+        projectSkills[skillIndex].skillId = Number(req.body.skillId);
+        projectSkills[skillIndex].importance = req.body.importance;
+        projectSkills[skillIndex].minimumProficiency = req.body.minimumProficiency;
+    }
+
+    res.redirect("/project-skills");
+});
+
+app.post("/project-skills/:id/delete", (req, res) => {
+    console.log(`Deleting project skill ${req.params.id}`);
+    const idToDelete = Number(req.params.id);
+
+    const skillIndex = projectSkills.findIndex(row => row.id === idToDelete);
+
+    if (skillIndex !== -1) {
+        // 2. Use splice to remove 1 item at that index
+        projectSkills.splice(skillIndex, 1);
+    }
+
+    res.redirect("/project-skills");
+});
+
 
 // ===== PROJECT SKILLS (Issue #11) =====
 
-app.get("/project-skills/new", (req, res) => {
-    res.send("Create project skill association page");
-});
+// app.get("/project-skills/new", (req, res) => {
+//     res.send("Create project skill association page");
+// });
 
 app.post("/project-skills/new", (req, res) => {
     console.log(req.body);

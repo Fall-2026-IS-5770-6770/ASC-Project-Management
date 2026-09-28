@@ -1,0 +1,48 @@
+<div class="card-body">
+    <form action="/project-skills/<%= route%>" method="POST">
+        
+        <div class="mb-3">
+            <label for="projectId" class="form-label">Project</label>
+            <select name="projectId" id="projectId" class="form-select" required>
+                <% projects.forEach(function(project) { %>
+                    <option value="<%= project.id %>" <%= project.id === Number(projectSkill.projectId) ? 'selected' : '' %>>
+                        <%= project.name %>
+                    </option>
+                <% }); %>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="skillId" class="form-label">Skill</label>
+            <select name="skillId" id="skillId" class="form-select" required>
+                <% skills.forEach(function(skill) { %>
+                    <option value="<%= skill.id %>" <%= skill.id === Number(projectSkill.skillId) ? 'selected' : '' %>>
+                        <%= skill.name %>
+                    </option>
+                <% }); %>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="importance" class="form-label">Importance</label>
+            <select name="importance" id="importance" class="form-select" required>
+                <option value="Required" <%= projectSkill.importance === 'Required' ? 'selected' : '' %>>Required</option>
+                <option value="Preferred" <%= projectSkill.importance === 'Preferred' ? 'selected' : '' %>>Preferred</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label for="minimumProficiency" class="form-label">Minimum Proficiency</label>
+            <select name="minimumProficiency" id="minimumProficiency" class="form-select" required>
+                <option value="Beginner" <%= projectSkill.minimumProficiency === 'Beginner' ? 'selected' : '' %>>Beginner</option>
+                <option value="Intermediate" <%= projectSkill.minimumProficiency === 'Intermediate' ? 'selected' : '' %>>Intermediate</option>
+                <option value="Advanced" <%= projectSkill.minimumProficiency === 'Advanced' ? 'selected' : '' %>>Advanced</option>
+            </select>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <a href="/project-skills" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success"><%= buttonAction %></button>
+        </div>
+    </form>
+    </div>
