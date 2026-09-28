@@ -1,11 +1,634 @@
 const express = require("express");
+
+// ===== DATA =====
+// The dummy data in /data stands in for the database until one is wired up.
+// Each array is changed in place, so edits last until the server restarts.
+const projects = require("./data/projects.js");
 const statuses = require("./data/statuses.js");
+const mainBoardStatuses = require("./data/mainBoardStatuses.js");
+const clients = require("./data/clients.js");
+const people = require("./data/people.js");
+const mentors = require("./data/mentors.js");
+const students = require("./data/students.js");
+const projectPeople = require("./data/projectPeople.js");
+const projectStatuses = require("./data/projectStatuses.js");
+const requirements = require("./data/requirements.js");
+const channels = require("./data/channels.js");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
+
+
+// ===== HTML HELPERS =====
+
+// Escape anything that came from the data or from a user before it goes into HTML
+function esc(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+// Links in the top navigation. Each resource adds itself once it has pages.
+const NAV = [
+    { href: "/projects", label: "Main board" }
+];
+
+const STYLES = `
+    :root { --bg: #f4f5f8; --panel: #fff; --text: #1d2330; --muted: #667085; --line: #d9dde5;
+            --accent: #0f3d7a; --danger: #b42318; --ok: #067647; --column: #e7eaf0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    header { background: var(--accent); color: #fff; padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; }
+    header a { color: #fff; text-decoration: none; opacity: .9; }
+    header a:hover { opacity: 1; text-decoration: underline; }
+    header .brand { font-weight: 700; opacity: 1; margin-right: .5rem; }
+    main { padding: 1rem; max-width: 1400px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin: .5rem 0 1rem; }
+    a { color: var(--accent); }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .toolbar h1 { margin: 0; }
+    .board { display: flex; gap: .75rem; overflow-x: auto; align-items: flex-start; padding-bottom: .5rem; }
+    .column { background: var(--column); border-radius: 8px; padding: .5rem; flex: 0 0 260px; }
+    .column h3 { margin: .25rem .25rem .6rem; font-size: 1rem; display: flex; justify-content: space-between; gap: .5rem; }
+    .count { color: var(--muted); font-weight: normal; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .6rem; margin-bottom: .5rem; }
+    .card h4 { margin: 0 0 .35rem; font-size: .95rem; }
+    .card p { margin: .15rem 0; font-size: .85rem; }
+    .row-actions { display: flex; gap: .15rem; justify-content: flex-end; align-items: center; }
+    .inline { display: inline; margin: 0; }
+    .muted { color: var(--muted); }
+    .progress { background: #e4e7ec; border-radius: 4px; height: 8px; overflow: hidden; margin-top: .4rem; }
+    .progress span { display: block; height: 100%; background: var(--ok); }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .panel h2 { font-size: 1.1rem; margin: 0 0 .75rem; }
+    table { border-collapse: collapse; width: 100%; background: var(--panel); }
+    th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    dl.details { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1.25rem; margin: 0; }
+    dl.details dt { font-weight: 600; }
+    dl.details dd { margin: 0; }
+    dialog { border: none; border-radius: 8px; padding: 1.25rem; width: min(560px, 95vw); box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
+    dialog h3 { margin-top: 0; }
+    .stack { display: flex; flex-direction: column; gap: .6rem; }
+    .stack label { display: flex; flex-direction: column; gap: .2rem; font-weight: 600; font-size: .9rem; }
+    .stack label.check { flex-direction: row; align-items: center; gap: .4rem; }
+    fieldset { border: 1px solid var(--line); border-radius: 4px; display: grid; gap: .4rem; }
+    input, select, textarea { font: inherit; padding: .4rem; border: 1px solid var(--line); border-radius: 4px; font-weight: normal; }
+    button { font: inherit; cursor: pointer; padding: .4rem .8rem; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+    button.secondary, button[formmethod="dialog"] { background: #fff; color: var(--accent); }
+    .icon-btn { background: none; border: 1px solid transparent; color: inherit; padding: .15rem .3rem; font-size: 1rem; line-height: 1; text-decoration: none; border-radius: 4px; }
+    .icon-btn:hover { border-color: var(--line); background: #fff; }
+    .actions { display: flex; gap: .5rem; }
+    .errors { background: #fef3f2; border: 1px solid #fecdca; color: var(--danger); padding: .75rem 1rem; border-radius: 6px; }
+    .tag { display: inline-block; background: var(--column); border-radius: 999px; padding: .05rem .5rem; font-size: .8rem; }
+`;
+
+// Wrap page content in the shared layout
+function sendPage(res, title, body, statusCode = 200) {
+    res.status(statusCode).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${esc(title)} | ASC Project Management</title>
+    <style>${STYLES}</style>
+</head>
+<body>
+    <header>
+        <a class="brand" href="/">ASC Project Management</a>
+        ${NAV.map(link => `<a href="${esc(link.href)}">${esc(link.label)}</a>`).join("")}
+    </header>
+    <main>${body}</main>
+</body>
+</html>`);
+}
+
+function sendNotFound(res, label, id) {
+    sendPage(res, "Not found", `<h1>Not found</h1><p>No ${esc(label)} with id ${esc(id)} exists.</p><p><a href="/">Back to the main board</a></p>`, 404);
+}
+
+// Shown when a submitted form doesn't pass validation
+function sendErrors(res, errors, backHref) {
+    sendPage(res, "Please fix the form", `
+        <h1>Please fix the form</h1>
+        <div class="errors"><ul>${errors.map(error => `<li>${esc(error)}</li>`).join("")}</ul></div>
+        <p><a href="${esc(backHref)}">Go back</a></p>
+    `, 400);
+}
+
+// Only follow redirects to paths on this site
+function redirectBack(res, target, fallback) {
+    const isLocal = typeof target === "string" && target.startsWith("/") && !target.startsWith("//") && !target.includes("\\");
+    res.redirect(isLocal ? target : fallback);
+}
+
+// Pencil icon that goes to the edit page
+function editButton(href, label) {
+    return `<a class="icon-btn" href="${esc(href)}" title="Edit ${esc(label)}" aria-label="Edit ${esc(label)}">✏️</a>`;
+}
+
+// Trash icon that confirms before the delete route runs
+function deleteButton(action, label, hidden = {}) {
+    const question = JSON.stringify(`Delete ${label}?`);
+    return `<form class="inline" method="POST" action="${esc(action)}" onsubmit="return confirm(${esc(question)})">
+        ${hiddenInputs(hidden)}
+        <button class="icon-btn" type="submit" title="Delete ${esc(label)}" aria-label="Delete ${esc(label)}">🗑️</button>
+    </form>`;
+}
+
+function hiddenInputs(values) {
+    return Object.entries(values)
+        .map(([name, value]) => `<input type="hidden" name="${esc(name)}" value="${esc(value)}">`)
+        .join("");
+}
+
+// Create forms open in a modal
+function modal(id, title, content) {
+    return `<dialog id="${esc(id)}"><h3>${esc(title)}</h3>${content}</dialog>`;
+}
+
+function modalButton(id, label, className = "") {
+    return `<button type="button" class="${esc(className)}" onclick="document.getElementById('${esc(id)}').showModal()">${esc(label)}</button>`;
+}
+
+function selectOptions(options, selected) {
+    const selectedValues = [].concat(selected ?? []).map(String);
+    return options
+        .map(option => `<option value="${esc(option.value)}"${selectedValues.includes(String(option.value)) ? " selected" : ""}>${esc(option.label)}</option>`)
+        .join("");
+}
+
+function byOrder(a, b) {
+    return a.order - b.order;
+}
+
+function today() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+
+// ===== RECORDS =====
+// Every resource is described once here. The description drives its form, the
+// validation of whatever a form or API sends, and what happens to the records
+// that point at it when it is deleted.
+//
+// Field types: text, textarea, email, url, number, date, datetime, checkbox,
+// select (options: [...] for a fixed list, or ref: "entity" for another record),
+// multiselect (ref: "entity", stored as an array of ids), list (comma separated
+// text stored as an array), and address.
+// A ref field marked cascade is deleted along with the record it points at.
+
+const PROJECT_ROLES = ["Project Manager", "Faculty Mentor", "Student", "Sponsor"];
+
+const ENTITIES = {
+    projects: {
+        label: "project",
+        plural: "projects",
+        store: projects,
+        display: project => project.name,
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "description", label: "Description", type: "textarea" },
+            { name: "clientId", label: "Client", type: "select", ref: "clients", required: true },
+            { name: "mainBoardStatusId", label: "Status", type: "select", ref: "mainBoardStatuses", required: true },
+            { name: "projectManagerId", label: "Project manager", type: "select", ref: "people" },
+            { name: "startDate", label: "Start date", type: "date" },
+            { name: "midpointDate", label: "Midpoint date", type: "date" },
+            { name: "endDate", label: "End date", type: "date" },
+            { name: "budget", label: "Budget ($)", type: "number", min: 0 },
+            { name: "estimatedHours", label: "Estimated hours", type: "number", min: 0 },
+            { name: "notes", label: "Notes", type: "textarea" }
+        ],
+        afterCreate: project => {
+            if (isInProgress(project.mainBoardStatusId)) {
+                initializeWorkspace(project);
+            }
+        },
+        afterUpdate: (project, before) => {
+            if (project.mainBoardStatusId !== before.mainBoardStatusId && isInProgress(project.mainBoardStatusId)) {
+                initializeWorkspace(project);
+            }
+        }
+    },
+    statuses: {
+        label: "status",
+        plural: "statuses",
+        store: statuses,
+        display: status => status.name,
+        sort: byOrder,
+        fields: []
+    },
+    mainBoardStatuses: {
+        label: "main board status",
+        plural: "main board statuses",
+        store: mainBoardStatuses,
+        display: status => status.name,
+        sort: byOrder,
+        fields: []
+    },
+    clients: {
+        label: "client",
+        plural: "clients",
+        store: clients,
+        display: client => client.name,
+        fields: []
+    },
+    people: {
+        label: "person",
+        plural: "people",
+        store: people,
+        display: person => `${person.firstName} ${person.lastName}`,
+        fields: []
+    },
+    projectPeople: {
+        label: "project assignment",
+        plural: "project assignments",
+        store: projectPeople,
+        display: row => `${displayOf("people", row.personId)} (${row.role}) on ${displayOf("projects", row.projectId)}`,
+        fields: [
+            { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
+            { name: "personId", label: "Person", type: "select", ref: "people", required: true },
+            { name: "role", label: "Role", type: "select", options: PROJECT_ROLES, required: true },
+            { name: "startDate", label: "Start date", type: "date" },
+            { name: "endDate", label: "End date", type: "date" },
+            { name: "assignedHours", label: "Assigned hours", type: "number", min: 0 },
+            { name: "approvalStatus", label: "Approval status", type: "select", options: ["Approved", "Pending", "Not Approved"] },
+            { name: "status", label: "Status", type: "select", options: ["Active", "Pending Onboarding", "Completed", "Removed"] }
+        ],
+        defaults: () => ({ startDate: today(), approvalStatus: "Approved", status: "Active" }),
+        validate: (row, existing) => {
+            const duplicate = projectPeople.some(other => other !== existing
+                && other.projectId === row.projectId && other.personId === row.personId && other.role === row.role);
+            return duplicate ? [`${displayOf("people", row.personId)} is already a ${row.role} on this project`] : [];
+        },
+        afterCreate: row => syncWorkspaceMember(row.projectId, row.personId),
+        afterUpdate: (row, before) => {
+            syncWorkspaceMember(before.projectId, before.personId);
+            syncWorkspaceMember(row.projectId, row.personId);
+        },
+        afterDelete: row => syncWorkspaceMember(row.projectId, row.personId)
+    }
+};
+
+function findById(entityKey, id) {
+    const numericId = Number(id);
+    if (!Number.isInteger(numericId)) {
+        return undefined;
+    }
+    return ENTITIES[entityKey].store.find(record => record.id === numericId);
+}
+
+// Readable name for a record, used anywhere an id would otherwise be shown
+function displayOf(entityKey, id) {
+    const record = findById(entityKey, id);
+    return record ? ENTITIES[entityKey].display(record) : "—";
+}
+
+function nextId(store) {
+    return store.reduce((max, record) => Math.max(max, record.id), 0) + 1;
+}
+
+function optionsFor(field) {
+    if (field.options) {
+        return field.options.map(option => ({ value: option, label: option }));
+    }
+    const ref = ENTITIES[field.ref];
+    const records = ref.sort ? [...ref.store].sort(ref.sort) : ref.store;
+    return records.map(record => ({ value: record.id, label: ref.display(record) }));
+}
+
+let fieldCounter = 0;
+
+function renderField(field, value) {
+    const id = `field-${field.name}-${++fieldCounter}`;
+    const required = field.required ? " required" : "";
+    const label = `${esc(field.label)}${field.required ? " *" : ""}`;
+
+    switch (field.type) {
+    case "textarea":
+        return `<label for="${id}">${label}<textarea id="${id}" name="${esc(field.name)}" rows="3"${required}>${esc(value)}</textarea></label>`;
+    case "select": {
+        const blank = field.required ? `<option value="" disabled${value == null ? " selected" : ""}>Choose…</option>` : `<option value="">None</option>`;
+        return `<label for="${id}">${label}<select id="${id}" name="${esc(field.name)}"${required}>${blank}${selectOptions(optionsFor(field), value)}</select></label>`;
+    }
+    case "multiselect":
+        return `<label for="${id}">${label} <span class="muted">(Ctrl/Cmd-click to pick more than one)</span><select id="${id}" name="${esc(field.name)}" multiple size="5">${selectOptions(optionsFor(field), value)}</select></label>`;
+    case "checkbox":
+        return `<label class="check" for="${id}"><input id="${id}" type="checkbox" name="${esc(field.name)}" value="true"${value ? " checked" : ""}> ${label}</label>`;
+    case "list":
+        return `<label for="${id}">${label} <span class="muted">(comma separated)</span><input id="${id}" type="text" name="${esc(field.name)}" value="${esc([].concat(value ?? []).join(", "))}"${required}></label>`;
+    case "address": {
+        const address = value || {};
+        const part = (key, placeholder) => `<input type="text" name="${esc(field.name)}[${key}]" placeholder="${placeholder}" aria-label="${placeholder}" value="${esc(address[key])}">`;
+        return `<fieldset><legend>${label}</legend>${part("street", "Street")}${part("city", "City")}${part("state", "State")}${part("zip", "ZIP")}</fieldset>`;
+    }
+    case "datetime":
+        return `<label for="${id}">${label}<input id="${id}" type="datetime-local" name="${esc(field.name)}" value="${esc(String(value ?? "").slice(0, 16))}"${required}></label>`;
+    default: {
+        const type = { number: "number", date: "date", email: "email", url: "text" }[field.type] || "text";
+        const extra = field.type === "number" ? ` step="any"${field.min !== undefined ? ` min="${field.min}"` : ""}` : "";
+        return `<label for="${id}">${label}<input id="${id}" type="${type}" name="${esc(field.name)}" value="${esc(value)}"${extra}${required}></label>`;
+    }
+    }
+}
+
+// A form built from an entity's fields. Pass omit to leave fields out.
+function renderForm(entityKey, { action, record = {}, submitLabel = "Save", omit = [], hidden = {}, inModal = false }) {
+    const fields = ENTITIES[entityKey].fields.filter(field => !omit.includes(field.name));
+    return `<form method="POST" action="${esc(action)}" class="stack">
+        ${hiddenInputs(hidden)}
+        ${fields.map(field => renderField(field, record[field.name])).join("")}
+        <div class="actions">
+            <button type="submit">${esc(submitLabel)}</button>
+            ${inModal ? `<button type="submit" formmethod="dialog" formnovalidate>Cancel</button>` : ""}
+        </div>
+    </form>`;
+}
+
+function isBlank(raw) {
+    return raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "");
+}
+
+function parseValue(field, raw) {
+    switch (field.type) {
+    case "checkbox":
+        return { value: raw === true || raw === "true" || raw === "on" };
+    case "multiselect": {
+        const list = isBlank(raw) ? [] : [].concat(raw);
+        const ids = [...new Set(list.map(Number))];
+        if (ids.some(id => !findById(field.ref, id))) {
+            return { error: "contains a choice that doesn't exist" };
+        }
+        if (field.required && ids.length === 0) {
+            return { error: "is required" };
+        }
+        return { value: ids };
+    }
+    case "list": {
+        const list = Array.isArray(raw) ? raw : String(raw ?? "").split(",");
+        const value = list.map(item => String(item).trim()).filter(Boolean);
+        if (field.required && value.length === 0) {
+            return { error: "is required" };
+        }
+        return { value };
+    }
+    case "address": {
+        const source = raw && typeof raw === "object" ? raw : {};
+        const part = key => (typeof source[key] === "string" ? source[key].trim() : "");
+        return { value: { street: part("street"), city: part("city"), state: part("state"), zip: part("zip") } };
+    }
+    }
+
+    if (isBlank(raw)) {
+        return field.required ? { error: "is required" } : { value: null };
+    }
+    if (typeof raw === "object") {
+        return { error: "must be a single value" };
+    }
+
+    const text = String(raw).trim();
+
+    switch (field.type) {
+    case "number": {
+        const number = Number(text);
+        if (!Number.isFinite(number)) {
+            return { error: "must be a number" };
+        }
+        if (field.min !== undefined && number < field.min) {
+            return { error: `must be at least ${field.min}` };
+        }
+        return { value: number };
+    }
+    case "date":
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(text) || Number.isNaN(Date.parse(text))) {
+            return { error: "must be a date (YYYY-MM-DD)" };
+        }
+        return { value: text };
+    case "datetime":
+        if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(text) || Number.isNaN(Date.parse(text))) {
+            return { error: "must be a date and time (YYYY-MM-DDTHH:MM)" };
+        }
+        return { value: text.length === 16 ? `${text}:00` : text };
+    case "email":
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) {
+            return { error: "must be an email address" };
+        }
+        return { value: text };
+    case "select":
+        if (field.options) {
+            return field.options.includes(text) ? { value: text } : { error: `must be one of: ${field.options.join(", ")}` };
+        }
+        return findById(field.ref, text) ? { value: Number(text) } : { error: "must be an existing choice" };
+    default:
+        return { value: text };
+    }
+}
+
+// Turn submitted input into a clean record. With partial, fields that weren't
+// sent are left alone (for API PATCH requests) instead of being cleared.
+function parseRecord(entityKey, input = {}, { partial = false, omit = [] } = {}) {
+    const data = {};
+    const errors = [];
+    for (const field of ENTITIES[entityKey].fields) {
+        if (omit.includes(field.name) || (partial && input[field.name] === undefined)) {
+            continue;
+        }
+        const result = parseValue(field, input[field.name]);
+        if (result.error) {
+            errors.push(`${field.label} ${result.error}`);
+        } else {
+            data[field.name] = result.value;
+        }
+    }
+    return { data, errors };
+}
+
+function createRecord(entityKey, data) {
+    const entity = ENTITIES[entityKey];
+    const defaults = entity.defaults ? entity.defaults() : {};
+    const values = { ...data };
+    for (const [key, value] of Object.entries(defaults)) {
+        if (values[key] === null || values[key] === undefined) {
+            values[key] = value;
+        }
+    }
+
+    const errors = entity.validate ? entity.validate(values, null) : [];
+    if (errors.length) {
+        return { errors };
+    }
+
+    const record = { id: nextId(entity.store), ...values };
+    entity.store.push(record);
+    if (entity.afterCreate) {
+        entity.afterCreate(record);
+    }
+    return { record };
+}
+
+function updateRecord(entityKey, record, data) {
+    const entity = ENTITIES[entityKey];
+    const errors = entity.validate ? entity.validate({ ...record, ...data }, record) : [];
+    if (errors.length) {
+        return { errors };
+    }
+
+    const before = { ...record };
+    Object.assign(record, data);
+    if (entity.afterUpdate) {
+        entity.afterUpdate(record, before);
+    }
+    return { record, before };
+}
+
+// Records that belong to this one (cascade) are deleted with it, ids in
+// multi-selects are pulled out, and anything else pointing at it blocks the delete.
+function deleteRecord(entityKey, record) {
+    const entity = ENTITIES[entityKey];
+    const blockers = [];
+    const dependents = [];
+
+    for (const [otherKey, other] of Object.entries(ENTITIES)) {
+        for (const field of other.fields.filter(f => f.ref === entityKey)) {
+            if (field.type === "multiselect") {
+                continue;
+            }
+            const matches = other.store.filter(row => row[field.name] === record.id);
+            if (matches.length === 0) {
+                continue;
+            }
+            if (field.cascade) {
+                dependents.push(...matches.map(match => [otherKey, match]));
+            } else {
+                blockers.push(`${matches.length} ${matches.length === 1 ? other.label : other.plural}`);
+            }
+        }
+    }
+
+    if (blockers.length) {
+        return { errors: [`${entity.display(record)} can't be deleted while it is still used by ${blockers.join(", ")}.`] };
+    }
+
+    const index = entity.store.indexOf(record);
+    if (index === -1) {
+        return {};
+    }
+    entity.store.splice(index, 1);
+
+    for (const [otherKey, dependent] of dependents) {
+        deleteRecord(otherKey, dependent);
+    }
+    for (const other of Object.values(ENTITIES)) {
+        for (const field of other.fields.filter(f => f.ref === entityKey && f.type === "multiselect")) {
+            other.store.forEach(row => {
+                row[field.name] = (row[field.name] || []).filter(id => id !== record.id);
+            });
+        }
+    }
+
+    if (entity.afterDelete) {
+        entity.afterDelete(record);
+    }
+    return {};
+}
+
+
+// ===== PROJECT WORKSPACES =====
+// Moving a project card into "In Progress" on the main board spins up its
+// workspace: a task board (its status columns) and a #general channel that
+// every member of the project can use. Each step checks before it creates, so
+// moving a project in and out of In Progress never duplicates anything.
+
+function isInProgress(mainBoardStatusId) {
+    const status = findById("mainBoardStatuses", mainBoardStatusId);
+    return Boolean(status) && status.name.trim().toLowerCase() === "in progress";
+}
+
+function generalChannel(projectId) {
+    return channels.find(channel => channel.projectId === projectId
+        && (channel.name === "general" || channel.name.endsWith("-general")));
+}
+
+// Everyone who should have access to a project's workspace
+function projectMemberIds(project) {
+    const ids = projectPeople
+        .filter(row => row.projectId === project.id && row.status !== "Completed" && row.status !== "Removed")
+        .map(row => row.personId);
+    if (project.projectManagerId) {
+        ids.push(project.projectManagerId);
+    }
+    return [...new Set(ids)];
+}
+
+function initializeWorkspace(project) {
+    // Default board columns, in the order the statuses are normally used
+    if (!projectStatuses.some(row => row.projectId === project.id)) {
+        [...statuses].sort(byOrder).forEach((status, index) => {
+            projectStatuses.push({ id: nextId(projectStatuses), projectId: project.id, statusId: status.id, order: index + 1 });
+        });
+    }
+
+    // The #general channel, with every project member in it
+    const channel = generalChannel(project.id);
+    if (channel) {
+        channel.participantPersonIds = [...new Set([...channel.participantPersonIds, ...projectMemberIds(project)])];
+    } else {
+        const id = nextId(channels);
+        channels.push({
+            id,
+            name: "general",
+            type: "Team",
+            url: `/channels/${id}`,
+            projectId: project.id,
+            participantPersonIds: projectMemberIds(project),
+            createdDate: today()
+        });
+    }
+
+    if (!project.workspaceInitializedAt) {
+        project.workspaceInitializedAt = new Date().toISOString();
+    }
+}
+
+// Keep a person's access to a project's #general channel in step with their assignment
+function syncWorkspaceMember(projectId, personId) {
+    const project = findById("projects", projectId);
+    const channel = generalChannel(projectId);
+    if (!project || !channel) {
+        return;
+    }
+    const isMember = projectMemberIds(project).includes(personId);
+    const hasAccess = channel.participantPersonIds.includes(personId);
+    if (isMember && !hasAccess) {
+        channel.participantPersonIds.push(personId);
+    } else if (!isMember && hasAccess) {
+        channel.participantPersonIds = channel.participantPersonIds.filter(id => id !== personId);
+    }
+}
+
+function isDoneStatus(statusId) {
+    const status = statuses.find(s => s.id === statusId);
+    return Boolean(status) && status.name.trim().toLowerCase() === "done";
+}
+
+// Share of a project's requirements that are done, or null if it has none
+function projectProgress(projectId) {
+    const projectRequirements = requirements.filter(requirement => requirement.projectId === projectId);
+    if (projectRequirements.length === 0) {
+        return null;
+    }
+    const done = projectRequirements.filter(requirement => isDoneStatus(requirement.statusId)).length;
+    return Math.round((done / projectRequirements.length) * 100);
+}
+
+function projectTeam(projectId) {
+    return projectPeople.filter(row => row.projectId === projectId && row.status !== "Removed");
+}
 
 // This is a server-rendered app, so browsers can only send GET and POST.
 // Every resource follows the same pattern:
@@ -15,43 +638,231 @@ app.use(express.urlencoded({ extended: true }));
 // Static paths (new, edit, all) must be registered before /:id so they aren't shadowed.
 
 
-// ===== PROJECTS (Issue #1) =====
+// ===== PROJECTS (Issues #1, #20) =====
+// The main board: every project is a card in the column for its status.
 
-// Get the create project page
+app.get("/", (req, res) => {
+    res.redirect("/projects");
+});
+
+function projectCard(project) {
+    const team = projectTeam(project.id);
+    const mentorNames = team.filter(row => row.role === "Faculty Mentor").map(row => displayOf("people", row.personId));
+    const studentCount = team.filter(row => row.role === "Student").length;
+    const progress = projectProgress(project.id);
+
+    return `<article class="card">
+        <h4><a href="/projects/${project.id}">${esc(project.name)}</a></h4>
+        <p><span class="muted">Client:</span> ${esc(displayOf("clients", project.clientId))}</p>
+        <p><span class="muted">Mentor:</span> ${esc(mentorNames.join(", ") || "—")}</p>
+        <p><span class="muted">Team:</span> ${studentCount} student${studentCount === 1 ? "" : "s"}</p>
+        ${progress === null ? "" : `<div class="progress" title="${progress}% of requirements done"><span style="width: ${progress}%"></span></div>`}
+        <div class="row-actions">
+            ${editButton(`/projects/edit/${project.id}`, project.name)}
+            ${deleteButton(`/projects/delete/${project.id}`, project.name)}
+        </div>
+    </article>`;
+}
+
+// Get all projects as cards on the main board
+app.get("/projects", (req, res) => {
+    const columns = [...mainBoardStatuses].sort(byOrder).map(status => {
+        const cards = projects.filter(project => project.mainBoardStatusId === status.id);
+        return `<section class="column" aria-label="${esc(status.name)}">
+            <h3>${esc(status.name)} <span class="count">${cards.length}</span></h3>
+            ${cards.map(projectCard).join("") || `<p class="muted">No projects</p>`}
+        </section>`;
+    });
+
+    sendPage(res, "Main board", `
+        <div class="toolbar">
+            <h1>Main board</h1>
+            ${modalButton("create-project", "+ New project")}
+        </div>
+        <div class="board">${columns.join("")}</div>
+        ${modal("create-project", "New project", renderForm("projects", { action: "/projects/new", submitLabel: "Create project", inModal: true }))}
+    `);
+});
+
+// The create form lives in a modal on the board
 app.get("/projects/new", (req, res) => {
-    res.send("Send the create project page");
+    res.redirect("/projects");
 });
 
 // Save the new project from the create form
 app.post("/projects/new", (req, res) => {
-    console.log(req.body);
-    res.send("Save the new project");
+    const { data, errors } = parseRecord("projects", req.body);
+    const result = errors.length ? { errors } : createRecord("projects", data);
+    if (result.errors) {
+        return sendErrors(res, result.errors, "/projects");
+    }
+    res.redirect(`/projects/${result.record.id}`);
 });
 
-// Get all projects
-app.get("/projects", (req, res) => {
-    res.send("Send all of the projects");
-});
+function assignmentModal(project, id, role, candidates) {
+    const assigned = projectTeam(project.id).filter(row => row.role === role).map(row => row.personId);
+    const options = candidates
+        .filter(personId => !assigned.includes(personId))
+        .map(personId => ({ value: personId, label: displayOf("people", personId) }));
+
+    const form = options.length === 0
+        ? `<p class="muted">Every ${esc(role.toLowerCase())} is already on this project.</p>
+           <form method="dialog"><button type="submit" class="secondary">Close</button></form>`
+        : `<form method="POST" action="/projects/${project.id}/people/new" class="stack">
+            ${hiddenInputs({ role, returnTo: `/projects/edit/${project.id}` })}
+            <label>${esc(role)}<select name="personId" required>${selectOptions(options)}</select></label>
+            <div class="actions">
+                <button type="submit">Add</button>
+                <button type="submit" formmethod="dialog" formnovalidate>Cancel</button>
+            </div>
+        </form>`;
+    return modal(id, `Add ${role.toLowerCase()}`, form);
+}
 
 // Get the edit page for one project
 app.get("/projects/edit/:id", (req, res) => {
-    res.send(`Send the edit page for project ${req.params.id}`);
+    const project = findById("projects", req.params.id);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.id);
+    }
+
+    const statusOptions = [...mainBoardStatuses].sort(byOrder).map(status => ({ value: status.id, label: status.name }));
+    const team = projectTeam(project.id);
+    const teamRows = team.map(row => `<tr>
+        <td>${esc(displayOf("people", row.personId))}</td>
+        <td>${esc(row.role)}</td>
+        <td>${esc(row.status)}</td>
+        <td class="row-actions">${deleteButton(`/projects/${project.id}/people/delete/${row.id}`,
+        `${displayOf("people", row.personId)} from this project`, { returnTo: `/projects/edit/${project.id}` })}</td>
+    </tr>`).join("");
+
+    sendPage(res, `Edit ${project.name}`, `
+        <h1>Edit ${esc(project.name)}</h1>
+        <section class="panel">
+            <h2>Status</h2>
+            <form method="POST" action="/projects/${project.id}/status">
+                <label>Main board status
+                    <select name="mainBoardStatusId" onchange="this.form.submit()">${selectOptions(statusOptions, project.mainBoardStatusId)}</select>
+                </label>
+                <noscript><button type="submit">Update status</button></noscript>
+            </form>
+            <p class="muted">Moving a project into In Progress sets up its workspace: a task board and a #general channel for the team.</p>
+        </section>
+        <section class="panel">
+            <h2>Team</h2>
+            <div class="actions">
+                ${modalButton("add-mentor", "+ Add mentor", "secondary")}
+                ${modalButton("add-student", "+ Add student", "secondary")}
+            </div>
+            ${team.length ? `<table><thead><tr><th>Name</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>${teamRows}</tbody></table>` : `<p class="muted">Nobody is assigned yet.</p>`}
+        </section>
+        <section class="panel">
+            <h2>Details</h2>
+            ${renderForm("projects", { action: `/projects/edit/${project.id}`, record: project, omit: ["mainBoardStatusId"], submitLabel: "Save changes" })}
+        </section>
+        <p><a href="/projects/${project.id}">Cancel</a></p>
+        ${assignmentModal(project, "add-mentor", "Faculty Mentor", mentors.map(mentor => mentor.personId))}
+        ${assignmentModal(project, "add-student", "Student", students.map(student => student.personId))}
+    `);
 });
 
 // Save the edit form for one project
 app.post("/projects/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Save the edits to project ${req.params.id}`);
+    const project = findById("projects", req.params.id);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.id);
+    }
+    const { data, errors } = parseRecord("projects", req.body, { omit: ["mainBoardStatusId"] });
+    const result = errors.length ? { errors } : updateRecord("projects", project, data);
+    if (result.errors) {
+        return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
+    }
+    res.redirect(`/projects/${project.id}`);
 });
 
-// Delete one project by id
+// Move a project to another column on the main board
+app.post("/projects/:id/status", (req, res) => {
+    const project = findById("projects", req.params.id);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.id);
+    }
+    const { data, errors } = parseRecord("projects", { mainBoardStatusId: req.body.mainBoardStatusId }, { partial: true });
+    if (data.mainBoardStatusId === undefined && errors.length === 0) {
+        errors.push("Status is required");
+    }
+    const result = errors.length ? { errors } : updateRecord("projects", project, data);
+    if (result.errors) {
+        return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
+    }
+    res.redirect(`/projects/edit/${project.id}`);
+});
+
+// Delete one project by id, along with everything that belongs to it
 app.post("/projects/delete/:id", (req, res) => {
-    res.send(`Delete project ${req.params.id}`);
+    const project = findById("projects", req.params.id);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.id);
+    }
+    const result = deleteRecord("projects", project);
+    if (result.errors) {
+        return sendErrors(res, result.errors, "/projects");
+    }
+    res.redirect("/projects");
 });
 
 // Get one project by id
 app.get("/projects/:id", (req, res) => {
-    res.send(`Send project ${req.params.id}`);
+    const project = findById("projects", req.params.id);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.id);
+    }
+
+    const team = projectTeam(project.id);
+    const progress = projectProgress(project.id);
+    const projectChannels = channels.filter(channel => channel.projectId === project.id);
+    const columns = projectStatuses.filter(row => row.projectId === project.id).sort(byOrder);
+    const hasWorkspace = Boolean(project.workspaceInitializedAt) || projectChannels.length > 0 || columns.length > 0;
+    const money = value => (value == null ? "—" : `$${Number(value).toLocaleString("en-US")}`);
+
+    const workspace = hasWorkspace
+        ? `<p><strong>Board columns:</strong> ${columns.map(row => `<span class="tag">${esc(displayOf("statuses", row.statusId))}</span>`).join(" ") || "—"}</p>
+           <p><strong>Channels:</strong></p>
+           <ul>${projectChannels.map(channel => `<li><a href="/channels/${channel.id}">#${esc(channel.name)}</a> <span class="muted">(${channel.participantPersonIds.length} member${channel.participantPersonIds.length === 1 ? "" : "s"})</span></li>`).join("") || "<li class=\"muted\">None</li>"}</ul>`
+        : `<p class="muted">The workspace is created automatically when this project moves into In Progress.</p>`;
+
+    sendPage(res, project.name, `
+        <div class="toolbar">
+            <h1>${esc(project.name)}</h1>
+            <div class="row-actions">
+                ${editButton(`/projects/edit/${project.id}`, project.name)}
+                ${deleteButton(`/projects/delete/${project.id}`, project.name)}
+            </div>
+        </div>
+        <section class="panel">
+            <dl class="details">
+                <dt>Status</dt><dd>${esc(displayOf("mainBoardStatuses", project.mainBoardStatusId))}</dd>
+                <dt>Client</dt><dd>${esc(displayOf("clients", project.clientId))}</dd>
+                <dt>Project manager</dt><dd>${esc(displayOf("people", project.projectManagerId))}</dd>
+                <dt>Description</dt><dd>${esc(project.description || "—")}</dd>
+                <dt>Start</dt><dd>${esc(project.startDate || "—")}</dd>
+                <dt>Midpoint</dt><dd>${esc(project.midpointDate || "—")}</dd>
+                <dt>End</dt><dd>${esc(project.endDate || "—")}</dd>
+                <dt>Budget</dt><dd>${esc(money(project.budget))}</dd>
+                <dt>Estimated hours</dt><dd>${esc(project.estimatedHours ?? "—")}</dd>
+                <dt>Progress</dt><dd>${progress === null ? "No requirements yet" : `${progress}% of requirements done`}</dd>
+                <dt>Notes</dt><dd>${esc(project.notes || "—")}</dd>
+            </dl>
+        </section>
+        <section class="panel">
+            <h2>Team</h2>
+            ${team.length ? `<ul>${team.map(row => `<li>${esc(displayOf("people", row.personId))} <span class="muted">— ${esc(row.role)}</span></li>`).join("")}</ul>` : `<p class="muted">Nobody is assigned yet.</p>`}
+        </section>
+        <section class="panel">
+            <h2>Workspace</h2>
+            ${workspace}
+        </section>
+        <p><a href="/projects">Back to the main board</a></p>
+    `);
 });
 
 
@@ -301,10 +1112,18 @@ app.get("/projects/:projectid/people/new", (req, res) => {
     res.send(`Show the form for adding a person to project ${req.params.projectid}`);
 });
 
-// Save new relationship
+// Save new relationship (also used by the add mentor / add student modals on the project edit page)
 app.post("/projects/:projectid/people/new", (req, res) => {
-    console.log(req.body);
-    res.send(`Saved a new relationship between a person and project ${req.params.projectid}`);
+    const project = findById("projects", req.params.projectid);
+    if (!project) {
+        return sendNotFound(res, "project", req.params.projectid);
+    }
+    const { data, errors } = parseRecord("projectPeople", { ...req.body, projectId: project.id });
+    const result = errors.length ? { errors } : createRecord("projectPeople", data);
+    if (result.errors) {
+        return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
+    }
+    redirectBack(res, req.body.returnTo, `/projects/${project.id}/people`);
 });
 
 // Form to edit a relationship
@@ -320,7 +1139,12 @@ app.post("/projects/:projectid/people/edit/:id", (req, res) => {
 
 // Delete a relationship
 app.post("/projects/:projectid/people/delete/:id", (req, res) => {
-    res.send(`Deleted relationship ${req.params.id} from project ${req.params.projectid}`);
+    const row = findById("projectPeople", req.params.id);
+    if (!row || row.projectId !== Number(req.params.projectid)) {
+        return sendNotFound(res, "project assignment", req.params.id);
+    }
+    deleteRecord("projectPeople", row);
+    redirectBack(res, req.body.returnTo, `/projects/${row.projectId}/people`);
 });
 
 // View a specific relationship
