@@ -47,6 +47,7 @@ model Person {
   student         Student?
   projectPeople   ProjectPerson[]
   personSkills    PersonSkill[]
+  documents       Document[]
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -119,6 +120,7 @@ model Project {
   projectPeople          ProjectPerson[]
   projectSkills          ProjectSkill[]
   projectProjectTypes    ProjectProjectType[]
+  documents              Document[]
 }
 
 // Faculty who oversee and advise projects. A mentor is a person plus these details (Issue #44)
@@ -229,4 +231,23 @@ model ProjectProjectType {
   audit         Json?
 
   @@unique([projectId, projectTypeId])
+}
+
+// Files and materials that belong to a project. There's no real upload yet, so
+// the file is a name and a URL (Issue #53)
+model Document {
+  id           Int       @id @default(autoincrement())
+  name         String
+  projectId    Int
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type         String
+  fileName     String?
+  fileUrl      String?
+  // Who uploaded it
+  personId     Int?
+  person       Person?   @relation(fields: [personId], references: [id], onDelete: Restrict)
+  uploadedDate DateTime? @db.Date
+  version      String?
+  status       String
+  audit        Json?
 }

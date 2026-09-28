@@ -34,7 +34,7 @@ const projectTypes = databaseTable("projectTypes");
 const projectSkills = databaseTable("projectSkills");
 const personSkills = databaseTable("personSkills");
 const projectProjectTypes = databaseTable("projectProjectTypes");
-const documents = require("./data/documents.js");
+const documents = databaseTable("documents");
 const threads = require("./data/threads.js");
 const { messages, currentPersonId: DEFAULT_PERSON_ID } = require("./data/messages.js");
 
@@ -1147,6 +1147,7 @@ const ENTITIES = {
         label: "document",
         plural: "documents",
         store: documents,
+        model: "document",
         display: document => document.name,
         recordActor: true,
         fields: [
