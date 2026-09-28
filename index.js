@@ -1852,10 +1852,22 @@ const PROJECT_ACTIONS = [
     "activity:view"
 ];
 
-// What each project role may do on a project it's on. For now every project
-// role may do everything on its own projects, and nothing on anyone else's.
+// What each project role may do on a project it's on (and nothing on anyone
+// else's). Roles that aren't narrowed yet may still do everything.
 const PROJECT_ROLE_PERMISSIONS = {
-    "Project Manager": PROJECT_ACTIONS,
+    // Issue #126: coordinates the project: manages its members, creates and
+    // assigns tasks, manages its board and channels, updates its status, and
+    // sees its activity
+    "Project Manager": [
+        "project:view", "project:edit", "project:status",
+        "team:view", "team:manage",
+        "board:view", "board:manage",
+        "tasks:view", "tasks:create", "tasks:update", "tasks:review", "tasks:delete",
+        "channels:view", "channels:create", "channels:manage", "channels:participate",
+        "documents:view", "documents:upload", "documents:manage",
+        "details:view", "details:manage",
+        "activity:view"
+    ],
     "Faculty Mentor": PROJECT_ACTIONS,
     "Student": PROJECT_ACTIONS,
     "Sponsor": PROJECT_ACTIONS
