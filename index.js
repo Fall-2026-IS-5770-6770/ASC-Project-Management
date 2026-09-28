@@ -1,4 +1,6 @@
+const crypto = require("crypto");
 const express = require("express");
+const session = require("express-session");
 
 // ===== DATA =====
 // The dummy data in /data stands in for the database until one is wired up.
@@ -34,6 +36,33 @@ app.use((req, res, next) => {
     req.body = req.body || {};
     next();
 });
+
+
+// ===== SESSIONS =====
+// Session data lives in express-session's default in-memory store for now.
+// That store forgets every session when the server restarts and can't be
+// shared between processes, which is why express-session warns about it in
+// production. A persistent store (the database or MongoDB) is a later issue.
+
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+if (!process.env.SESSION_SECRET) {
+    console.warn("SESSION_SECRET is not set; using a random secret, so sessions end whenever the server restarts.");
+}
+
+app.use(session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false
+}));
+
+// Development-only look at the current session, to confirm values persist
+// from one request to the next
+if (process.env.NODE_ENV !== "production") {
+    app.get("/dev/session", (req, res) => {
+        req.session.views = (req.session.views || 0) + 1;
+        res.json({ id: req.sessionID, session: req.session });
+    });
+}
 
 
 // ===== HTML HELPERS =====
