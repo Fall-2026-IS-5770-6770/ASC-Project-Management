@@ -712,6 +712,40 @@ app.get("/clients/:id", (req, res) => {
 });
 
 
+// ===== DOCUMENTS (Issue #17) =====
+// Documents always belong to a project
+
+app.get("/documents/new", (req, res) => {
+    res.send("Send the create document page");
+});
+
+app.post("/documents/new", (req, res) => {
+    console.log(req.body);
+    res.send("Save the new document");
+});
+
+app.get("/documents", (req, res) => {
+    res.send("Send all of the documents");
+});
+
+app.get("/documents/edit/:id", (req, res) => {
+    res.send(`Send the edit page for document ${req.params.id}`);
+});
+
+app.post("/documents/edit/:id", (req, res) => {
+    console.log(req.body);
+    res.send(`Save the edits to document ${req.params.id}`);
+});
+
+app.post("/documents/delete/:id", (req, res) => {
+    res.send(`Delete document ${req.params.id}`);
+});
+
+app.get("/documents/:id", (req, res) => {
+    res.send(`Send document ${req.params.id}`);
+});
+
+
 // ===== PEOPLE (Issue #18) =====
 
 app.get("/people/new", (req, res) => {
