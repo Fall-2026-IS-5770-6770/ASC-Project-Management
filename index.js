@@ -325,6 +325,10 @@ function logAssignments(modelName, role) {
 logAssignments("ProjectMentorAssignmentLog", "Faculty Mentor");
 
 
+// Issue #85: who worked on which project as a student, and when
+logAssignments("ProjectStudentAssignmentLog", "Student");
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
