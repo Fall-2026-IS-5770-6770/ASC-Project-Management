@@ -516,6 +516,7 @@ const ENTITIES = {
         plural: "skills",
         store: skills,
         display: skill => skill.name,
+        recordActor: true,
         sort: (a, b) => a.name.localeCompare(b.name),
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
