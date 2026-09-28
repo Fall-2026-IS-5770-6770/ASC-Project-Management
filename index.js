@@ -385,6 +385,59 @@ logRecordChanges("PersonSkillUpdateLog", "personSkills", "personSkillId", {
 });
 
 
+// Issue #92: channels created, renamed, archived, or deleted, and people
+// added to or removed from them (including by workspace set-up)
+const ChannelActivityLog = logModel("ChannelActivityLog", {
+    channelId: { type: Number, required: true, index: true },
+    projectId: { type: Number, index: true },
+    channelName: String,
+    addedPersonIds: { type: [Number], default: undefined },
+    removedPersonIds: { type: [Number], default: undefined },
+    changes: { type: mongoose.Schema.Types.Mixed, default: {} }
+});
+
+onChange("channels", (entry, channel) => {
+    const write = (action, details = {}) => writeLog(ChannelActivityLog, {
+        action,
+        channelId: channel.id,
+        projectId: channel.projectId,
+        channelName: channel.name,
+        actorPersonId: entry.actorPersonId,
+        ...details
+    });
+
+    if (entry.action === "created") {
+        return write("created", { addedPersonIds: channel.participantPersonIds });
+    }
+    if (entry.action === "deleted") {
+        return write("deleted");
+    }
+    if (entry.action !== "updated") {
+        return;
+    }
+
+    const { participantPersonIds: members, ...otherChanges } = entry.changes;
+    if (Object.keys(otherChanges).length) {
+        const action = otherChanges.name ? "renamed"
+            : otherChanges.type && otherChanges.type.to === "Archived" ? "archived"
+                : "changed";
+        write(action, { changes: otherChanges });
+    }
+    if (members) {
+        const before = members.from || [];
+        const after = members.to || [];
+        const added = after.filter(id => !before.includes(id));
+        const removed = before.filter(id => !after.includes(id));
+        if (added.length) {
+            write("participants added", { addedPersonIds: added });
+        }
+        if (removed.length) {
+            write("participants removed", { removedPersonIds: removed });
+        }
+    }
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
@@ -1017,12 +1070,12 @@ const ENTITIES = {
                 && other.projectId === row.projectId && other.personId === row.personId && other.role === row.role);
             return duplicate ? [`${displayOf("people", row.personId)} is already a ${row.role} on this project`] : [];
         },
-        afterCreate: row => syncWorkspaceMember(row.projectId, row.personId),
-        afterUpdate: (row, before) => {
-            syncWorkspaceMember(before.projectId, before.personId);
-            syncWorkspaceMember(row.projectId, row.personId);
+        afterCreate: (row, { actorId }) => syncWorkspaceMember(row.projectId, row.personId, actorId),
+        afterUpdate: (row, before, { actorId }) => {
+            syncWorkspaceMember(before.projectId, before.personId, actorId);
+            syncWorkspaceMember(row.projectId, row.personId, actorId);
         },
-        afterDelete: row => syncWorkspaceMember(row.projectId, row.personId)
+        afterDelete: (row, { actorId }) => syncWorkspaceMember(row.projectId, row.personId, actorId)
     }
 };
 
@@ -1381,25 +1434,27 @@ function initializeWorkspace(project, actorId) {
     // Default board columns, in the order the statuses are normally used
     if (!projectStatuses.some(row => row.projectId === project.id)) {
         [...statuses].sort(byOrder).forEach((status, index) => {
-            projectStatuses.push({ id: nextId(projectStatuses), projectId: project.id, statusId: status.id, order: index + 1 });
+            createRecord("projectStatuses", { projectId: project.id, statusId: status.id, order: index + 1 }, actorId);
         });
     }
 
     // The #general channel, with every project member in it
     const channel = generalChannel(project.id);
     if (channel) {
-        channel.participantPersonIds = [...new Set([...channel.participantPersonIds, ...projectMemberIds(project)])];
+        const participantPersonIds = [...new Set([...channel.participantPersonIds, ...projectMemberIds(project)])];
+        if (participantPersonIds.length !== channel.participantPersonIds.length) {
+            updateRecord("channels", channel, { participantPersonIds }, actorId);
+        }
     } else {
-        const id = nextId(channels);
-        channels.push({
-            id,
+        const { record } = createRecord("channels", {
             name: "general",
             type: "Team",
-            url: `/channels/${id}`,
+            url: null,
             projectId: project.id,
             participantPersonIds: projectMemberIds(project),
             createdDate: today()
-        });
+        }, actorId);
+        record.url = `/channels/${record.id}`;
     }
 
     if (!project.workspaceInitializedAt) {
@@ -1409,7 +1464,7 @@ function initializeWorkspace(project, actorId) {
 }
 
 // Keep a person's access to a project's #general channel in step with their assignment
-function syncWorkspaceMember(projectId, personId) {
+function syncWorkspaceMember(projectId, personId, actorId) {
     const project = findById("projects", projectId);
     const channel = generalChannel(projectId);
     if (!project || !channel) {
@@ -1418,9 +1473,9 @@ function syncWorkspaceMember(projectId, personId) {
     const isMember = projectMemberIds(project).includes(personId);
     const hasAccess = channel.participantPersonIds.includes(personId);
     if (isMember && !hasAccess) {
-        channel.participantPersonIds.push(personId);
+        updateRecord("channels", channel, { participantPersonIds: [...channel.participantPersonIds, personId] }, actorId);
     } else if (!isMember && hasAccess) {
-        channel.participantPersonIds = channel.participantPersonIds.filter(id => id !== personId);
+        updateRecord("channels", channel, { participantPersonIds: channel.participantPersonIds.filter(id => id !== personId) }, actorId);
     }
 }
 
