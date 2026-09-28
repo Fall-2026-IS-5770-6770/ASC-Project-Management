@@ -484,6 +484,13 @@ app.use((req, res, next) => {
     if (person) {
         req.actingPersonId = person.id;
         res.locals.actingPersonId = person.id;
+        const context = requestContext.getStore();
+        context.user = { personId: person.id, ...rolesOf(person.id) };
+        limitSnapshotToUser(context.data);
+        const resource = pageResource(req.path);
+        if (resource && req.method === "GET" && !allowed(resource, "view", {})) {
+            return sendForbidden(res, "You don't have access to this part of the app.");
+        }
         return next();
     }
     // Signed in as someone who has since been deleted
@@ -759,7 +766,7 @@ function sendPage(res, title, body, statusCode = 200) {
 <body>
     <header>
         <a class="brand" href="/">ASC Project Management</a>
-        ${NAV.map(link => `<a href="${esc(link.href)}">${esc(link.label)}</a>`).join("")}
+        ${NAV.filter(link => navVisible(link)).map(link => `<a href="${esc(link.href)}">${esc(link.label)}</a>`).join("")}
         ${actingAsControl(res)}
     </header>
     <main>${flashMessage(res.locals.flash)}${body}</main>
@@ -779,6 +786,21 @@ function actingAsControl(res) {
         <span class="muted-light">(${esc(AUTH_PROVIDERS[provider]?.label || provider)})</span>
         <button type="submit" class="link-button">Sign out</button>
     </form>`;
+}
+
+// Hide links to pages the signed-in person can't open
+function navVisible(link) {
+    if (!currentUser()) {
+        return false;
+    }
+    const resource = pageResource(link.href);
+    if (resource) {
+        return allowed(resource, "view", {});
+    }
+    if (link.href === "/activity") {
+        return can("activity:all");
+    }
+    return true;
 }
 
 function flashMessage(message) {
@@ -1333,18 +1355,18 @@ function nextId(store) {
     return store.reduce((max, record) => Math.max(max, record.id), 0) + 1;
 }
 
-function optionsFor(field) {
+function optionsFor(field, keep) {
     if (field.options) {
         return field.options.map(option => ({ value: option, label: option }));
     }
     const ref = ENTITIES[field.ref];
-    const records = ref.sort ? [...ref.store].sort(ref.sort) : ref.store;
+    const records = (ref.sort ? [...ref.store].sort(ref.sort) : ref.store).filter(record => !keep || keep(record.id));
     return records.map(record => ({ value: record.id, label: ref.display(record) }));
 }
 
 let fieldCounter = 0;
 
-function renderField(field, value) {
+function renderField(field, value, keep) {
     const id = `field-${field.name}-${++fieldCounter}`;
     const required = field.required ? " required" : "";
     const label = `${esc(field.label)}${field.required ? " *" : ""}`;
@@ -1354,7 +1376,7 @@ function renderField(field, value) {
         return `<label for="${id}">${label}<textarea id="${id}" name="${esc(field.name)}" rows="3"${required}>${esc(value)}</textarea></label>`;
     case "select": {
         const blank = field.required ? `<option value="" disabled${value == null ? " selected" : ""}>Choose…</option>` : `<option value="">None</option>`;
-        return `<label for="${id}">${label}<select id="${id}" name="${esc(field.name)}"${required}>${blank}${selectOptions(optionsFor(field), value)}</select></label>`;
+        return `<label for="${id}">${label}<select id="${id}" name="${esc(field.name)}"${required}>${blank}${selectOptions(optionsFor(field, keep), value)}</select></label>`;
     }
     case "multiselect":
         return `<label for="${id}">${label} <span class="muted">(Ctrl/Cmd-click to pick more than one)</span><select id="${id}" name="${esc(field.name)}" multiple size="5">${selectOptions(optionsFor(field), value)}</select></label>`;
@@ -1378,11 +1400,11 @@ function renderField(field, value) {
 }
 
 // A form built from an entity's fields. Pass omit to leave fields out.
-function renderForm(entityKey, { action, record = {}, submitLabel = "Save", omit = [], hidden = {}, inModal = false }) {
+function renderForm(entityKey, { action, record = {}, submitLabel = "Save", omit = [], hidden = {}, inModal = false, optionFilter = {} }) {
     const fields = ENTITIES[entityKey].fields.filter(field => !omit.includes(field.name));
     return `<form method="POST" action="${esc(action)}" class="stack">
         ${hiddenInputs(hidden)}
-        ${fields.map(field => renderField(field, record[field.name])).join("")}
+        ${fields.map(field => renderField(field, record[field.name], optionFilter[field.name])).join("")}
         <div class="actions">
             <button type="submit">${esc(submitLabel)}</button>
             ${inModal ? `<button type="submit" formmethod="dialog" formnovalidate>Cancel</button>` : ""}
@@ -1809,6 +1831,222 @@ function projectTeam(projectId) {
 // Static paths (new, edit, all) must be registered before /:id so they aren't shadowed.
 
 
+// ===== ACCESS (Issues #125-#130) =====
+// Who may do what. Project actions are checked against the person's roles on
+// the project the record belongs to; organization actions aren't tied to a
+// project.
+//
+// Viewing is enforced by trimming each request's snapshot to the records the
+// signed-in person may see, so every list, board, count, page, and API result
+// is scoped the same way and anything else is simply "not found". Changes are
+// checked with allowed() before they're made, on the pages and the API alike.
+
+const PROJECT_ACTIONS = [
+    "project:view", "project:edit", "project:status",
+    "team:view", "team:manage",
+    "board:view", "board:manage",
+    "tasks:view", "tasks:create", "tasks:update", "tasks:review", "tasks:delete",
+    "channels:view", "channels:create", "channels:manage", "channels:participate",
+    "documents:view", "documents:upload", "documents:manage",
+    "details:view", "details:manage",
+    "activity:view"
+];
+
+// What each project role may do on a project it's on. For now every project
+// role may do everything on its own projects, and nothing on anyone else's.
+const PROJECT_ROLE_PERMISSIONS = {
+    "Project Manager": PROJECT_ACTIONS,
+    "Faculty Mentor": PROJECT_ACTIONS,
+    "Student": PROJECT_ACTIONS,
+    "Sponsor": PROJECT_ACTIONS
+};
+
+// Organization actions: projects:create, projects:delete, directory:view,
+// org:manage, clients:view, roles:manage, activity:all
+function organizationAllowed() {
+    return true;
+}
+
+function currentUser() {
+    return requestContext.getStore()?.user;
+}
+
+function can(action, projectId) {
+    const user = currentUser();
+    if (!user) {
+        return false;
+    }
+    if (!PROJECT_ACTIONS.includes(action)) {
+        return organizationAllowed(user, action);
+    }
+    const held = user.projectRoles.get(Number(projectId));
+    return Boolean(held) && [...held].some(role => (PROJECT_ROLE_PERMISSIONS[role] || []).includes(action));
+}
+
+function channelProjectId(channelId) {
+    return findById("channels", channelId)?.projectId;
+}
+
+function threadChannelId(threadId) {
+    return findById("threads", threadId)?.channelId;
+}
+
+// A channel's conversation is open to its participants, and to anyone who
+// manages the project's channels
+function canUseChannel(channelId) {
+    const channel = findById("channels", channelId);
+    if (!channel) {
+        return false;
+    }
+    return can("channels:manage", channel.projectId)
+        || (can("channels:view", channel.projectId) && channel.participantPersonIds.includes(currentUser().personId));
+}
+
+const ORGANIZATION_RECORD = { view: "directory:view", create: "org:manage", update: "org:manage", delete: "org:manage" };
+
+// Per resource: the project a record belongs to, and the action each
+// operation needs (or a function deciding it)
+const ACCESS = {
+    projects: { project: record => record.id, view: "project:view", create: "projects:create", update: "project:edit", delete: "projects:delete" },
+    projectStatuses: { project: record => record.projectId, view: "board:view", create: "board:manage", update: "board:manage", delete: "board:manage" },
+    projectPeople: { project: record => record.projectId, view: "team:view", create: "team:manage", update: "team:manage", delete: "team:manage" },
+    requirements: { project: record => record.projectId, view: "tasks:view", create: "tasks:create", update: "tasks:update", delete: "tasks:delete" },
+    documents: {
+        project: record => record.projectId,
+        view: "documents:view",
+        create: "documents:upload",
+        // Uploaders may change their own documents; managers may change any
+        update: record => can("documents:manage", record.projectId)
+            || (record.personId === currentUser()?.personId && can("documents:upload", record.projectId)),
+        delete: record => can("documents:manage", record.projectId)
+            || (record.personId === currentUser()?.personId && can("documents:upload", record.projectId))
+    },
+    projectSkills: { project: record => record.projectId, view: "details:view", create: "details:manage", update: "details:manage", delete: "details:manage" },
+    projectProjectTypes: { project: record => record.projectId, view: "details:view", create: "details:manage", update: "details:manage", delete: "details:manage" },
+    channels: {
+        project: record => record.projectId,
+        view: record => canUseChannel(record.id),
+        create: "channels:create",
+        update: "channels:manage",
+        delete: "channels:manage"
+    },
+    threads: {
+        project: record => channelProjectId(record.channelId),
+        view: record => canUseChannel(record.channelId),
+        create: record => canUseChannel(record.channelId) && can("channels:participate", channelProjectId(record.channelId)),
+        // Whoever started a thread may rename or delete it, as may channel managers
+        update: record => can("channels:manage", channelProjectId(record.channelId))
+            || (record.createdByPersonId === currentUser()?.personId && canUseChannel(record.channelId)),
+        delete: record => can("channels:manage", channelProjectId(record.channelId))
+            || (record.createdByPersonId === currentUser()?.personId && canUseChannel(record.channelId))
+    },
+    messages: {
+        project: record => channelProjectId(record.channelId),
+        view: record => canUseChannel(record.channelId),
+        create: record => canUseChannel(record.channelId ?? threadChannelId(record.threadId))
+            && can("channels:participate", channelProjectId(record.channelId ?? threadChannelId(record.threadId))),
+        // Only the sender, while they still have the channel
+        update: record => record.senderPersonId === currentUser()?.personId && canUseChannel(record.channelId),
+        delete: record => record.senderPersonId === currentUser()?.personId && canUseChannel(record.channelId)
+    },
+    statuses: ORGANIZATION_RECORD,
+    mainBoardStatuses: ORGANIZATION_RECORD,
+    skills: ORGANIZATION_RECORD,
+    projectTypes: ORGANIZATION_RECORD,
+    people: ORGANIZATION_RECORD,
+    mentors: ORGANIZATION_RECORD,
+    students: ORGANIZATION_RECORD,
+    personSkills: ORGANIZATION_RECORD,
+    clients: { view: "clients:view", create: "org:manage", update: "org:manage", delete: "org:manage" },
+    roles: { view: "roles:manage", create: () => false, update: () => false, delete: () => false },
+    organizationRoles: { view: "roles:manage", create: "roles:manage", update: "roles:manage", delete: "roles:manage" }
+};
+
+// May the signed-in person do this operation (view, create, update, delete)
+// on this record? For create, pass the new record's values.
+function allowed(entityKey, operation, record = {}) {
+    const access = ACCESS[entityKey];
+    const rule = access?.[operation];
+    if (!rule) {
+        return false;
+    }
+    if (typeof rule === "function") {
+        return rule(record);
+    }
+    return can(rule, access.project ? access.project(record) : null);
+}
+
+// Could the person create this kind of record anywhere? (for showing create buttons)
+function canCreateAny(entityKey) {
+    if (!ACCESS[entityKey]?.project) {
+        return allowed(entityKey, "create", {});
+    }
+    if (entityKey === "projects") {
+        return allowed("projects", "create", {});
+    }
+    if (entityKey === "threads" || entityKey === "messages") {
+        return channels.some(channel => allowed(entityKey, "create", { channelId: channel.id }));
+    }
+    return projects.some(project => allowed(entityKey, "create", { projectId: project.id }));
+}
+
+// People and clients the person can't list are still shown by name where a
+// record they can see points at them (a task's assignee, a project's client)
+const SHOWN_BY_REFERENCE = ["people", "clients"];
+
+// Trim the request's snapshot to what the signed-in person may see
+function limitSnapshotToUser(data) {
+    const keep = {};
+    for (const entityKey of Object.keys(data)) {
+        if (!SHOWN_BY_REFERENCE.includes(entityKey) || allowed(entityKey, "view", {})) {
+            keep[entityKey] = new Set(data[entityKey].filter(record => allowed(entityKey, "view", record)));
+        }
+    }
+    for (const entityKey of SHOWN_BY_REFERENCE) {
+        if (keep[entityKey]) {
+            continue;
+        }
+        const referenced = new Set(entityKey === "people" ? [currentUser().personId] : []);
+        for (const [otherKey, kept] of Object.entries(keep)) {
+            for (const field of ENTITIES[otherKey].fields.filter(f => f.ref === entityKey)) {
+                kept.forEach(record => [].concat(record[field.name] ?? []).forEach(id => referenced.add(id)));
+            }
+        }
+        if (entityKey === "people") {
+            keep.projects.forEach(project => referenced.add(project.projectManagerId));
+        }
+        keep[entityKey] = new Set(data[entityKey].filter(record => referenced.has(record.id)));
+    }
+    for (const entityKey of Object.keys(data)) {
+        data[entityKey] = data[entityKey].filter(record => keep[entityKey].has(record));
+    }
+}
+
+function sendForbidden(res, message = "You don't have permission to do that.") {
+    if (res.req.originalUrl.startsWith("/api/")) {
+        return res.status(403).json({ errors: [message] });
+    }
+    sendPage(res, "Not allowed", `<h1>Not allowed</h1><div class="errors">${esc(message)}</div><p><a href="/">Back to the main board</a></p>`, 403);
+}
+
+// Organization-level pages need permission to see that kind of record at all
+const PAGE_RESOURCES = [
+    [/^\/(statuses|status)(\/|$)/, "statuses"],
+    [/^\/main-board-statuses(\/|$)/, "mainBoardStatuses"],
+    [/^\/people(\/|$)/, "people"],
+    [/^\/mentors(\/|$)/, "mentors"],
+    [/^\/students(\/|$)/, "students"],
+    [/^\/skills(\/|$)/, "skills"],
+    [/^\/person-skill(\/|$)/, "personSkills"],
+    [/^\/project-types(\/|$)/, "projectTypes"],
+    [/^\/clients(\/|$)/, "clients"]
+];
+
+function pageResource(path) {
+    return PAGE_RESOURCES.find(([pattern]) => pattern.test(path))?.[1];
+}
+
+
 // ===== RESOURCE PAGES =====
 // Most resources share one shape: a list page with a create modal, a page for
 // one record, and an edit page. These build those pages from the registry.
@@ -1849,7 +2087,7 @@ function fieldColumn(entityKey, name, label) {
 
 function recordActions(entityKey, itemPath, record) {
     const label = ENTITIES[entityKey].display(record);
-    return `${editButton(`${itemPath}/edit/${record.id}`, label)}${deleteButton(`${itemPath}/delete/${record.id}`, label)}`;
+    return `${allowed(entityKey, "update", record) ? editButton(`${itemPath}/edit/${record.id}`, label) : ""}${allowed(entityKey, "delete", record) ? deleteButton(`${itemPath}/delete/${record.id}`, label) : ""}`;
 }
 
 // Columns are { label, value(row) } for text or { label, html(row) } for markup
@@ -1867,8 +2105,13 @@ function recordTable(columns, rows, actions) {
 
 function createModal(entityKey, itemPath, { omit = [], hidden = {}, record = {} } = {}) {
     const entity = ENTITIES[entityKey];
+    // Only offer the projects (or channels) the person may create this in
+    const optionFilter = {
+        projectId: id => allowed(entityKey, "create", { projectId: id }),
+        channelId: id => allowed(entityKey, "create", { channelId: id })
+    };
     return modal(`create-${entityKey}`, `New ${entity.label}`,
-        renderForm(entityKey, { action: `${itemPath}/new`, submitLabel: `Create ${entity.label}`, inModal: true, omit, hidden, record }));
+        renderForm(entityKey, { action: `${itemPath}/new`, submitLabel: `Create ${entity.label}`, inModal: true, omit, hidden, record, optionFilter }));
 }
 
 // List page with a create modal. Pass body to replace the default table.
@@ -1877,11 +2120,11 @@ function sendListPage(res, { entityKey, title, itemPath, columns, rows, intro = 
     sendPage(res, title, `
         <div class="toolbar">
             <h1>${esc(title)}</h1>
-            ${modalButton(`create-${entityKey}`, `+ New ${entity.label}`)}
+            ${canCreateAny(entityKey) ? modalButton(`create-${entityKey}`, `+ New ${entity.label}`) : ""}
         </div>
         ${intro}
         ${body ?? recordTable(columns, rows, row => recordActions(entityKey, itemPath, row))}
-        ${createModal(entityKey, itemPath, createOptions)}
+        ${canCreateAny(entityKey) ? createModal(entityKey, itemPath, createOptions) : ""}
     `);
 }
 
@@ -1907,22 +2150,34 @@ function sendDetailPage(res, { entityKey, record, itemPath, listPath, extra = ""
     `);
 }
 
-function sendEditPage(res, { entityKey, record, itemPath, backHref, omit = [], intro = "" }) {
+function sendEditPage(res, { entityKey, record, itemPath, backHref, omit = [], intro = "", canEdit = allowed(entityKey, "update", record), showForm = true }) {
+    if (!canEdit) {
+        return sendForbidden(res);
+    }
     const entity = ENTITIES[entityKey];
     const name = entity.display(record);
     sendPage(res, `Edit ${name}`, `
         <h1>Edit ${esc(entity.label)}: ${esc(name)}</h1>
         ${intro}
-        <section class="panel">
+        ${showForm ? `<section class="panel">
             ${renderForm(entityKey, { action: `${itemPath}/edit/${record.id}`, record, omit, submitLabel: "Save changes" })}
-        </section>
+        </section>` : ""}
         <p><a href="${esc(backHref)}">Cancel</a></p>
     `);
+}
+
+// Moving a record to another project (or channel) needs permission to create it there
+function mayMoveTo(entityKey, record, data) {
+    const moved = ["projectId", "channelId", "threadId"].some(name => data[name] !== undefined && data[name] !== record[name]);
+    return !moved || allowed(entityKey, "create", { ...record, ...data });
 }
 
 // Shared POST handlers. Each takes the paths to send the user to afterwards.
 async function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.body, omit = [] }) {
     const { data, errors } = parseRecord(entityKey, input, { omit });
+    if (!errors.length && !allowed(entityKey, "create", data)) {
+        return sendForbidden(res);
+    }
     const result = errors.length ? { errors } : await createRecord(entityKey, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
@@ -1931,8 +2186,11 @@ async function handleCreate(entityKey, req, res, { backHref, redirectTo, input =
     res.redirect(typeof redirectTo === "function" ? redirectTo(result.record) : redirectTo);
 }
 
-async function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input = req.body, omit = [] }) {
+async function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input = req.body, omit = [], permit = allowed(entityKey, "update", record) }) {
     const { data, errors } = parseRecord(entityKey, input, { omit });
+    if (!permit || (!errors.length && !mayMoveTo(entityKey, record, data))) {
+        return sendForbidden(res);
+    }
     const result = errors.length ? { errors } : await updateRecord(entityKey, record, data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
@@ -1943,6 +2201,9 @@ async function handleUpdate(entityKey, req, res, { record, backHref, redirectTo,
 }
 
 async function handleDelete(entityKey, req, res, { record, backHref, redirectTo }) {
+    if (!allowed(entityKey, "delete", record)) {
+        return sendForbidden(res);
+    }
     const result = await deleteRecord(entityKey, record, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
@@ -2230,6 +2491,11 @@ app.get("/", (req, res) => {
     res.redirect("/projects");
 });
 
+// The project edit page has three parts; anyone allowed any of them may open it
+function canEditProject(project) {
+    return can("project:edit", project.id) || can("project:status", project.id) || can("team:manage", project.id);
+}
+
 function projectCard(project) {
     const team = projectTeam(project.id);
     const mentorNames = team.filter(row => row.role === "Faculty Mentor").map(row => displayOf("people", row.personId));
@@ -2243,8 +2509,8 @@ function projectCard(project) {
         <p><span class="muted">Team:</span> ${studentCount} student${studentCount === 1 ? "" : "s"}</p>
         ${progress === null ? "" : `<div class="progress" title="${progress}% of requirements done"><span style="width: ${progress}%"></span></div>`}
         <div class="row-actions">
-            ${editButton(`/projects/edit/${project.id}`, project.name)}
-            ${deleteButton(`/projects/delete/${project.id}`, project.name)}
+            ${canEditProject(project) ? editButton(`/projects/edit/${project.id}`, project.name) : ""}
+            ${allowed("projects", "delete", project) ? deleteButton(`/projects/delete/${project.id}`, project.name) : ""}
         </div>
     </article>`;
 }
@@ -2262,10 +2528,10 @@ app.get("/projects", (req, res) => {
     sendPage(res, "Main board", `
         <div class="toolbar">
             <h1>Main board</h1>
-            ${modalButton("create-project", "+ New project")}
+            ${canCreateAny("projects") ? modalButton("create-project", "+ New project") : ""}
         </div>
         <div class="board">${columns.join("")}</div>
-        ${modal("create-project", "New project", renderForm("projects", { action: "/projects/new", submitLabel: "Create project", inModal: true }))}
+        ${canCreateAny("projects") ? modal("create-project", "New project", renderForm("projects", { action: "/projects/new", submitLabel: "Create project", inModal: true })) : ""}
     `);
 });
 
@@ -2276,6 +2542,9 @@ app.get("/projects/new", (req, res) => {
 
 // Save the new project from the create form
 app.post("/projects/new", async (req, res) => {
+    if (!allowed("projects", "create", {})) {
+        return sendForbidden(res);
+    }
     const { data, errors } = parseRecord("projects", req.body);
     const result = errors.length ? { errors } : await createRecord("projects", data, actingPersonId(req));
     if (result.errors) {
@@ -2311,6 +2580,10 @@ app.get("/projects/edit/:id", (req, res) => {
     if (!project) {
         return sendNotFound(res, "project", req.params.id);
     }
+    if (!canEditProject(project)) {
+        return sendForbidden(res);
+    }
+    const mayManageTeam = can("team:manage", project.id);
 
     const statusOptions = [...mainBoardStatuses].sort(byOrder).map(status => ({ value: status.id, label: status.name }));
     const team = projectTeam(project.id);
@@ -2318,13 +2591,13 @@ app.get("/projects/edit/:id", (req, res) => {
         <td>${esc(displayOf("people", row.personId))}</td>
         <td>${esc(row.role)}</td>
         <td>${esc(row.status)}</td>
-        <td class="row-actions">${deleteButton(`/projects/${project.id}/people/delete/${row.id}`,
-        `${displayOf("people", row.personId)} from this project`, { returnTo: `/projects/edit/${project.id}` })}</td>
+        <td class="row-actions">${mayManageTeam ? deleteButton(`/projects/${project.id}/people/delete/${row.id}`,
+        `${displayOf("people", row.personId)} from this project`, { returnTo: `/projects/edit/${project.id}` }) : ""}</td>
     </tr>`).join("");
 
     sendPage(res, `Edit ${project.name}`, `
         <h1>Edit ${esc(project.name)}</h1>
-        <section class="panel">
+        ${can("project:status", project.id) ? `<section class="panel">
             <h2>Status</h2>
             <form method="POST" action="/projects/${project.id}/status">
                 <label>Main board status
@@ -2333,22 +2606,22 @@ app.get("/projects/edit/:id", (req, res) => {
                 <noscript><button type="submit">Update status</button></noscript>
             </form>
             <p class="muted">Moving a project into In Progress sets up its workspace: a task board and a #general channel for the team.</p>
-        </section>
+        </section>` : ""}
         <section class="panel">
             <h2>Team</h2>
-            <div class="actions">
+            ${mayManageTeam ? `<div class="actions">
                 ${modalButton("add-mentor", "+ Add mentor", "secondary")}
                 ${modalButton("add-student", "+ Add student", "secondary")}
-            </div>
+            </div>` : ""}
             ${team.length ? `<table><thead><tr><th>Name</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>${teamRows}</tbody></table>` : `<p class="muted">Nobody is assigned yet.</p>`}
         </section>
-        <section class="panel">
+        ${can("project:edit", project.id) ? `<section class="panel">
             <h2>Details</h2>
             ${renderForm("projects", { action: `/projects/edit/${project.id}`, record: project, omit: ["mainBoardStatusId"], submitLabel: "Save changes" })}
-        </section>
+        </section>` : ""}
         <p><a href="/projects/${project.id}">Cancel</a></p>
-        ${assignmentModal(project, "add-mentor", "Faculty Mentor", mentors.map(mentor => mentor.personId))}
-        ${assignmentModal(project, "add-student", "Student", students.map(student => student.personId))}
+        ${mayManageTeam ? assignmentModal(project, "add-mentor", "Faculty Mentor", mentors.map(mentor => mentor.personId)) : ""}
+        ${mayManageTeam ? assignmentModal(project, "add-student", "Student", students.map(student => student.personId)) : ""}
     `);
 });
 
@@ -2357,6 +2630,9 @@ app.post("/projects/edit/:id", async (req, res) => {
     const project = findById("projects", req.params.id);
     if (!project) {
         return sendNotFound(res, "project", req.params.id);
+    }
+    if (!allowed("projects", "update", project)) {
+        return sendForbidden(res);
     }
     const { data, errors } = parseRecord("projects", req.body, { omit: ["mainBoardStatusId"] });
     const result = errors.length ? { errors } : await updateRecord("projects", project, data, actingPersonId(req));
@@ -2372,6 +2648,9 @@ app.post("/projects/:id/status", async (req, res) => {
     const project = findById("projects", req.params.id);
     if (!project) {
         return sendNotFound(res, "project", req.params.id);
+    }
+    if (!can("project:status", project.id)) {
+        return sendForbidden(res);
     }
     const { data, errors } = parseRecord("projects", { mainBoardStatusId: req.body.mainBoardStatusId }, { partial: true });
     if (data.mainBoardStatusId === undefined && errors.length === 0) {
@@ -2391,6 +2670,9 @@ app.post("/projects/delete/:id", async (req, res) => {
     const project = findById("projects", req.params.id);
     if (!project) {
         return sendNotFound(res, "project", req.params.id);
+    }
+    if (!allowed("projects", "delete", project)) {
+        return sendForbidden(res);
     }
     const result = await deleteRecord("projects", project, actingPersonId(req));
     if (result.errors) {
@@ -2426,8 +2708,8 @@ app.get("/projects/:id", (req, res) => {
         <div class="toolbar">
             <h1>${esc(project.name)}</h1>
             <div class="row-actions">
-                ${editButton(`/projects/edit/${project.id}`, project.name)}
-                ${deleteButton(`/projects/delete/${project.id}`, project.name)}
+                ${canEditProject(project) ? editButton(`/projects/edit/${project.id}`, project.name) : ""}
+                ${allowed("projects", "delete", project) ? deleteButton(`/projects/delete/${project.id}`, project.name) : ""}
             </div>
         </div>
         <section class="panel">
@@ -2455,11 +2737,11 @@ app.get("/projects/:id", (req, res) => {
             <h2>Workspace</h2>
             ${workspace}
         </section>
-        <section class="panel">
+        ${can("activity:view", project.id) ? `<section class="panel">
             <h2>Recent activity</h2>
             ${activityList(changeHistory.filter(entry => entry.entity === "projects" && entry.recordId === project.id).slice(-10).reverse())}
-            <p><a href="/activity">All activity</a></p>
-        </section>
+            ${can("activity:all") ? `<p><a href="/activity">All activity</a></p>` : ""}
+        </section>` : ""}
         <section class="panel">
             <h2>Documents</h2>
             ${projectDocuments.length
@@ -2563,8 +2845,8 @@ app.get("/main-board-statuses", (req, res) => {
         const count = projects.filter(project => project.mainBoardStatusId === status.id).length;
         return `<section class="column">
             <h3>
-                <span><a href="/main-board-statuses/${status.id}">${esc(status.name)}</a> ${editButton(`/main-board-statuses/edit/${status.id}`, status.name)}</span>
-                ${deleteButton(`/main-board-statuses/delete/${status.id}`, status.name)}
+                <span><a href="/main-board-statuses/${status.id}">${esc(status.name)}</a> ${allowed("mainBoardStatuses", "update", status) ? editButton(`/main-board-statuses/edit/${status.id}`, status.name) : ""}</span>
+                ${allowed("mainBoardStatuses", "delete", status) ? deleteButton(`/main-board-statuses/delete/${status.id}`, status.name) : ""}
             </h3>
             <p class="muted">${esc(status.description)}</p>
             <p class="count">Column ${esc(status.order)} · ${count} project${count === 1 ? "" : "s"}</p>
@@ -2818,6 +3100,9 @@ app.post("/projects/:projectid/people/new", async (req, res) => {
         return sendNotFound(res, "project", req.params.projectid);
     }
     const { data, errors } = parseRecord("projectPeople", { ...req.body, projectId: project.id });
+    if (!allowed("projectPeople", "create", { projectId: project.id })) {
+        return sendForbidden(res);
+    }
     const result = errors.length ? { errors } : await createRecord("projectPeople", data, actingPersonId(req));
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
@@ -2850,6 +3135,9 @@ app.post("/projects/:projectid/people/edit/:id", (req, res) => {
 app.post("/projects/:projectid/people/delete/:id", async (req, res) => {
     const row = findProjectPerson(req, res);
     if (row) {
+        if (!allowed("projectPeople", "delete", row)) {
+            return sendForbidden(res);
+        }
         await deleteRecord("projectPeople", row, actingPersonId(req));
         flash(req, "success", `Removed ${displayOf("people", row.personId)} from ${displayOf("projects", row.projectId)}.`);
         redirectBack(res, req.body.returnTo, `/projects/${row.projectId}/people`);
@@ -3173,14 +3461,14 @@ const THREAD_RENAME_SCRIPT = `<script>
 function threadItem(thread) {
     const count = threadMessageCount(thread.id);
     return `<li class="thread">
-        <a class="thread-link" href="/threads/${thread.id}" data-rename="rename-${thread.id}" title="Double-click to rename">${esc(thread.name)}</a>
+        <a class="thread-link" href="/threads/${thread.id}"${allowed("threads", "update", thread) ? ` data-rename="rename-${thread.id}" title="Double-click to rename"` : ""}>${esc(thread.name)}</a>
         <form id="rename-${thread.id}" class="inline" method="POST" action="/threads/edit/${thread.id}" hidden>
             <input type="text" name="name" value="${esc(thread.name)}" required aria-label="Thread name">
             <button type="submit">Save</button>
             <button type="button" class="secondary" data-cancel>Cancel</button>
         </form>
         <span class="muted">${count} message${count === 1 ? "" : "s"} · last active ${esc(fieldText({ type: "datetime" }, thread.lastActivityAt))}</span>
-        ${deleteButton(`/threads/delete/${thread.id}`, `the thread "${thread.name}"`)}
+        ${allowed("threads", "delete", thread) ? deleteButton(`/threads/delete/${thread.id}`, `the thread "${thread.name}"`) : ""}
     </li>`;
 }
 
@@ -3255,7 +3543,7 @@ app.get("/threads/:id", (req, res) => {
     sendPage(res, thread.name, `
         <div class="toolbar">
             <h1>${esc(thread.name)}</h1>
-            ${deleteButton(`/threads/delete/${thread.id}`, `the thread "${thread.name}"`)}
+            ${allowed("threads", "delete", thread) ? deleteButton(`/threads/delete/${thread.id}`, `the thread "${thread.name}"`) : ""}
         </div>
         <section class="panel">
             <dl class="details">
@@ -3299,7 +3587,7 @@ function requireSender(req, res, message) {
 function messageBubble(message, currentId) {
     const isMine = message.senderPersonId === currentId;
     const edited = message.editedAt ? ` <span class="muted" title="Edited ${esc(fieldText({ type: "datetime" }, message.editedAt))}">(edited)</span>` : "";
-    const controls = isMine
+    const controls = isMine && allowed("messages", "update", message)
         ? `<div class="row-actions">
             <details class="edit-in-place">
                 <summary class="icon-btn" title="Edit message" aria-label="Edit message">Edit</summary>
@@ -3341,11 +3629,11 @@ app.get("/messages", (req, res) => {
             <p class="muted"><a href="/channels/${thread.channelId}">${esc(displayOf("channels", thread.channelId))}</a> · <a href="/threads?channelId=${thread.channelId}">All threads in this channel</a></p>
             <section class="panel">
                 ${conversation(messages.filter(message => message.threadId === thread.id), currentId)}
-                <form method="POST" action="/messages/new" class="composer">
+                ${allowed("messages", "create", { threadId: thread.id, channelId: thread.channelId }) ? `<form method="POST" action="/messages/new" class="composer">
                     ${hiddenInputs({ threadId: thread.id })}
                     <textarea name="body" rows="2" placeholder="Write a message…" required aria-label="New message"></textarea>
                     <button type="submit">Send</button>
-                </form>
+                </form>` : `<p class="muted">You can read this conversation but not post in it.</p>`}
             </section>
         `);
     }
@@ -3497,11 +3785,17 @@ app.get("/requirements", (req, res) => {
     });
 });
 
+// Moving a card counts as reviewing it, which some roles may do without editing it
+function canMoveTask(requirement) {
+    return allowed("requirements", "update", requirement) || can("tasks:review", requirement.projectId);
+}
+
 app.get("/requirements/edit/:id", (req, res) => {
     const requirement = findRequirement(req, res);
     if (!requirement) {
         return;
     }
+    const mayEdit = allowed("requirements", "update", requirement);
     const statusOptions = boardColumns(requirement.projectId, [requirement]).map(status => ({ value: status.id, label: status.name }));
     sendEditPage(res, {
         entityKey: "requirements",
@@ -3509,6 +3803,8 @@ app.get("/requirements/edit/:id", (req, res) => {
         itemPath: "/requirements",
         backHref: `/requirements/${requirement.id}`,
         omit: ["statusId"],
+        canEdit: canMoveTask(requirement),
+        showForm: mayEdit,
         intro: `<section class="panel">
             <h2>Status</h2>
             <form method="POST" action="/requirements/${requirement.id}/status">
@@ -3539,6 +3835,7 @@ app.post("/requirements/:id/status", (req, res) => {
     if (requirement) {
         return handleUpdate("requirements", req, res, {
             record: requirement,
+            permit: canMoveTask(requirement),
             input: { ...requirement, statusId: req.body.statusId },
             backHref: `/requirements/edit/${requirement.id}`,
             redirectTo: `/requirements/edit/${requirement.id}`
@@ -4227,8 +4524,15 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
         if (denied) {
             return sendApiErrors(res, 403, [denied]);
         }
+        const statusOnly = entityKey === "projects" && Object.keys(req.body || {}).every(name => name === "mainBoardStatusId");
+        if (!allowed(entityKey, "update", record) && !(statusOnly && can("project:status", record.id))) {
+            return sendApiErrors(res, 403, ["You don't have permission to change this"]);
+        }
         const input = prepare(req.body || {}, req, record);
         const { data, errors } = parseRecord(entityKey, input, { partial });
+        if (!errors.length && !mayMoveTo(entityKey, record, data)) {
+            return sendApiErrors(res, 403, ["You don't have permission to move this there"]);
+        }
         const result = errors.length ? { errors } : await updateRecord(entityKey, record, data, actingPersonId(req));
         if (result.errors) {
             return sendApiErrors(res, 400, result.errors);
@@ -4250,6 +4554,9 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
     api.post(path, async (req, res) => {
         const input = prepare(req.body || {}, req, null);
         const { data, errors } = parseRecord(entityKey, input);
+        if (!errors.length && !allowed(entityKey, "create", data)) {
+            return sendApiErrors(res, 403, [`You don't have permission to create this ${entity.label}`]);
+        }
         const result = errors.length ? { errors } : await createRecord(entityKey, data, actingPersonId(req));
         if (result.errors) {
             return sendApiErrors(res, 400, result.errors);
@@ -4280,6 +4587,9 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
         if (denied) {
             return sendApiErrors(res, 403, [denied]);
         }
+        if (!allowed(entityKey, "delete", record)) {
+            return sendApiErrors(res, 403, [`You don't have permission to delete this ${entity.label}`]);
+        }
         const result = await deleteRecord(entityKey, record, actingPersonId(req));
         if (result.errors) {
             return sendApiErrors(res, 409, result.errors);
@@ -4290,7 +4600,18 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
 
 // Issue #132: projects. Moving a project into In Progress through the API
 // sets up its workspace exactly like the main board does.
-registerApi("/projects", "projects");
+registerApi("/projects", "projects", {
+    authorize: (req, project) => {
+        const changes = Object.keys(req.body || {});
+        if (req.method === "DELETE") {
+            return null;
+        }
+        if (changes.includes("mainBoardStatusId") && req.body.mainBoardStatusId !== project.mainBoardStatusId && !can("project:status", project.id)) {
+            return "You don't have permission to change this project's status";
+        }
+        return null;
+    }
+});
 
 // Issue #133: task statuses
 registerApi("/statuses", "statuses");
