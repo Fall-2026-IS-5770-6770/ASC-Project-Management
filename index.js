@@ -3772,6 +3772,9 @@ function registerApi(path, entityKey, { prepare = input => input, authorize = ()
 // sets up its workspace exactly like the main board does.
 registerApi("/projects", "projects");
 
+// Issue #133: task statuses
+registerApi("/statuses", "statuses");
+
 
 // ===== ERRORS (Issue #78) =====
 
