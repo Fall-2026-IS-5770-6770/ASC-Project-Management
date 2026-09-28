@@ -3778,6 +3778,9 @@ registerApi("/statuses", "statuses");
 // Issue #134: project status associations (a project's board columns)
 registerApi("/project-statuses", "projectStatuses");
 
+// Issue #135: main board statuses
+registerApi("/main-board-statuses", "mainBoardStatuses");
+
 
 // ===== ERRORS (Issue #78) =====
 
