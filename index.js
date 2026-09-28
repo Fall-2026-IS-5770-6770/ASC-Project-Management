@@ -3799,6 +3799,9 @@ registerApi("/skills", "skills");
 // Issue #141: project skill associations
 registerApi("/project-skills", "projectSkills");
 
+// Issue #142: person skill associations
+registerApi("/person-skills", "personSkills");
+
 
 // ===== ERRORS (Issue #78) =====
 
