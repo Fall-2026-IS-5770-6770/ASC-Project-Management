@@ -33,7 +33,7 @@ const skills = databaseTable("skills");
 const projectTypes = databaseTable("projectTypes");
 const projectSkills = databaseTable("projectSkills");
 const personSkills = databaseTable("personSkills");
-const projectProjectTypes = require("./data/projectProjectTypes.js");
+const projectProjectTypes = databaseTable("projectProjectTypes");
 const documents = require("./data/documents.js");
 const threads = require("./data/threads.js");
 const { messages, currentPersonId: DEFAULT_PERSON_ID } = require("./data/messages.js");
@@ -1128,6 +1128,7 @@ const ENTITIES = {
         label: "project type association",
         plural: "project type associations",
         store: projectProjectTypes,
+        model: "projectProjectType",
         display: row => `${displayOf("projects", row.projectId)}: ${displayOf("projectTypes", row.projectTypeId)}`,
         recordActor: true,
         fields: [
