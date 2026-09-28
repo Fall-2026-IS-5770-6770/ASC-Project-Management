@@ -29,7 +29,7 @@ const projectPeople = require("./data/projectPeople.js");
 const projectStatuses = require("./data/projectStatuses.js");
 const requirements = require("./data/requirements.js");
 const channels = require("./data/channels.js");
-const skills = require("./data/skills.js");
+const skills = databaseTable("skills");
 const projectTypes = require("./data/projectTypes.js");
 const projectSkills = require("./data/projectSkills.js");
 const personSkills = require("./data/personSkills.js");
@@ -1045,6 +1045,7 @@ const ENTITIES = {
         label: "skill",
         plural: "skills",
         store: skills,
+        model: "skill",
         display: skill => skill.name,
         recordActor: true,
         sort: (a, b) => a.name.localeCompare(b.name),

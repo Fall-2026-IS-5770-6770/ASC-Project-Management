@@ -39,3 +39,12 @@ model Person {
   address   Json?
   audit     Json?
 }
+
+// Areas of knowledge or expertise (Issue #47)
+model Skill {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  category    String
+  description String?
+  audit       Json?
+}
