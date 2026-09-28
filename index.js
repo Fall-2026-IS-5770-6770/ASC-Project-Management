@@ -428,6 +428,7 @@ const ENTITIES = {
         plural: "clients",
         store: clients,
         display: client => client.name,
+        recordActor: true,
         sort: (a, b) => a.name.localeCompare(b.name),
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
