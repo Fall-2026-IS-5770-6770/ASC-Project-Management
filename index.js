@@ -49,15 +49,44 @@ if (!process.env.SESSION_SECRET) {
     console.warn("SESSION_SECRET is not set; using a random secret, so sessions end whenever the server restarts.");
 }
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+// In production the app is expected to sit behind an HTTPS proxy, so trust it
+// to report the original protocol; otherwise secure cookies would never be set.
+if (IS_PRODUCTION) {
+    app.set("trust proxy", 1);
+}
+
+// Session cookie choices:
+// - name: a neutral name instead of the default "connect.sid", which
+//   advertises the framework.
+// - maxAge 8 hours: about one working day, so a session left open on a
+//   shared lab machine doesn't last indefinitely. rolling resets the clock
+//   on every request, so active users aren't signed out mid-task.
+// - httpOnly: page scripts can't read the cookie, which limits what an XSS
+//   bug could steal.
+// - sameSite "lax": the cookie isn't sent on cross-site POSTs (a CSRF
+//   defense for every form here) but still arrives when someone follows a
+//   link into the app, which sign-in redirects will need.
+// - secure in production: only sent over HTTPS. Left off in development
+//   because localhost is plain HTTP.
 app.use(session({
+    name: "asc.sid",
     secret: SESSION_SECRET,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    rolling: true,
+    cookie: {
+        maxAge: 8 * 60 * 60 * 1000,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: IS_PRODUCTION
+    }
 }));
 
 // Development-only look at the current session, to confirm values persist
 // from one request to the next
-if (process.env.NODE_ENV !== "production") {
+if (!IS_PRODUCTION) {
     app.get("/dev/session", (req, res) => {
         req.session.views = (req.session.views || 0) + 1;
         res.json({ id: req.sessionID, session: req.session });
