@@ -61,3 +61,17 @@ model ProjectType {
   typicalSkills        Skill[]  @relation("ProjectTypeSkills")
   audit                Json?
 }
+
+// Organizations and individuals who request projects: profit, non-profit, or internal (Issue #52)
+model Client {
+  id                Int     @id @default(autoincrement())
+  name              String  @unique
+  type              String
+  contactPersonName String?
+  contactEmail      String?
+  phone             String?
+  address           Json?
+  billingEmail      String?
+  billingTerms      String?
+  audit             Json?
+}

@@ -30,7 +30,8 @@ const tables = [
         table: "ProjectType",
         rows: require("../data/projectTypes.js"),
         map: ({ typicalSkillIds, ...row }) => ({ ...row, typicalSkills: connect(typicalSkillIds) })
-    }
+    },
+    { model: "client", table: "Client", rows: require("../data/clients.js"), map: row => row }
 ];
 
 async function seedTable({ model, table, rows, map }) {

@@ -21,7 +21,7 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 const projects = require("./data/projects.js");
 const statuses = databaseTable("statuses");
 const mainBoardStatuses = databaseTable("mainBoardStatuses");
-const clients = require("./data/clients.js");
+const clients = databaseTable("clients");
 const people = databaseTable("people");
 const mentors = require("./data/mentors.js");
 const students = require("./data/students.js");
@@ -955,6 +955,7 @@ const ENTITIES = {
         label: "client",
         plural: "clients",
         store: clients,
+        model: "client",
         display: client => client.name,
         recordActor: true,
         sort: (a, b) => a.name.localeCompare(b.name),
