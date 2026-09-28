@@ -13,11 +13,12 @@ datasource db {
 
 // Task statuses: the columns on a project workspace's board (Issue #40)
 model Status {
-  id          Int    @id @default(autoincrement())
-  name        String
-  description String
-  order       Int?
-  audit       Json?
+  id              Int             @id @default(autoincrement())
+  name            String
+  description     String
+  order           Int?
+  audit           Json?
+  projectStatuses ProjectStatus[]
 }
 
 // Columns on the main board that every project appears on (Issue #42)
@@ -109,6 +110,7 @@ model Project {
   // Set the first time the project moves into In Progress and its workspace is created
   workspaceInitializedAt DateTime?
   audit                  Json?
+  projectStatuses        ProjectStatus[]
 }
 
 // Faculty who oversee and advise projects. A mentor is a person plus these details (Issue #44)
@@ -141,4 +143,18 @@ model Student {
   preferredProjectType   ProjectType? @relation("StudentPreferredType", fields: [preferredProjectTypeId], references: [id], onDelete: Restrict)
   skills                 Skill[]      @relation("StudentSkills")
   audit                  Json?
+}
+
+// Which statuses a project uses; in order, they are the columns on its board (Issue #41)
+model ProjectStatus {
+  id        Int     @id @default(autoincrement())
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  statusId  Int
+  status    Status  @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  order     Int?
+  audit     Json?
+
+  // A project can't list the same status twice
+  @@unique([projectId, statusId])
 }

@@ -26,7 +26,7 @@ const people = databaseTable("people");
 const mentors = databaseTable("mentors");
 const students = databaseTable("students");
 const projectPeople = require("./data/projectPeople.js");
-const projectStatuses = require("./data/projectStatuses.js");
+const projectStatuses = databaseTable("projectStatuses");
 const requirements = require("./data/requirements.js");
 const channels = require("./data/channels.js");
 const skills = databaseTable("skills");
@@ -923,12 +923,13 @@ const ENTITIES = {
         label: "project status",
         plural: "project statuses",
         store: projectStatuses,
+        model: "projectStatus",
         display: row => `${displayOf("statuses", row.statusId)} on ${displayOf("projects", row.projectId)}`,
         recordActor: true,
         fields: [
             { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
             { name: "statusId", label: "Status", type: "select", ref: "statuses", required: true },
-            { name: "order", label: "Column order", type: "number", min: 0 }
+            { name: "order", label: "Column order", type: "number", min: 0, integer: true }
         ],
         defaults: row => ({ order: nextOrder(projectStatuses.filter(other => other.projectId === row.projectId)) }),
         // A project can't list the same status twice
