@@ -372,6 +372,19 @@ logRecordChanges("DocumentUpdateLog", "documents", "documentId", {
 });
 
 
+// Issue #91: skills added to or removed from a person, and changes to how well they know them
+logRecordChanges("PersonSkillUpdateLog", "personSkills", "personSkillId", {
+    fields: {
+        personId: { type: Number, index: true },
+        skillId: { type: Number, index: true },
+        skillName: String,
+        proficiency: String
+    },
+    extra: row => ({ personId: row.personId, skillId: row.skillId, skillName: displayOf("skills", row.skillId), proficiency: row.proficiency }),
+    actionFor: action => ({ created: "skill added", deleted: "skill removed" }[action] || action)
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
