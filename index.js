@@ -342,7 +342,16 @@ const ENTITIES = {
         plural: "skills",
         store: skills,
         display: skill => skill.name,
-        fields: []
+        sort: (a, b) => a.name.localeCompare(b.name),
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "category", label: "Category", type: "text", required: true },
+            { name: "description", label: "Description", type: "textarea" }
+        ],
+        validate: (skill, existing) => skills.some(other => other !== existing
+            && other.name.toLowerCase() === String(skill.name).toLowerCase())
+            ? [`A skill named ${skill.name} already exists`]
+            : []
     },
     projectTypes: {
         label: "project type",
@@ -1815,36 +1824,86 @@ app.get("/requirements/:id", (req, res) => {
 });
 
 
-// ===== SKILLS (Issue #10) =====
+// ===== SKILLS (Issues #10, #28) =====
 
+NAV.push({ href: "/skills", label: "Skills" });
+
+function findSkill(req, res) {
+    const skill = findById("skills", req.params.id);
+    if (!skill) {
+        sendNotFound(res, "skill", req.params.id);
+    }
+    return skill;
+}
+
+// The create form lives in a modal on the list page
 app.get("/skills/new", (req, res) => {
-    res.send("Send the create skill page");
+    res.redirect("/skills");
 });
 
 app.post("/skills/new", (req, res) => {
-    console.log(req.body);
-    res.send("Save the new skill");
+    handleCreate("skills", req, res, { backHref: "/skills", redirectTo: "/skills" });
 });
 
+// View all skills grouped by category
 app.get("/skills", (req, res) => {
-    res.send("Send all of the skills");
+    const categories = [...new Set(skills.map(skill => skill.category))].sort();
+    const columns = [
+        { label: "Name", html: skill => `<a href="/skills/${skill.id}">${esc(skill.name)}</a>` },
+        fieldColumn("skills", "description")
+    ];
+    const groups = categories.map(category => `<section class="panel">
+        <h2>${esc(category)}</h2>
+        ${recordTable(columns, skills.filter(skill => skill.category === category).sort((a, b) => a.name.localeCompare(b.name)),
+        skill => recordActions("skills", "/skills", skill))}
+    </section>`);
+    sendListPage(res, {
+        entityKey: "skills",
+        title: "Skills",
+        itemPath: "/skills",
+        body: groups.join("") || `<p class="muted">Nothing here yet.</p>`
+    });
 });
 
 app.get("/skills/edit/:id", (req, res) => {
-    res.send(`Send the edit page for skill ${req.params.id}`);
+    const skill = findSkill(req, res);
+    if (skill) {
+        sendEditPage(res, { entityKey: "skills", record: skill, itemPath: "/skills", backHref: `/skills/${skill.id}` });
+    }
 });
 
 app.post("/skills/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Save the edits to skill ${req.params.id}`);
+    const skill = findSkill(req, res);
+    if (skill) {
+        handleUpdate("skills", req, res, { record: skill, backHref: `/skills/edit/${skill.id}`, redirectTo: `/skills/${skill.id}` });
+    }
 });
 
 app.post("/skills/delete/:id", (req, res) => {
-    res.send(`Delete skill ${req.params.id}`);
+    const skill = findSkill(req, res);
+    if (skill) {
+        handleDelete("skills", req, res, { record: skill, backHref: `/skills/${skill.id}`, redirectTo: "/skills" });
+    }
 });
 
 app.get("/skills/:id", (req, res) => {
-    res.send(`Send skill ${req.params.id}`);
+    const skill = findSkill(req, res);
+    if (!skill) {
+        return;
+    }
+    const holders = [
+        ...mentors.filter(mentor => (mentor.skillIds || []).includes(skill.id)).map(mentor => `${displayOf("people", mentor.personId)} (mentor)`),
+        ...students.filter(student => (student.skillIds || []).includes(skill.id)).map(student => `${displayOf("people", student.personId)} (student)`)
+    ];
+    sendDetailPage(res, {
+        entityKey: "skills",
+        record: skill,
+        itemPath: "/skills",
+        listPath: "/skills",
+        extra: `<section class="panel"><h2>Mentors and students with this skill</h2>${holders.length
+            ? `<ul>${holders.map(name => `<li>${esc(name)}</li>`).join("")}</ul>`
+            : `<p class="muted">Nobody yet.</p>`}</section>`
+    });
 });
 
 
