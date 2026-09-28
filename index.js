@@ -275,7 +275,21 @@ const ENTITIES = {
         plural: "clients",
         store: clients,
         display: client => client.name,
-        fields: []
+        sort: (a, b) => a.name.localeCompare(b.name),
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "type", label: "Type", type: "select", options: ["Profit", "Non-Profit", "Internal"], required: true },
+            { name: "contactPersonName", label: "Contact person", type: "text" },
+            { name: "contactEmail", label: "Contact email", type: "email" },
+            { name: "phone", label: "Phone", type: "text" },
+            { name: "address", label: "Address", type: "address" },
+            { name: "billingEmail", label: "Billing email", type: "email" },
+            { name: "billingTerms", label: "Billing terms", type: "text" }
+        ],
+        validate: (client, existing) => clients.some(other => other !== existing
+            && other.name.toLowerCase() === String(client.name).toLowerCase())
+            ? [`A client named ${client.name} already exists`]
+            : []
     },
     people: {
         label: "person",
@@ -2250,43 +2264,85 @@ app.get("/project-project-types/:id", (req, res) => {
 });
 
 
-// ===== CLIENTS (Issue #16) =====
+// ===== CLIENTS (Issues #16, #33) =====
+// The organizations and individuals who request projects from the ASC
+
+NAV.push({ href: "/clients/all", label: "Clients" });
+
+function findClient(req, res) {
+    const client = findById("clients", req.params.id);
+    if (!client) {
+        sendNotFound(res, "client", req.params.id);
+    }
+    return client;
+}
 
 // View all clients
 app.get("/clients/all", (req, res) => {
-    res.send("Viewing all clients");
+    sendListPage(res, {
+        entityKey: "clients",
+        title: "Clients",
+        itemPath: "/clients",
+        columns: [
+            { label: "Name", html: client => `<a href="/clients/${client.id}">${esc(client.name)}</a>` },
+            fieldColumn("clients", "type"),
+            { label: "Contact", html: client => `${esc(client.contactPersonName || "—")}${client.contactEmail ? `<br><a href="mailto:${esc(client.contactEmail)}">${esc(client.contactEmail)}</a>` : ""}` },
+            { label: "Projects", value: client => projects.filter(project => project.clientId === client.id).length }
+        ],
+        rows: [...clients].sort((a, b) => a.name.localeCompare(b.name))
+    });
 });
 
-// New client page
+// The create form lives in a modal on the list page
 app.get("/clients/new", (req, res) => {
-    res.send("Send the new client page");
+    res.redirect("/clients/all");
 });
 
 // Form submission for creating a new client
 app.post("/clients/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new client");
+    handleCreate("clients", req, res, { backHref: "/clients/all", redirectTo: client => `/clients/${client.id}` });
 });
 
 // Edit client page by id
 app.get("/clients/edit/:id", (req, res) => {
-    res.send(`Edit specific client ${req.params.id}`);
+    const client = findClient(req, res);
+    if (client) {
+        sendEditPage(res, { entityKey: "clients", record: client, itemPath: "/clients", backHref: `/clients/${client.id}` });
+    }
 });
 
 // Save edited client
 app.post("/clients/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saving edits to client ${req.params.id}`);
+    const client = findClient(req, res);
+    if (client) {
+        handleUpdate("clients", req, res, { record: client, backHref: `/clients/edit/${client.id}`, redirectTo: `/clients/${client.id}` });
+    }
 });
 
-// Delete client
+// Delete client (only once none of its projects remain)
 app.post("/clients/delete/:id", (req, res) => {
-    res.send(`Deleting client ${req.params.id}`);
+    const client = findClient(req, res);
+    if (client) {
+        handleDelete("clients", req, res, { record: client, backHref: `/clients/${client.id}`, redirectTo: "/clients/all" });
+    }
 });
 
 // View a specific client
 app.get("/clients/:id", (req, res) => {
-    res.send(`Viewing a specific client ${req.params.id}`);
+    const client = findClient(req, res);
+    if (!client) {
+        return;
+    }
+    const clientProjects = projects.filter(project => project.clientId === client.id);
+    sendDetailPage(res, {
+        entityKey: "clients",
+        record: client,
+        itemPath: "/clients",
+        listPath: "/clients/all",
+        extra: `<section class="panel"><h2>Projects</h2>${clientProjects.length
+            ? `<ul>${clientProjects.map(project => `<li><a href="/projects/${project.id}">${esc(project.name)}</a> <span class="muted">— ${esc(displayOf("mainBoardStatuses", project.mainBoardStatusId))}</span></li>`).join("")}</ul>`
+            : `<p class="muted">No projects yet.</p>`}</section>`
+    });
 });
 
 
