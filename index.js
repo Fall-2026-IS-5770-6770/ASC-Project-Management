@@ -1929,24 +1929,38 @@ function registerAuthProvider(key, strategy) {
     AUTH_PROVIDERS[key] = strategy;
 }
 
-// Match a provider profile to a person (see the rules above)
-async function resolvePerson(provider, profile) {
-    const email = String(profile.email || "").trim().toLowerCase();
-    const existing = people.find(person => person.email.toLowerCase() === email);
-    if (existing) {
-        return existing;
-    }
-    const { record, errors } = await createRecord("people", {
-        firstName: profile.firstName || email.split("@")[0],
-        lastName: profile.lastName || "",
-        email,
-        phone: null,
-        address: { street: "", city: "", state: "", zip: "" }
-    }, null);
-    if (errors) {
-        throw new Error(errors.join(" "));
-    }
-    return record;
+// Match a provider profile to a person (see the rules above) and remember the
+// account, so the next sign-in through this provider finds the same person
+function resolvePerson(provider, profile) {
+    return inTransaction(async () => {
+        const accountKey = { provider_providerAccountId: { provider, providerAccountId: String(profile.accountId) } };
+        const email = String(profile.email || "").trim().toLowerCase();
+        const account = await db().userAccount.findUnique({ where: accountKey });
+        const linked = account && findById("people", account.personId);
+        if (linked) {
+            await db().userAccount.update({ where: { id: account.id }, data: { email, lastSignInAt: new Date() } });
+            return linked;
+        }
+
+        let person = people.find(candidate => candidate.email.toLowerCase() === email);
+        if (!person) {
+            const created = await createRecord("people", {
+                firstName: profile.firstName || email.split("@")[0],
+                lastName: profile.lastName || "",
+                email,
+                phone: null,
+                address: { street: "", city: "", state: "", zip: "" }
+            }, null);
+            if (created.errors) {
+                throw new Error(created.errors.join(" "));
+            }
+            person = created.record;
+        }
+        await db().userAccount.create({
+            data: { personId: person.id, provider, providerAccountId: String(profile.accountId), email, lastSignInAt: new Date() }
+        });
+        return person;
+    });
 }
 
 // Start signing in: remember a random state value and send the browser to the provider
@@ -3938,11 +3952,15 @@ app.post("/people/delete/:id", (req, res) => {
     }
 });
 
-app.get("/people/:id", (req, res) => {
+app.get("/people/:id", async (req, res) => {
     const person = findPerson(req, res);
     if (!person) {
         return;
     }
+    const accounts = await db().userAccount.findMany({ where: { personId: person.id }, orderBy: { createdAt: "asc" } });
+    const accountList = accounts.length
+        ? `<ul>${accounts.map(account => `<li>${esc(AUTH_PROVIDERS[account.provider]?.label || account.provider)} <span class="muted">— ${esc(account.email || "no email")}, last signed in ${esc(account.lastSignInAt ? account.lastSignInAt.toISOString().replace("T", " ").slice(0, 16) : "never")}</span></li>`).join("")}</ul>`
+        : `<p class="muted">Hasn't signed in yet.</p>`;
     const assignments = projectPeople.filter(row => row.personId === person.id);
     const roles = [
         mentors.some(mentor => mentor.personId === person.id) ? "Mentor" : null,
@@ -3953,7 +3971,8 @@ app.get("/people/:id", (req, res) => {
         record: person,
         itemPath: "/people",
         listPath: "/people",
-        extra: `<section class="panel">
+        extra: `<section class="panel"><h2>Sign-in accounts</h2>${accountList}</section>
+        <section class="panel">
             <h2>Projects</h2>
             <p>${roles.map(role => `<span class="tag">${role}</span>`).join(" ")}</p>
             ${assignments.length

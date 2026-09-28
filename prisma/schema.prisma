@@ -54,6 +54,7 @@ model Person {
   messages             Message[]
   assignedRequirements Requirement[]   @relation("RequirementAssignee")
   mentoredRequirements Requirement[]   @relation("RequirementMentor")
+  accounts             UserAccount[]
 }
 
 // Areas of knowledge or expertise (Issue #47)
@@ -331,4 +332,20 @@ model Requirement {
   estimatedHours     Float?
   actualHours        Float?
   audit              Json?
+}
+
+// A way to sign in: the provider a person used and the id it gave back.
+// One person can have several, one per provider account (Issue #117)
+model UserAccount {
+  id                Int       @id @default(autoincrement())
+  personId          Int
+  person            Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
+  // microsoft, github, or cognito
+  provider          String
+  providerAccountId String
+  email             String?
+  createdAt         DateTime  @default(now())
+  lastSignInAt      DateTime?
+
+  @@unique([provider, providerAccountId])
 }
