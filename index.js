@@ -3819,6 +3819,15 @@ registerApi("/documents", "documents", {
 // Issue #147: communication channels
 registerApi("/channels", "channels");
 
+// Issue #148: communication threads. The caller is recorded as the one who started a new thread, and that stays fixed.
+registerApi("/threads", "threads", {
+    prepare: (input, req, existing) => ({
+        ...input,
+        createdByPersonId: existing ? existing.createdByPersonId : actingPersonId(req),
+        createdAt: existing ? existing.createdAt : input.createdAt
+    })
+});
+
 
 // ===== ERRORS (Issue #78) =====
 
