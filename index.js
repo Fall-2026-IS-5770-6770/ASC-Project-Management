@@ -458,6 +458,26 @@ const ENTITIES = {
         ],
         defaults: () => ({ uploadedDate: today(), version: "1.0" })
     },
+    channels: {
+        label: "channel",
+        plural: "channels",
+        store: channels,
+        display: channel => `#${channel.name}`,
+        fields: [
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
+            { name: "type", label: "Type", type: "select", options: ["Team", "Client", "Topic", "Archived"], required: true },
+            { name: "url", label: "URL or identifier", type: "url" },
+            { name: "participantPersonIds", label: "Members", type: "multiselect", ref: "people" },
+            { name: "createdDate", label: "Created on", type: "date" }
+        ],
+        defaults: () => ({ createdDate: today() }),
+        // Channel names are unique inside a project's workspace
+        validate: (channel, existing) => channels.some(other => other !== existing
+            && other.projectId === channel.projectId && other.name.toLowerCase() === String(channel.name).toLowerCase())
+            ? [`${displayOf("projects", channel.projectId)} already has a #${channel.name} channel`]
+            : []
+    },
     projectPeople: {
         label: "project assignment",
         plural: "project assignments",
@@ -1797,43 +1817,88 @@ app.get("/students/:id", (req, res) => {
 });
 
 
-// ===== COMMUNICATION CHANNELS (Issue #6) =====
+// ===== COMMUNICATION CHANNELS (Issues #6, #35) =====
+// The Slack-style half of a project workspace. Most channels are created
+// automatically when a project moves into In Progress; creating one here is
+// the admin override for adding an extra channel to a workspace.
+
+NAV.push({ href: "/channels/all", label: "Channels" });
+
+function findChannel(req, res) {
+    const channel = findById("channels", req.params.id);
+    if (!channel) {
+        sendNotFound(res, "channel", req.params.id);
+    }
+    return channel;
+}
 
 // View all communication channels
 app.get("/channels/all", (req, res) => {
-    res.send("Viewing all channels");
+    sendListPage(res, {
+        entityKey: "channels",
+        title: "Channels",
+        itemPath: "/channels",
+        intro: `<p class="muted">Each project's #general channel is created with its workspace when the project moves into In Progress. Use New channel to add another one to a project.</p>`,
+        columns: [
+            { label: "Channel", html: channel => `<a href="/channels/${channel.id}">#${esc(channel.name)}</a>` },
+            { label: "Project", html: channel => `<a href="/projects/${channel.projectId}">${esc(displayOf("projects", channel.projectId))}</a>` },
+            fieldColumn("channels", "type"),
+            { label: "Members", value: channel => channel.participantPersonIds.length }
+        ],
+        rows: [...channels].sort((a, b) => a.projectId - b.projectId || a.name.localeCompare(b.name))
+    });
 });
 
-// Create a new communication channel
+// The create form lives in a modal on the list page
 app.get("/channels/new", (req, res) => {
-    res.send("Send the create channel page");
+    res.redirect("/channels/all");
 });
 
 // Save a new communication channel
 app.post("/channels/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new channel");
+    handleCreate("channels", req, res, { backHref: "/channels/all", redirectTo: channel => `/channels/${channel.id}` });
 });
 
 // Edit a specific communication channel
 app.get("/channels/edit/:id", (req, res) => {
-    res.send(`Edit specific channel with ID: ${req.params.id}`);
+    const channel = findChannel(req, res);
+    if (channel) {
+        sendEditPage(res, { entityKey: "channels", record: channel, itemPath: "/channels", backHref: `/channels/${channel.id}` });
+    }
 });
 
 // Save the edited communication channel
 app.post("/channels/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saving the edited channel ${req.params.id}`);
+    const channel = findChannel(req, res);
+    if (channel) {
+        handleUpdate("channels", req, res, { record: channel, backHref: `/channels/edit/${channel.id}`, redirectTo: `/channels/${channel.id}` });
+    }
 });
 
 // Delete a specific communication channel
 app.post("/channels/delete/:id", (req, res) => {
-    res.send(`Deleting channel ${req.params.id}`);
+    const channel = findChannel(req, res);
+    if (channel) {
+        handleDelete("channels", req, res, { record: channel, backHref: `/channels/${channel.id}`, redirectTo: "/channels/all" });
+    }
 });
 
 // View a specific communication channel
 app.get("/channels/:id", (req, res) => {
-    res.send(`Viewing channel with ID: ${req.params.id}`);
+    const channel = findChannel(req, res);
+    if (!channel) {
+        return;
+    }
+    const members = channel.participantPersonIds.map(id => displayOf("people", id)).sort();
+    sendDetailPage(res, {
+        entityKey: "channels",
+        record: channel,
+        itemPath: "/channels",
+        listPath: "/channels/all",
+        extra: `<section class="panel"><h2>Members</h2>${members.length
+            ? `<ul>${members.map(name => `<li>${esc(name)}</li>`).join("")}</ul>`
+            : `<p class="muted">No members.</p>`}</section>`
+    });
 });
 
 
