@@ -20,6 +20,8 @@ const projectSkills = require("./data/projectSkills.js");
 const personSkills = require("./data/personSkills.js");
 const projectProjectTypes = require("./data/projectProjectTypes.js");
 const documents = require("./data/documents.js");
+const threads = require("./data/threads.js");
+const { messages, currentPersonId: DEFAULT_PERSON_ID } = require("./data/messages.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -55,6 +57,7 @@ const STYLES = `
     :root { --bg: #f4f5f8; --panel: #fff; --text: #1d2330; --muted: #667085; --line: #d9dde5;
             --accent: #0f3d7a; --danger: #b42318; --ok: #067647; --column: #e7eaf0; }
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
     header { background: var(--accent); color: #fff; padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; }
     header a { color: #fff; text-decoration: none; opacity: .9; }
@@ -97,6 +100,9 @@ const STYLES = `
     .icon-btn:hover { border-color: var(--line); background: #fff; }
     .actions { display: flex; gap: .5rem; }
     .errors { background: #fef3f2; border: 1px solid #fecdca; color: var(--danger); padding: .75rem 1rem; border-radius: 6px; }
+    ul.threads { list-style: none; padding: 0; margin: 0; }
+    li.thread { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid var(--line); }
+    .thread-link { font-weight: 600; }
     .tag { display: inline-block; background: var(--column); border-radius: 999px; padding: .05rem .5rem; font-size: .8rem; }
 `;
 
@@ -181,6 +187,17 @@ function byOrder(a, b) {
 
 function today() {
     return new Date().toISOString().slice(0, 10);
+}
+
+// Timestamps are stored like the dummy data: YYYY-MM-DDTHH:MM:SS
+function nowStamp() {
+    return new Date().toISOString().slice(0, 19);
+}
+
+// The person making the request. Until sign-in exists this is the stand-in
+// user from the dummy data.
+function actingPersonId() {
+    return DEFAULT_PERSON_ID;
 }
 
 
@@ -477,6 +494,20 @@ const ENTITIES = {
             && other.projectId === channel.projectId && other.name.toLowerCase() === String(channel.name).toLowerCase())
             ? [`${displayOf("projects", channel.projectId)} already has a #${channel.name} channel`]
             : []
+    },
+    threads: {
+        label: "thread",
+        plural: "threads",
+        store: threads,
+        display: thread => thread.name,
+        fields: [
+            { name: "channelId", label: "Channel", type: "select", ref: "channels", required: true, cascade: true },
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "createdByPersonId", label: "Started by", type: "select", ref: "people" },
+            { name: "createdAt", label: "Started", type: "datetime" },
+            { name: "lastActivityAt", label: "Last active", type: "datetime" }
+        ],
+        defaults: () => ({ createdAt: nowStamp(), lastActivityAt: nowStamp() })
     },
     projectPeople: {
         label: "project assignment",
@@ -1902,36 +1933,150 @@ app.get("/channels/:id", (req, res) => {
 });
 
 
-// ===== THREADS (Issue #7) =====
+// ===== THREADS (Issues #7, #36) =====
+// Conversations inside a channel. This is chat UI rather than an admin
+// screen: create is a modal, a thread is renamed by double-clicking its name,
+// and there is no separate edit page.
 
+NAV.push({ href: "/threads", label: "Threads" });
+
+function findThread(req, res) {
+    const thread = findById("threads", req.params.id);
+    if (!thread) {
+        sendNotFound(res, "thread", req.params.id);
+    }
+    return thread;
+}
+
+function threadMessageCount(threadId) {
+    return messages.filter(message => message.threadId === threadId).length;
+}
+
+// Double-click a thread name to rename it. A single click still opens the
+// thread, just a moment later so a double-click can cancel it.
+const THREAD_RENAME_SCRIPT = `<script>
+    document.querySelectorAll("[data-rename]").forEach(link => {
+        const form = document.getElementById(link.dataset.rename);
+        let timer;
+        link.addEventListener("click", event => {
+            event.preventDefault();
+            clearTimeout(timer);
+            if (event.detail === 1) {
+                timer = setTimeout(() => { window.location.href = link.href; }, 250);
+            }
+        });
+        link.addEventListener("dblclick", event => {
+            event.preventDefault();
+            clearTimeout(timer);
+            link.hidden = true;
+            form.hidden = false;
+            form.querySelector("input").select();
+        });
+        form.querySelector("[data-cancel]").addEventListener("click", () => {
+            form.hidden = true;
+            link.hidden = false;
+        });
+    });
+</script>`;
+
+function threadItem(thread) {
+    const count = threadMessageCount(thread.id);
+    return `<li class="thread">
+        <a class="thread-link" href="/threads/${thread.id}" data-rename="rename-${thread.id}" title="Double-click to rename">${esc(thread.name)}</a>
+        <form id="rename-${thread.id}" class="inline" method="POST" action="/threads/edit/${thread.id}" hidden>
+            <input type="text" name="name" value="${esc(thread.name)}" required aria-label="Thread name">
+            <button type="submit">Save</button>
+            <button type="button" class="secondary" data-cancel>Cancel</button>
+        </form>
+        <span class="muted">${count} message${count === 1 ? "" : "s"} · last active ${esc(fieldText({ type: "datetime" }, thread.lastActivityAt))}</span>
+        ${deleteButton(`/threads/delete/${thread.id}`, `the thread "${thread.name}"`)}
+    </li>`;
+}
+
+// The create form lives in a modal on the list page
 app.get("/threads/new", (req, res) => {
-    res.send("This route sends the create thread page");
+    res.redirect("/threads");
 });
 
 app.post("/threads/new", (req, res) => {
-    console.log(req.body);
-    res.send("This route saves a new thread");
+    handleCreate("threads", req, res, {
+        input: { ...req.body, createdByPersonId: actingPersonId(req) },
+        backHref: "/threads",
+        redirectTo: thread => `/threads/${thread.id}`
+    });
 });
 
+// View all threads, grouped by channel, most recently active first
 app.get("/threads", (req, res) => {
-    res.send("This route sends all threads");
+    const channel = req.query.channelId ? findById("channels", req.query.channelId) : undefined;
+    const shownChannels = channel ? [channel] : [...channels].sort((a, b) => a.projectId - b.projectId || a.name.localeCompare(b.name));
+    const groups = shownChannels.map(shown => {
+        const channelThreads = threads
+            .filter(thread => thread.channelId === shown.id)
+            .sort((a, b) => String(b.lastActivityAt).localeCompare(String(a.lastActivityAt)));
+        return `<section class="panel">
+            <h2><a href="/channels/${shown.id}">${esc(ENTITIES.channels.display(shown))}</a> <span class="muted">· ${esc(displayOf("projects", shown.projectId))}</span></h2>
+            ${channelThreads.length ? `<ul class="threads">${channelThreads.map(threadItem).join("")}</ul>` : `<p class="muted">No threads yet.</p>`}
+        </section>`;
+    });
+
+    sendListPage(res, {
+        entityKey: "threads",
+        title: channel ? `Threads in ${ENTITIES.channels.display(channel)}` : "Threads",
+        itemPath: "/threads",
+        intro: `<p class="muted">Double-click a thread's name to rename it.</p>`,
+        body: groups.join("") + THREAD_RENAME_SCRIPT,
+        createOptions: { omit: ["createdByPersonId", "createdAt", "lastActivityAt"], record: { channelId: channel?.id } }
+    });
 });
 
+// Threads are renamed in place, so there's no edit page to show
 app.get("/threads/edit/:id", (req, res) => {
-    res.send(`This route sends the edit page for thread ${req.params.id}`);
+    res.redirect("/threads");
 });
 
+// Rename a thread
 app.post("/threads/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`This route saves edits to thread ${req.params.id}`);
+    const thread = findThread(req, res);
+    if (thread) {
+        handleUpdate("threads", req, res, {
+            record: thread,
+            input: { ...thread, name: req.body.name },
+            backHref: "/threads",
+            redirectTo: `/threads?channelId=${thread.channelId}`
+        });
+    }
 });
 
 app.post("/threads/delete/:id", (req, res) => {
-    res.send(`This route deletes thread ${req.params.id}`);
+    const thread = findThread(req, res);
+    if (thread) {
+        handleDelete("threads", req, res, { record: thread, backHref: "/threads", redirectTo: `/threads?channelId=${thread.channelId}` });
+    }
 });
 
 app.get("/threads/:id", (req, res) => {
-    res.send(`This route returns thread ${req.params.id}`);
+    const thread = findThread(req, res);
+    if (!thread) {
+        return;
+    }
+    const count = threadMessageCount(thread.id);
+    sendPage(res, thread.name, `
+        <div class="toolbar">
+            <h1>${esc(thread.name)}</h1>
+            ${deleteButton(`/threads/delete/${thread.id}`, `the thread "${thread.name}"`)}
+        </div>
+        <section class="panel">
+            <dl class="details">
+                <dt>Channel</dt><dd><a href="/channels/${thread.channelId}">${esc(displayOf("channels", thread.channelId))}</a></dd>
+                <dt>Started by</dt><dd>${esc(displayOf("people", thread.createdByPersonId))}</dd>
+                <dt>Started</dt><dd>${esc(fieldText({ type: "datetime" }, thread.createdAt))}</dd>
+                <dt>Last active</dt><dd>${esc(fieldText({ type: "datetime" }, thread.lastActivityAt))}</dd>
+                <dt>Messages</dt><dd>${count}</dd>
+            </dl>
+        </section>
+        <p><a href="/threads?channelId=${thread.channelId}">Back to the channel's threads</a></p>
+    `);
 });
 
 
