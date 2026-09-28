@@ -1563,8 +1563,7 @@ function deleteRecord(entityKey, record, actorId) {
 
 async function deleteWithinTransaction(entityKey, record, actorId) {
     const entity = ENTITIES[entityKey];
-    const blockers = [];
-    let blockingCount = 0;
+    const blockerCounts = new Map();
     const dependents = [];
 
     for (const [otherKey, other] of Object.entries(ENTITIES)) {
@@ -1579,14 +1578,15 @@ async function deleteWithinTransaction(entityKey, record, actorId) {
             if (field.cascade) {
                 dependents.push(...matches.map(match => [otherKey, match]));
             } else {
-                blockers.push(`${matches.length} ${matches.length === 1 ? other.label : other.plural}`);
-                blockingCount += matches.length;
+                blockerCounts.set(otherKey, (blockerCounts.get(otherKey) || 0) + matches.length);
             }
         }
     }
 
-    if (blockers.length) {
-        return { errors: [`Can't delete ${entity.display(record)}: ${blockers.join(", ")} still ${blockingCount === 1 ? "refers" : "refer"} to this ${entity.label}.`] };
+    if (blockerCounts.size) {
+        const blockers = [...blockerCounts].map(([otherKey, count]) => `${count} ${count === 1 ? ENTITIES[otherKey].label : ENTITIES[otherKey].plural}`);
+        const total = [...blockerCounts.values()].reduce((sum, count) => sum + count, 0);
+        return { errors: [`Can't delete ${entity.display(record)}: ${blockers.join(", ")} still ${total === 1 ? "refers" : "refer"} to this ${entity.label}.`] };
     }
 
     if (!entity.store.includes(record)) {
