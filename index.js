@@ -31,7 +31,7 @@ const requirements = require("./data/requirements.js");
 const channels = require("./data/channels.js");
 const skills = databaseTable("skills");
 const projectTypes = databaseTable("projectTypes");
-const projectSkills = require("./data/projectSkills.js");
+const projectSkills = databaseTable("projectSkills");
 const personSkills = require("./data/personSkills.js");
 const projectProjectTypes = require("./data/projectProjectTypes.js");
 const documents = require("./data/documents.js");
@@ -1070,6 +1070,7 @@ const ENTITIES = {
         label: "project skill",
         plural: "project skills",
         store: projectSkills,
+        model: "projectSkill",
         display: row => `${displayOf("skills", row.skillId)} for ${displayOf("projects", row.projectId)}`,
         recordActor: true,
         fields: [

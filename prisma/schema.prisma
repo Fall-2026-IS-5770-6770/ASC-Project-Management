@@ -56,9 +56,10 @@ model Skill {
   description String?
   audit       Json?
 
-  projectTypes ProjectType[] @relation("ProjectTypeSkills")
-  mentors      Mentor[]      @relation("MentorSkills")
-  students     Student[]     @relation("StudentSkills")
+  projectTypes  ProjectType[]  @relation("ProjectTypeSkills")
+  mentors       Mentor[]       @relation("MentorSkills")
+  students      Student[]      @relation("StudentSkills")
+  projectSkills ProjectSkill[]
 }
 
 // Kinds of work a project can involve, such as Full-Stack or Data Visualization (Issue #50)
@@ -113,6 +114,7 @@ model Project {
   audit                  Json?
   projectStatuses        ProjectStatus[]
   projectPeople          ProjectPerson[]
+  projectSkills          ProjectSkill[]
 }
 
 // Faculty who oversee and advise projects. A mentor is a person plus these details (Issue #44)
@@ -179,4 +181,19 @@ model ProjectPerson {
   audit          Json?
 
   @@unique([projectId, personId, role])
+}
+
+// The skills a project needs, and how much (Issue #48)
+model ProjectSkill {
+  id                 Int     @id @default(autoincrement())
+  projectId          Int
+  project            Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skillId            Int
+  skill              Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  // Required or Preferred
+  importance         String
+  minimumProficiency String?
+  audit              Json?
+
+  @@unique([projectId, skillId])
 }
