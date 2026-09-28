@@ -329,6 +329,11 @@ logAssignments("ProjectMentorAssignmentLog", "Faculty Mentor");
 logAssignments("ProjectStudentAssignmentLog", "Student");
 
 
+// Issue #86: changes to a project's dates, budget, client, description, and
+// other details. Status moves are already in ProjectStatusLog.
+logRecordChanges("ProjectUpdateLog", "projects", "projectId", { ignore: ["mainBoardStatusId"] });
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
