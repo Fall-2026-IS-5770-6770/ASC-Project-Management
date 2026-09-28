@@ -438,6 +438,15 @@ onChange("channels", (entry, channel) => {
 });
 
 
+// Issue #93: threads created, renamed, or deleted
+logRecordChanges("ThreadActivityLog", "threads", "threadId", {
+    ignore: ["lastActivityAt"],
+    fields: { channelId: { type: Number, index: true } },
+    extra: thread => ({ channelId: thread.channelId }),
+    actionFor: (action, changes) => (action === "updated" && changes.name ? "renamed" : action)
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
