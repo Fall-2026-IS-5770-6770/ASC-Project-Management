@@ -3805,6 +3805,9 @@ registerApi("/person-skills", "personSkills");
 // Issue #143: project types
 registerApi("/project-types", "projectTypes");
 
+// Issue #144: project type associations
+registerApi("/project-project-types", "projectProjectTypes");
+
 
 // ===== ERRORS (Issue #78) =====
 
