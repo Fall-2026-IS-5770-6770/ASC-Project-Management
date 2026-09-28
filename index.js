@@ -685,6 +685,7 @@ function updateRecord(entityKey, record, data) {
 function deleteRecord(entityKey, record) {
     const entity = ENTITIES[entityKey];
     const blockers = [];
+    let blockingCount = 0;
     const dependents = [];
 
     for (const [otherKey, other] of Object.entries(ENTITIES)) {
@@ -700,12 +701,13 @@ function deleteRecord(entityKey, record) {
                 dependents.push(...matches.map(match => [otherKey, match]));
             } else {
                 blockers.push(`${matches.length} ${matches.length === 1 ? other.label : other.plural}`);
+                blockingCount += matches.length;
             }
         }
     }
 
     if (blockers.length) {
-        return { errors: [`Can't delete ${entity.display(record)}: ${blockers.join(", ")} still refer to this ${entity.label}.`] };
+        return { errors: [`Can't delete ${entity.display(record)}: ${blockers.join(", ")} still ${blockingCount === 1 ? "refers" : "refer"} to this ${entity.label}.`] };
     }
 
     const index = entity.store.indexOf(record);
