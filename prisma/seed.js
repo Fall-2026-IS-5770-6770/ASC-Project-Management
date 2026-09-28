@@ -14,6 +14,11 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
+// Dummy data dates are YYYY-MM-DD strings; the database stores them as dates
+function date(value) {
+    return value ? new Date(`${value}T00:00:00Z`) : null;
+}
+
 // Link a many-to-many relation to existing rows by id
 function connect(ids) {
     return { connect: (ids || []).map(id => ({ id })) };
@@ -31,7 +36,13 @@ const tables = [
         rows: require("../data/projectTypes.js"),
         map: ({ typicalSkillIds, ...row }) => ({ ...row, typicalSkills: connect(typicalSkillIds) })
     },
-    { model: "client", table: "Client", rows: require("../data/clients.js"), map: row => row }
+    { model: "client", table: "Client", rows: require("../data/clients.js"), map: row => row },
+    {
+        model: "project",
+        table: "Project",
+        rows: require("../data/projects.js"),
+        map: row => ({ ...row, startDate: date(row.startDate), midpointDate: date(row.midpointDate), endDate: date(row.endDate) })
+    }
 ];
 
 async function seedTable({ model, table, rows, map }) {

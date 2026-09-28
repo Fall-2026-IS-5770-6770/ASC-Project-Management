@@ -18,7 +18,7 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 // ===== DATA =====
 // The dummy data in /data stands in for the database until one is wired up.
 // Each array is changed in place, so edits last until the server restarts.
-const projects = require("./data/projects.js");
+const projects = databaseTable("projects");
 const statuses = databaseTable("statuses");
 const mainBoardStatuses = databaseTable("mainBoardStatuses");
 const clients = databaseTable("clients");
@@ -877,6 +877,7 @@ const ENTITIES = {
         label: "project",
         plural: "projects",
         store: projects,
+        model: "project",
         display: project => project.name,
         recordActor: true,
         fields: [
