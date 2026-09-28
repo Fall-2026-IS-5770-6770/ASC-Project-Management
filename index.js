@@ -1032,16 +1032,16 @@ function deleteRecord(entityKey, record, actorId) {
         return { errors: [`Can't delete ${entity.display(record)}: ${blockers.join(", ")} still ${blockingCount === 1 ? "refers" : "refer"} to this ${entity.label}.`] };
     }
 
-    const index = entity.store.indexOf(record);
-    if (index === -1) {
+    if (!entity.store.includes(record)) {
         return {};
     }
-    entity.store.splice(index, 1);
-    recordChange(entityKey, "deleted", record, actorId);
 
+    // Children go first so their history entries can still name this record
     for (const [otherKey, dependent] of dependents) {
         deleteRecord(otherKey, dependent, actorId);
     }
+    entity.store.splice(entity.store.indexOf(record), 1);
+    recordChange(entityKey, "deleted", record, actorId);
     for (const other of Object.values(ENTITIES)) {
         for (const field of other.fields.filter(f => f.ref === entityKey && f.type === "multiselect")) {
             other.store.forEach(row => {
