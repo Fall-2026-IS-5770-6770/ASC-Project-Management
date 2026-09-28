@@ -343,6 +343,10 @@ logRecordChanges("RequirementUpdateLog", "requirements", "requirementId", {
 });
 
 
+// Issue #88: changes to a client's contact person, billing information, addresses, and so on
+logRecordChanges("ClientUpdateLog", "clients", "clientId");
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
