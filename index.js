@@ -3850,6 +3850,9 @@ registerApi("/messages", "messages", {
         : "Only the person who sent a message can change or delete it")
 });
 
+// Issue #150: requirements (the tasks on a project board)
+registerApi("/requirements", "requirements");
+
 
 // ===== ERRORS (Issue #78) =====
 
