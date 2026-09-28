@@ -1,0 +1,25 @@
+# The dev container's own service, added to the databases in ../docker-compose.yml.
+# VS Code (or Codespaces) starts all three and opens this one.
+services:
+  workspace:
+    image: mcr.microsoft.com/devcontainers/javascript-node:5-24-trixie
+    volumes:
+      - ..:/workspaces/ASC-Project-Management:cached
+      # Linux node_modules live in a volume, so they never clash with a
+      # node_modules folder installed on the host (Windows or macOS)
+      - asc-node-modules:/workspaces/ASC-Project-Management/node_modules
+    # Keep the container running; the app is started from the terminal
+    command: sleep infinity
+    environment:
+      # Reach the databases by service name. These win over any .env file.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-asc}:${POSTGRES_PASSWORD:-asc_dev_password}@postgres:5432/${POSTGRES_DB:-asc}?schema=public
+      MONGODB_URI: mongodb://${MONGO_USER:-asc}:${MONGO_PASSWORD:-asc_dev_password}@mongo:27017/asc?authSource=admin
+      SESSION_SECRET: local-development-secret-change-me
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
+volumes:
+  asc-node-modules:

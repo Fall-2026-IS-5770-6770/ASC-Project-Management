@@ -2,6 +2,9 @@
 // dummy data ids, and any id that already exists is left alone, so running it
 // again only fills in what's missing.
 //   npx prisma db seed
+// With --if-empty (how the Docker image runs it) nothing is added to a
+// database that already has people, or to MongoDB once it has messages, so
+// restarting a container never brings back dummy rows someone deleted.
 const fs = require("fs");
 const path = require("path");
 
@@ -13,6 +16,8 @@ if (fs.existsSync(envFile)) {
 const mongoose = require("mongoose");
 const { PrismaClient } = require("../generated/prisma");
 const { PrismaPg } = require("@prisma/adapter-pg");
+
+const ONLY_IF_EMPTY = process.argv.includes("--if-empty");
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
@@ -133,6 +138,10 @@ async function seedMessages() {
     const collection = mongoose.connection.collection("messages");
     const rows = require("../data/messages.js").messages;
     const existing = new Set((await collection.find({}, { projection: { id: 1 } }).toArray()).map(doc => doc.id));
+    if (ONLY_IF_EMPTY && existing.size > 0) {
+        console.log("messages (MongoDB): already has messages, skipped");
+        return;
+    }
     const missing = rows.filter(row => !existing.has(row.id));
     if (missing.length) {
         await collection.insertMany(missing.map(row => ({ ...row, postedAt: time(row.postedAt), editedAt: time(row.editedAt), audit: null })));
@@ -141,8 +150,12 @@ async function seedMessages() {
 }
 
 async function main() {
-    for (const table of tables) {
-        await seedTable(table);
+    if (ONLY_IF_EMPTY && await prisma.person.count() > 0) {
+        console.log("PostgreSQL: already has data, skipped");
+    } else {
+        for (const table of tables) {
+            await seedTable(table);
+        }
     }
     await seedMessages();
 }
