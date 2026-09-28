@@ -334,6 +334,15 @@ logAssignments("ProjectStudentAssignmentLog", "Student");
 logRecordChanges("ProjectUpdateLog", "projects", "projectId", { ignore: ["mainBoardStatusId"] });
 
 
+// Issue #87: changes to a requirement's description, priority, due date,
+// acceptance criteria, and so on. Column moves are already in TaskStatusLog.
+logRecordChanges("RequirementUpdateLog", "requirements", "requirementId", {
+    ignore: ["statusId"],
+    fields: { projectId: { type: Number, index: true } },
+    extra: requirement => ({ projectId: requirement.projectId })
+});
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
