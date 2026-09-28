@@ -382,6 +382,7 @@ const ENTITIES = {
         plural: "statuses",
         store: statuses,
         display: status => status.name,
+        recordActor: true,
         sort: byOrder,
         fields: [
             { name: "name", label: "Name", type: "text", required: true },
