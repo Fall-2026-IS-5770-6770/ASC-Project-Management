@@ -1878,7 +1878,16 @@ const PROJECT_ROLE_PERMISSIONS = {
         "documents:view", "details:view",
         "activity:view"
     ],
-    "Student": PROJECT_ACTIONS,
+    // Issue #128: works on the project: sees only the projects they're on,
+    // creates and updates tasks, takes part in the channels they're in
+    // (which is also where tasks get discussed), and uploads resources
+    "Student": [
+        "project:view", "team:view", "board:view",
+        "tasks:view", "tasks:create", "tasks:update",
+        "channels:view", "channels:participate",
+        "documents:view", "documents:upload",
+        "details:view"
+    ],
     "Sponsor": PROJECT_ACTIONS
 };
 
