@@ -2033,6 +2033,14 @@ registerAuthProvider("github", dummyProvider("github", {
     emailHint: "any email"
 }));
 
+// Issue #120: Cognito, so the ASC can issue accounts to sponsors and other outside stakeholders
+registerAuthProvider("cognito", dummyProvider("cognito", {
+    label: "Cognito",
+    description: "sponsors and outside partners",
+    emailRule: /.+/,
+    emailHint: "any email"
+}));
+
 // Match a provider profile to a person (see the rules above) and remember the
 // account, so the next sign-in through this provider finds the same person
 function resolvePerson(provider, profile) {
