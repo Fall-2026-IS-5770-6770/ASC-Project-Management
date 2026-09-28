@@ -774,13 +774,23 @@ const STYLES = `
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
-    body > header { background: var(--accent); color: #fff; padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; }
-    body > header a { color: #fff; text-decoration: none; opacity: .9; }
-    body > header a:hover { opacity: 1; text-decoration: underline; }
-    .acting-as { margin-left: auto; font-size: .85rem; }
-    .muted-light { opacity: .8; }
+    body > header { background: var(--accent); color: #fff; padding: 0 1rem; display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: center; min-height: 3.25rem; }
+    body > header a { color: #fff; text-decoration: none; }
+    body > header .brand { font-weight: 700; font-size: 1.05rem; }
+    body > header nav { display: flex; flex-wrap: wrap; gap: .25rem; }
+    body > header nav a { padding: .9rem .75rem .75rem; opacity: .85; border-bottom: 3px solid transparent; }
+    body > header nav a:hover { opacity: 1; background: rgba(255, 255, 255, .08); }
+    body > header nav a[aria-current="page"] { opacity: 1; font-weight: 600; border-bottom-color: #fff; }
+    .manage { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .manage-group { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
+    .manage-group h2 { font-size: 1rem; margin: 0 0 .5rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+    .manage-links { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+    .manage-links a { display: block; font-weight: 600; }
+    .manage-links .muted { font-size: .85rem; }
+    .acting-as { margin-left: auto; font-size: .9rem; display: flex; align-items: center; gap: .5rem; }
+    .acting-as a:hover { text-decoration: underline; }
     .link-button { background: none; border: 1px solid rgba(255, 255, 255, .6); padding: .15rem .5rem; margin-left: .35rem; }
-    body > header .brand { font-weight: 700; opacity: 1; margin-right: .5rem; }
+
     main { padding: 1rem; max-width: 1400px; margin: 0 auto; }
     h1 { font-size: 1.5rem; margin: .5rem 0 1rem; }
     a { color: var(--accent); }
@@ -853,8 +863,8 @@ function sendPage(res, title, body, statusCode = 200) {
 </head>
 <body>
     <header>
-        <a class="brand" href="/">ASC Project Management</a>
-        ${NAV.filter(link => navVisible(link)).map(link => `<a href="${esc(link.href)}">${esc(link.label)}</a>`).join("")}
+        <a class="brand" href="/">ASC Projects</a>
+        ${topNavigation(res.req.path)}
         ${actingAsControl(res)}
     </header>
     <main>${flashMessage(res.locals.flash)}${body}</main>
@@ -870,10 +880,93 @@ function actingAsControl(res) {
     }
     const provider = res.req.session?.provider;
     return `<form class="acting-as" method="POST" action="/signout">
-        Signed in as <strong>${esc(displayOf("people", personId))}</strong>
-        <span class="muted-light">(${esc(AUTH_PROVIDERS[provider]?.label || provider)})</span>
+        <a href="/people/${personId}" title="Signed in with ${esc(AUTH_PROVIDERS[provider]?.label || provider)}">${esc(displayOf("people", personId))}</a>
         <button type="submit" class="link-button">Sign out</button>
     </form>`;
+}
+
+// ----- Navigation -----
+// The top bar only holds the places people go every day. Everything else
+// (setup, directories, association lists, administration) is one click away
+// on the Manage page, grouped by what it's for.
+const PRIMARY_NAV = [
+    { href: "/projects", label: "Board", matches: ["/projects", "/"] },
+    { href: "/requirements", label: "Tasks", matches: ["/requirements"] },
+    { href: "/messages", label: "Messages", matches: ["/messages", "/threads", "/channels"] },
+    { href: "/documents", label: "Documents", matches: ["/documents"] }
+];
+
+// Manage page groups, with a one-line description of each page
+const MANAGE_GROUPS = [
+    {
+        title: "People and staffing",
+        links: {
+            "/people": "Everyone involved with ASC projects",
+            "/mentors": "Faculty mentors, their availability and load",
+            "/students": "Students, their hours and work approval",
+            "/project-people": "Who is on which project, in what role",
+            "/person-skill/all": "The skills each person has"
+        }
+    },
+    {
+        title: "Clients and project setup",
+        links: {
+            "/clients/all": "Organizations that request projects",
+            "/project-types": "Kinds of work, such as Full-Stack or Data Viz",
+            "/project-project-types": "Which types each project involves",
+            "/project-skills": "The skills each project needs",
+            "/skills": "The skills list itself"
+        }
+    },
+    {
+        title: "Workflow",
+        links: {
+            "/main-board-statuses": "Columns on the main board",
+            "/statuses": "Task statuses used on project boards",
+            "/project-statuses": "Which task statuses each project uses"
+        }
+    },
+    {
+        title: "Conversations",
+        links: {
+            "/channels/all": "Every project channel and its members",
+            "/threads": "Threads in each channel"
+        }
+    },
+    {
+        title: "Administration",
+        links: {
+            "/admin/roles": "Grant and revoke roles",
+            "/activity": "Every recorded change, and who made it"
+        }
+    }
+];
+
+function isCurrent(path, matches) {
+    return matches.some(prefix => (prefix === "/" ? path === "/" : path === prefix || path.startsWith(`${prefix}/`)));
+}
+
+// Manage is for people who run projects; sponsors and people without roles
+// already reach everything they can see from the top bar
+function manageLinks() {
+    if (!can("directory:view")) {
+        return [];
+    }
+    return NAV.filter(link => !PRIMARY_NAV.some(primary => primary.href === link.href) && navVisible(link));
+}
+
+function topNavigation(path) {
+    if (!currentUser()) {
+        return "";
+    }
+    const primary = PRIMARY_NAV.filter(link => navVisible(link));
+    const managePaths = ["/manage", ...manageLinks().map(link => link.href.replace(/\/all$/, ""))];
+    const onPrimary = primary.some(link => isCurrent(path, link.matches));
+    const links = primary.map(link => `<a href="${esc(link.href)}"${isCurrent(path, link.matches) ? ` aria-current="page"` : ""}>${esc(link.label)}</a>`);
+    if (manageLinks().length) {
+        links.push(`<a href="/manage"${!onPrimary && isCurrent(path, managePaths) ? ` aria-current="page"` : ""}>Manage</a>`);
+    }
+    return `<nav aria-label="Main">${links.join("")}</nav>`;
 }
 
 // Hide links to pages the signed-in person can't open
@@ -2632,6 +2725,27 @@ app.get("/auth/:provider/callback", async (req, res) => {
     req.session.provider = req.params.provider;
     flash(req, "success", `Signed in as ${ENTITIES.people.display(person)} with ${provider.label}.`);
     redirectBack(res, pending.returnTo, "/");
+});
+
+
+// ===== MANAGE =====
+// Everything that isn't in the top bar, grouped, showing only what the
+// signed-in person can open
+
+app.get("/manage", (req, res) => {
+    const visible = new Set(manageLinks().map(link => link.href));
+    const labels = Object.fromEntries(NAV.map(link => [link.href, link.label]));
+    const groups = MANAGE_GROUPS
+        .map(group => ({ ...group, hrefs: Object.keys(group.links).filter(href => visible.has(href)) }))
+        .filter(group => group.hrefs.length)
+        .map(group => `<section class="manage-group">
+            <h2>${esc(group.title)}</h2>
+            <ul class="manage-links">${group.hrefs.map(href => `<li><a href="${esc(href)}">${esc(labels[href])}</a><span class="muted">${esc(group.links[href])}</span></li>`).join("")}</ul>
+        </section>`);
+    if (!groups.length) {
+        return sendForbidden(res, "There's nothing for you to manage.");
+    }
+    sendPage(res, "Manage", `<h1>Manage</h1><div class="manage">${groups.join("")}</div>`);
 });
 
 
