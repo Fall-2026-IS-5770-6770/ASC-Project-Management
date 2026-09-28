@@ -93,6 +93,19 @@ if (!IS_PRODUCTION) {
     });
 }
 
+// One-time messages: set before a redirect, shown on the next page, then cleared
+function flash(req, type, text) {
+    req.session.flash = { type, text };
+}
+
+app.use((req, res, next) => {
+    if (req.session.flash) {
+        res.locals.flash = req.session.flash;
+        delete req.session.flash;
+    }
+    next();
+});
+
 
 // ===== HTML HELPERS =====
 
@@ -157,6 +170,9 @@ const STYLES = `
     .icon-btn { background: none; border: 1px solid transparent; color: inherit; padding: .15rem .3rem; font-size: 1rem; line-height: 1; text-decoration: none; border-radius: 4px; }
     .icon-btn:hover { border-color: var(--line); background: #fff; }
     .actions { display: flex; gap: .5rem; }
+    .flash { padding: .75rem 1rem; border-radius: 6px; margin-bottom: 1rem; border: 1px solid; }
+    .flash-success { background: #ecfdf3; border-color: #abefc6; color: var(--ok); }
+    .flash-error { background: #fef3f2; border-color: #fecdca; color: var(--danger); }
     .errors { background: #fef3f2; border: 1px solid #fecdca; color: var(--danger); padding: .75rem 1rem; border-radius: 6px; }
     ul.threads { list-style: none; padding: 0; margin: 0; }
     li.thread { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid var(--line); }
@@ -189,9 +205,13 @@ function sendPage(res, title, body, statusCode = 200) {
         <a class="brand" href="/">ASC Project Management</a>
         ${NAV.map(link => `<a href="${esc(link.href)}">${esc(link.label)}</a>`).join("")}
     </header>
-    <main>${body}</main>
+    <main>${flashMessage(res.locals.flash)}${body}</main>
 </body>
 </html>`);
+}
+
+function flashMessage(message) {
+    return message ? `<div class="flash flash-${esc(message.type)}" role="status">${esc(message.text)}</div>` : "";
 }
 
 function sendNotFound(res, label, id) {
@@ -1138,6 +1158,7 @@ function handleCreate(entityKey, req, res, { backHref, redirectTo, input = req.b
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
+    flash(req, "success", `Created ${ENTITIES[entityKey].label} ${ENTITIES[entityKey].display(result.record)}.`);
     res.redirect(typeof redirectTo === "function" ? redirectTo(result.record) : redirectTo);
 }
 
@@ -1148,6 +1169,7 @@ function handleUpdate(entityKey, req, res, { record, backHref, redirectTo, input
         return sendErrors(res, result.errors, backHref);
     }
     console.log(`Updated ${ENTITIES[entityKey].label} ${record.id}: ${ENTITIES[entityKey].display(record)}`);
+    flash(req, "success", `Saved changes to ${ENTITIES[entityKey].display(record)}.`);
     res.redirect(typeof redirectTo === "function" ? redirectTo(record) : redirectTo);
 }
 
@@ -1156,6 +1178,7 @@ function handleDelete(entityKey, req, res, { record, backHref, redirectTo }) {
     if (result.errors) {
         return sendErrors(res, result.errors, backHref);
     }
+    flash(req, "success", `Deleted ${ENTITIES[entityKey].display(record)}.`);
     res.redirect(redirectTo);
 }
 
@@ -1218,6 +1241,7 @@ app.post("/projects/new", (req, res) => {
     if (result.errors) {
         return sendErrors(res, result.errors, "/projects");
     }
+    flash(req, "success", `Created project ${result.record.name}.${result.record.workspaceInitializedAt ? " Its workspace is ready." : ""}`);
     res.redirect(`/projects/${result.record.id}`);
 });
 
@@ -1299,6 +1323,7 @@ app.post("/projects/edit/:id", (req, res) => {
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
+    flash(req, "success", `Saved changes to ${project.name}.`);
     res.redirect(`/projects/${project.id}`);
 });
 
@@ -1316,6 +1341,8 @@ app.post("/projects/:id/status", (req, res) => {
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
+    const workspaceCreated = !result.before.workspaceInitializedAt && project.workspaceInitializedAt;
+    flash(req, "success", `Moved ${project.name} to ${displayOf("mainBoardStatuses", project.mainBoardStatusId)}.${workspaceCreated ? " Its workspace is ready." : ""}`);
     res.redirect(`/projects/edit/${project.id}`);
 });
 
@@ -1329,6 +1356,7 @@ app.post("/projects/delete/:id", (req, res) => {
     if (result.errors) {
         return sendErrors(res, result.errors, "/projects");
     }
+    flash(req, "success", `Deleted project ${project.name}.`);
     res.redirect("/projects");
 });
 
@@ -1747,6 +1775,7 @@ app.post("/projects/:projectid/people/new", (req, res) => {
     if (result.errors) {
         return sendErrors(res, result.errors, `/projects/edit/${project.id}`);
     }
+    flash(req, "success", `Added ${displayOf("people", result.record.personId)} to ${project.name} as ${result.record.role}.`);
     redirectBack(res, req.body.returnTo, `/projects/${project.id}/people`);
 });
 
@@ -1775,6 +1804,7 @@ app.post("/projects/:projectid/people/delete/:id", (req, res) => {
     const row = findProjectPerson(req, res);
     if (row) {
         deleteRecord("projectPeople", row);
+        flash(req, "success", `Removed ${displayOf("people", row.personId)} from ${displayOf("projects", row.projectId)}.`);
         redirectBack(res, req.body.returnTo, `/projects/${row.projectId}/people`);
     }
 });
