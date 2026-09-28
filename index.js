@@ -506,6 +506,39 @@ app.get("/requirements/:id", (req, res) => {
 });
 
 
+// ===== SKILLS (Issue #10) =====
+
+app.get("/skills/new", (req, res) => {
+    res.send("Send the create skill page");
+});
+
+app.post("/skills/new", (req, res) => {
+    console.log(req.body);
+    res.send("Save the new skill");
+});
+
+app.get("/skills", (req, res) => {
+    res.send("Send all of the skills");
+});
+
+app.get("/skills/edit/:id", (req, res) => {
+    res.send(`Send the edit page for skill ${req.params.id}`);
+});
+
+app.post("/skills/edit/:id", (req, res) => {
+    console.log(req.body);
+    res.send(`Save the edits to skill ${req.params.id}`);
+});
+
+app.post("/skills/delete/:id", (req, res) => {
+    res.send(`Delete skill ${req.params.id}`);
+});
+
+app.get("/skills/:id", (req, res) => {
+    res.send(`Send skill ${req.params.id}`);
+});
+
+
 // ===== PROJECT SKILLS (Issue #11) =====
 
 app.get("/project-skills/new", (req, res) => {
