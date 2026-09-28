@@ -216,6 +216,44 @@ onChange("requirements", (entry, requirement) => {
 });
 
 
+// A log of whole-record changes: created and deleted entries keep a snapshot
+// of the record, updated entries keep each changed field's before and after.
+// ignore leaves out fields another log already covers, extra adds columns
+// for querying, and actionFor can rename the action.
+function logRecordChanges(modelName, entityKey, idField, { ignore = [], fields = {}, extra = () => ({}), actionFor } = {}) {
+    const Model = logModel(modelName, {
+        [idField]: { type: Number, required: true, index: true },
+        summary: String,
+        changes: { type: mongoose.Schema.Types.Mixed, default: {} },
+        snapshot: { type: mongoose.Schema.Types.Mixed, default: null },
+        ...fields
+    });
+
+    onChange(entityKey, (entry, record) => {
+        if (!["created", "updated", "deleted"].includes(entry.action)) {
+            return;
+        }
+        const changes = Object.fromEntries(Object.entries(entry.changes).filter(([name]) => !ignore.includes(name)));
+        if (entry.action === "updated" && Object.keys(changes).length === 0) {
+            return;
+        }
+        writeLog(Model, {
+            action: actionFor ? actionFor(entry.action, changes) : entry.action,
+            [idField]: record.id,
+            summary: entry.summary,
+            changes,
+            snapshot: entry.action === "updated" ? null : { ...record },
+            actorPersonId: entry.actorPersonId,
+            ...extra(record)
+        });
+    });
+    return Model;
+}
+
+// Issue #81: skills added, renamed, recategorized, or removed
+logRecordChanges("SkillUpdateLog", "skills", "skillId");
+
+
 // One-time messages: set before a redirect, shown on the next page, then cleared
 function flash(req, type, text) {
     req.session.flash = { type, text };
