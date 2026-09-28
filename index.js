@@ -587,6 +587,7 @@ const ENTITIES = {
         plural: "project type associations",
         store: projectProjectTypes,
         display: row => `${displayOf("projects", row.projectId)}: ${displayOf("projectTypes", row.projectTypeId)}`,
+        recordActor: true,
         fields: [
             { name: "projectId", label: "Project", type: "select", ref: "projects", required: true, cascade: true },
             { name: "projectTypeId", label: "Project type", type: "select", ref: "projectTypes", required: true, cascade: true },
