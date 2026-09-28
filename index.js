@@ -23,6 +23,12 @@ const PORT = process.env.PORT || 3000;
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
 
+// Express 5 leaves req.body undefined when a request has no body
+app.use((req, res, next) => {
+    req.body = req.body || {};
+    next();
+});
+
 
 // ===== HTML HELPERS =====
 
