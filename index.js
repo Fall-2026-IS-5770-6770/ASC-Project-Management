@@ -534,9 +534,21 @@ app.get("/project-skills", (req, res) => {
     res.render("project-skills/index.ejs", { projectSkills: enrichedProjectSkills });
 });
 
+
 app.get("/project-skills/new", (req, res) => {
     res.render("project-skills/create.ejs", { projects, skills })
 })
+
+app.get("/project-skills/:id", (req, res) => {
+    let ps = projectSkills.find(row => row.id === Number(req.params.id));
+    ps["projectName"] = projects.find(row => row.id === Number(ps.projectId)).name
+    ps["skillName"] = skills.find(row => row.id === Number(ps.skillId)).name
+    if (!ps) return res.status(404).send("Not found");
+    
+    res.render("project-skills/show.ejs", { 
+        projectSkill: ps
+    });
+});
 
 app.post("/project-skills", (req, res) => {
     console.log("Adding new project skill:", req.body);
@@ -556,7 +568,7 @@ app.post("/project-skills", (req, res) => {
     res.redirect("/project-skills");
 });
 
-app.get("/project-skills/:id/edit", (req, res) => {
+app.get("/project-skills/edit/:id", (req, res) => {
     const ps = projectSkills.find(row => row.id === Number(req.params.id));
     if (!ps) return res.status(404).send("Not found");
     
@@ -567,7 +579,7 @@ app.get("/project-skills/:id/edit", (req, res) => {
     });
 });
 
-app.post("/project-skills/:id/edit", (req, res) => {
+app.post("/project-skills/edit/:id", (req, res) => {
     console.log(`Editing project skill ${req.params.id}:`, req.body);
 
     const idToEdit = Number(req.params.id);
@@ -584,7 +596,7 @@ app.post("/project-skills/:id/edit", (req, res) => {
     res.redirect("/project-skills");
 });
 
-app.post("/project-skills/:id/delete", (req, res) => {
+app.post("/project-skills/delete/:id", (req, res) => {
     console.log(`Deleting project skill ${req.params.id}`);
     const idToDelete = Number(req.params.id);
 
