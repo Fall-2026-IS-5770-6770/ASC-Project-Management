@@ -118,6 +118,78 @@ app.delete("/threads/:id",(req,res)=>{
     res.send("This route deletes thread ", req.params.id);
 })
 
+
+//---------------------------------TASK 28: The ASC needs pages to manage skills---------------------------------
+
+const skills = require("./data/skills.js");
+
+skills.forEach((skill) => {
+  console.log(skill.category, "-", skill.name);
+});
+
+// Grouped by category
+const categories = [...new Set(skills.map((skill) => skill.category))];
+
+categories.forEach((category) => {
+  const inCategory = skills.filter((skill) => skill.category === category);
+  console.log(category, inCategory.length + " skills");
+});
+
+// A single skill, for the page that shows one skill
+//const skill = skills.find((s) => s.id === Number(req.params.id));
+
+
+// CREATE
+// Get the create skill page
+app.get("/skills/new",(req,res)=>{
+    res.render("skills/index.ejs", {mode: "new"});
+    //res.send("Send the create skill page");
+});
+
+// Save the new skill from the create form
+app.post("/skills/new",(req,res)=>{
+    //res.send("Save the new skill");
+    res.redirect("/skills");
+});
+
+
+// READ
+// Get all skills
+app.get("/skills",(req,res)=>{
+    res.render("skills/index.ejs", {mode: "list", skills });
+});
+
+// Get one skill by id
+app.get("/skills/:id",(req,res)=>{
+    const skill = skills.find((s) => s.id === Number(req.params.id));
+    if (!skill) return res.status(404).send("Skill not found");
+    res.render("skills/index.ejs", {mode: "show", skill });
+});
+
+
+// UPDATE
+// Get the edit page for one skill
+app.get("/skills/:id/edit", (req,res)=>{
+    const skill = skills.find((s) => s.id === Number(req.params.id));
+    if (!skill) return res.status(404).send("Skill not found");
+    res.render("skills/index.ejs", {mode: "edit", skill });
+});
+
+// Save the edit form for one skill
+app.post("/skills/:id/edit",(req,res)=>{
+    //res.send(`Save the edits to skill ${req.params.id}`);
+    res.redirect(`/skills/${req.params.id}`);
+});
+
+
+//DELETE
+// Save the delete form for one skill
+app.post("/skills/:id/delete",(req,res)=>{
+    //res.send(`Delete skill ${req.params.id}`);
+    res.redirect("/skills")
+});
+
+
 app.listen(PORT,()=>{
     console.log(`App is listening on http://localhost:${PORT}`)
 })
