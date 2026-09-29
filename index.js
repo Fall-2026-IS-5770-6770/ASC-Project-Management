@@ -4,6 +4,10 @@ const statuses = require("./data/statuses.js");
 const app = express();
 const PORT = 3000;
 
+const personSkills = require("./data/personSkills.js");
+const people = require("./data/people.js");
+const skills = require("./data/skills.js");
+
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
 
@@ -547,24 +551,91 @@ app.get("/person-skill/new", (req, res) => {
 
 app.post("/person-skill/new", (req, res) => {
     console.log(req.body);
-    res.send("Save new person-skill association");
+    res.redirect("/person-skill/all");
 });
 
 app.get("/person-skill/all", (req, res) => {
-    res.send("Page to view all person-skill associations");
+    const rows = personSkills.map(row => {
+        const person = people.find(p => p.id === row.personId);
+        const skill = skills.find(s => s.id === row.skillId);
+        const label = `${person.firstName} ${person.lastName} - ${skill.name}`;
+        return `
+            <tr>
+                <td>${person.firstName} ${person.lastName}</td>
+                <td>${skill.name}</td>
+                <td>${row.proficiency}</td>
+                <td>${row.yearsExperience}</td>
+                <td>
+                    <a href="/person-skill/edit/${row.id}">✏️</a>
+                    <form action="/person-skill/delete/${row.id}" method="POST" style="display:inline;"
+                          onsubmit="return confirm('Delete ${label}?')">
+                        <button type="submit">🗑️</button>
+                    </form>
+                </td>
+            </tr>`;
+    }).join("");
+
+    const personOptions = people.map(p => `<option value="${p.id}">${p.firstName} ${p.lastName}</option>`).join("");
+    const skillOptions = skills.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head><meta charset="UTF-8"><title>Person Skills</title></head>
+        <body>
+            <h2>All Person Skills</h2>
+            <button onclick="document.getElementById('addModal').showModal()">Add New</button>
+            <table border="1" cellpadding="6">
+                <tr><th>Person</th><th>Skill</th><th>Proficiency</th><th>Years</th><th></th></tr>
+                ${rows}
+            </table>
+
+            <dialog id="addModal">
+                <form action="/person-skill/new" method="POST">
+                    <h3>Add Person Skill</h3>
+                    <label>Person <select name="personId" required>${personOptions}</select></label><br><br>
+                    <label>Skill <select name="skillId" required>${skillOptions}</select></label><br><br>
+                    <button type="submit">Save</button>
+                    <button type="button" onclick="document.getElementById('addModal').close()">Cancel</button>
+                </form>
+            </dialog>
+        </body>
+        </html>
+    `);
 });
 
 app.get("/person-skill/edit/:id", (req, res) => {
-    res.send(`Page to edit person-skill association with id ${req.params.id}`);
+    const row = personSkills.find(r => r.id === Number(req.params.id));
+    if (!row) return res.status(404).send("Not found");
+
+    const person = people.find(p => p.id === row.personId);
+    const skill = skills.find(s => s.id === row.skillId);
+
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head><meta charset="UTF-8"><title>Edit Person Skill</title></head>
+        <body>
+            <h2>Edit: ${person.firstName} ${person.lastName} - ${skill.name}</h2>
+            <form action="/person-skill/edit/${row.id}" method="POST">
+                <input type="text" name="proficiency" value="${row.proficiency}" required>
+                <input type="number" name="yearsExperience" value="${row.yearsExperience}" required>
+                <input type="submit" value="Update">
+            </form>
+            <a href="/person-skill/all">Cancel</a>
+        </body>
+        </html>
+    `);
 });
 
 app.post("/person-skill/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`Save edit to person-skill association with id ${req.params.id}`);
+    res.redirect("/person-skill/all");
 });
 
 app.post("/person-skill/delete/:id", (req, res) => {
-    res.send(`Delete person-skill association with id ${req.params.id}`);
+    console.log(`Deleting person-skill association with id ${req.params.id}`);
+    res.redirect(`/person-skill/all`);
 });
 
 app.get("/person-skill/:id", (req, res) => {
