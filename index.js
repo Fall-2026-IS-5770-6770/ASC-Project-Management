@@ -2,43 +2,68 @@ const express = require("express");
 let app = express();
 const PORT = 3000;
 
+
+const projectPeople = require("./data/projectPeople");
+const projects = require("./data/projects");
+const people = require("./data/people");
+
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({extended:true}));
-// TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
+app.use(express.static("public"));
+app.set("view engine", "ejs");
+
+
+
 
 // viewing all
-app.get("/projects/:projectid/people", (req, res) => {
-    res.send("Show all people associated with a given project ID")
-})
-
-//  form to create a relationship
-app.get("/projects/:projectid/people/new", (req, res) => {
-    res.send("Show the form for creating a new relationship between a person and the selected project")
+app.get("/projects/people", (req, res) => {
+    res.render("people-projects/index.ejs", {
+        rows: projectPeople,
+        people: people,
+        projects: projects
+    });
 })
 
 // POST to save new relationship
-app.post("/projects/:projectid/people", (req, res) => {
-    res.send("Saved a new relationship between a person and project " + req.params.projectid)
+app.post("/projects/people", (req, res) => {
+    console.log("Attempted relationship creation");
+    res.redirect("/projects/people/");
 })
 
 // get to view a specific relationship (person to project)
-app.get("/projects/:projectid/people/:relationshipid", (req, res) => {
-    res.send("Show a specific relationship between a person and the chosen project")
+app.get("/projects/people/:relationshipid", (req, res) => {
+    const rows = projectPeople.find((pp) => pp.id === Number(req.params.relationshipid));
+    const person = people.find((ps) => ps.id === rows.personId);
+    const project = projects.find((pr) => pr.id === rows.projectId);
+
+    res.render("single-person-project/index.ejs", {
+        rows: rows,
+        person: person,
+        project: project
+    });
 })
 
 // get the form to edit a relationship
-app.get("/projects/:projectid/people/:relationshipid/edit", (req, res) => {
-    res.send("Edit the relationship between a person and the selected project")
+app.get("/projects/people/:relationshipid/edit", (req, res) => {
+    const row = projectPeople.find((pp) => pp.id === Number(req.params.relationshipid));
+
+    res.render("edit-ppl-project/index.ejs", {
+        row: row,
+        people: people,
+        projects: projects
+    });
 })
 
 // POST to save edited relationship
-app.post("/projects/:projectid/people/:relationshipid", (req, res) => {
-    res.send("Saved an updated relationship " + req.params.relationshipid + " for project " + req.params.projectid)
+app.post("/projects/people/:relationshipid", (req, res) => {
+    console.log("Attempted edit for relationship", req.params.relationshipid, ":", req.body.role, "| Project", req.body.projectId, "| Person", req.body.personId);
+    res.redirect("/projects/people/" + req.params.relationshipid);
 })
 
 // POST to delete a relationship
-app.post("/projects/:projectid/people/:relationshipid/delete", (req, res) => {
-    res.send("Deleted a relationship between a person and project " + req.params.projectid)
+app.post("/projects/people/:relationshipid/delete", (req, res) => {
+    console.log("Attempted deletion for relationship", req.params.relationshipid);
+    res.redirect("/projects/people/");
 })
 
 

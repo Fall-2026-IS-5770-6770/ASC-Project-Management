@@ -1,0 +1,167 @@
+/* ===========================================================
+   Project Person Associations — base styles (Option 1: Minimal Clean)
+   =========================================================== */
+
+:root {
+  box-sizing: border-box;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+* { box-sizing: inherit; }
+
+body {
+  margin: 0;
+  padding: 32px 16px;
+  background: #eef0f3;
+  color: #222;
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  padding: 24px;
+}
+
+h1 {
+  font-size: 1.2rem;
+  margin: 0 0 4px;
+}
+
+p.sub {
+  color: #666;
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: .85rem;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 5px;
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+.btn:hover { background: #1d4ed8; }
+
+.btn-secondary {
+  background: #fff;
+  color: #444;
+  border: 1px solid #ccc;
+}
+
+.btn-secondary:hover { background: #f3f4f6; }
+
+/* ---------- table (view all) ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #dde1e6;
+  font-size: .82rem;
+}
+
+th {
+  background: #f7f8fa;
+  border-bottom: 1px solid #dde1e6;
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 600;
+}
+
+td {
+  border-bottom: 1px solid #eef0f2;
+  padding: 8px 10px;
+}
+
+/* status badges — driven off the "status" field in projectPeople.js */
+.badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: .72rem;
+  font-weight: 600;
+}
+.badge.active    { background: #dcfce7; color: #166534; }
+.badge.pending   { background: #fef9c3; color: #854d0e; }
+.badge.completed { background: #e0e7ff; color: #3730a3; }
+
+/* ---------- row action icons ---------- */
+
+.icon {
+  cursor: pointer;
+  font-size: .9rem;
+  margin-right: 6px;
+  background: none;
+  border: none;
+}
+.icon.edit { color: #2563eb; }
+.icon.del  { color: #dc2626; }
+
+/* ---------- create / edit form + modal ---------- */
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #444;
+}
+
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid #ccd0d6;
+  border-radius: 5px;
+  font-size: .85rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 22px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+}
+
+.modal h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
