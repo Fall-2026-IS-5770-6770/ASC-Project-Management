@@ -152,3 +152,7 @@ dist
 
 # End of https://www.toptal.com/developers/gitignore/api/node
 /generated/prisma
+
+.pnpm-store
+pnpm-lock.yaml
+pnpm-workspace.yaml
