@@ -1,6 +1,5 @@
 const express = require("express");
 const statuses = require("./data/statuses.js");
-const projectRouter = require("./routes/Projects.js")
 
 const app = express();
 const PORT = 3000;
@@ -15,8 +14,46 @@ app.use(express.urlencoded({ extended: true }));
 //                                                POST /thing/delete/:id  -> delete (confirmed on the frontend)
 // Static paths (new, edit, all) must be registered before /:id so they aren't shadowed.
 
+
 // ===== PROJECTS (Issue #1) =====
-app.use("/projects/",projectRouter)
+
+// Get the create project page
+app.get("/projects/new", (req, res) => {
+    res.send("Send the create project page");
+});
+
+// Save the new project from the create form
+app.post("/projects/new", (req, res) => {
+    console.log(req.body);
+    res.send("Save the new project");
+});
+
+// Get all projects
+app.get("/projects", (req, res) => {
+    res.send("Send all of the projects");
+});
+
+// Get the edit page for one project
+app.get("/projects/edit/:id", (req, res) => {
+    res.send(`Send the edit page for project ${req.params.id}`);
+});
+
+// Save the edit form for one project
+app.post("/projects/edit/:id", (req, res) => {
+    console.log(req.body);
+    res.send(`Save the edits to project ${req.params.id}`);
+});
+
+// Delete one project by id
+app.post("/projects/delete/:id", (req, res) => {
+    res.send(`Delete project ${req.params.id}`);
+});
+
+// Get one project by id
+app.get("/projects/:id", (req, res) => {
+    res.send(`Send project ${req.params.id}`);
+});
+
 
 // ===== STATUSES (Issue #2) =====
 
