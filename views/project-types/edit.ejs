@@ -1,0 +1,22 @@
+<%- include("../partials/header.ejs") %>
+
+<h1 class="mt-4">Edit <%= projectType.name %></h1>
+
+<form action="/project-types/edit/<%= projectType.id %>" method="POST">
+    <div class="mb-3">
+        <label class="form-label" for="name">Name</label>
+        <input class="form-control" id="name" name="name" value="<%= projectType.name %>" required />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="description">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3"><%= projectType.description %></textarea>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="typicalDurationWeeks">Typical duration (weeks)</label>
+        <input class="form-control" id="typicalDurationWeeks" name="typicalDurationWeeks" type="number" value="<%= projectType.typicalDurationWeeks %>" />
+    </div>
+    <button class="btn btn-primary" type="submit">Save changes</button>
+    <a class="btn btn-outline-secondary" href="/project-types">Cancel</a>
+</form>
+
+<%- include("../partials/footer") %>

@@ -1,0 +1,26 @@
+<%- include("../partials/header.ejs") %>
+
+<h1 class="mt-4"><%= projectType.name %></h1>
+<p><%= projectType.description %></p>
+
+<dl class="row">
+    <dt class="col-sm-3">Typical duration</dt>
+    <dd class="col-sm-9"><%= projectType.typicalDurationWeeks %> weeks</dd>
+
+    <dt class="col-sm-3">Deliverables</dt>
+    <dd class="col-sm-9">
+        <ul class="mb-0">
+            <% projectType.typicalDeliverables.forEach((deliverable) => { %>
+                <li><%= deliverable %></li>
+            <% }) %>
+        </ul>
+    </dd>
+
+    <dt class="col-sm-3">Typical skills</dt>
+    <dd class="col-sm-9"><%= skillNames.join(", ") %></dd>
+</dl>
+
+<a class="btn btn-outline-secondary" href="/project-types">Back to all</a>
+<a class="btn btn-primary" href="/project-types/edit/<%= projectType.id %>">Edit</a>
+
+<%- include("../partials/footer") %>
