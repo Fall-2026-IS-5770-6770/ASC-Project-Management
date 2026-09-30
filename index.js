@@ -17,7 +17,10 @@ function withDetails(channel) {
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({extended:true}));
+<<<<<<< Updated upstream
 app.use(express.static('public'));
+=======
+>>>>>>> Stashed changes
 app.set("view engine","ejs");
 // TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
 
