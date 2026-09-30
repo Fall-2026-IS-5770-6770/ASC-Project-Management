@@ -1,6 +1,7 @@
 const express = require("express");
 const statuses = require("./data/statuses.js");
-const projectRouter = require("./routes/Projects.js")
+const projectRouter = require("./routes/Projects.js");
+const projectSkillsRouter = require("./routes/projectSkills.js");
 
 const app = express();
 const PORT = 3000;
@@ -475,36 +476,7 @@ app.get("/requirements/:id", (req, res) => {
 
 // ===== PROJECT SKILLS (Issue #11) =====
 
-app.get("/project-skills/new", (req, res) => {
-    res.send("Create project skill association page");
-});
-
-app.post("/project-skills/new", (req, res) => {
-    console.log(req.body);
-    res.send("New project skill association saved");
-});
-
-app.get("/project-skills", (req, res) => {
-    res.send("View all project skill associations");
-});
-
-app.get("/project-skills/edit/:id", (req, res) => {
-    res.send(`Edit project skill association with id: ${req.params.id}`);
-});
-
-app.post("/project-skills/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Project skill association with id: ${req.params.id} updated`);
-});
-
-app.post("/project-skills/delete/:id", (req, res) => {
-    res.send(`Project skill association with id: ${req.params.id} deleted`);
-});
-
-app.get("/project-skills/:id", (req, res) => {
-    res.send(`View project skill association with id: ${req.params.id}`);
-});
-
+app.use("/projectSkills/", projectSkillsRouter);
 
 // ===== PERSON SKILLS (Issue #13) =====
 
