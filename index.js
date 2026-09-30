@@ -2,8 +2,23 @@ const express = require("express");
 let app = express();
 const PORT = 3000;
 
+const channels = require("./data/channels");
+const projects = require("./data/projects");
+const people = require("./data/people");
+
+// Turn a channel's IDs into a project and a list of members
+function withDetails(channel) {
+    return {
+        ...channel,
+        project: projects.find((p) => p.id === channel.projectId),
+        members: channel.participantPersonIds.map((id) => people.find((p) => p.id === id)),
+    };
+}
+
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({extended:true}));
+app.use(express.static('public'));
+app.set("view engine","ejs");
 // TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
 
 // viewing all
@@ -59,7 +74,7 @@ app.post("/projects/new",(req,res)=>{
 // READ
 // Get all projects
 app.get("/projects",(req,res)=>{
-    res.send("Send all of the projects");
+    res.render("projects/index.ejs");
 });
 
 // Get one project by id
@@ -80,10 +95,53 @@ app.post("/projects/:id/edit",(req,res)=>{
 });
 
 
-// DELETE
+/// DELETE
 // Delete one project by id
 app.post("/projects/:id/delete",(req,res)=>{
     res.send(`Delete project ${req.params.id}`);
+});
+
+
+// ---------- CHANNELS ----------
+
+// READ: view all (also holds the create modal)
+app.get("/channels",(req,res)=>{
+    res.render("channels/index.ejs", {
+        channels: channels.map(withDetails),
+        projects: projects,
+    });
+});
+
+// CREATE: modal form submits here
+app.post("/channels/add",(req,res)=>{
+    console.log("Add channel:", req.body.name, "for project", req.body.projectId);
+    res.redirect("/channels");
+});
+
+// READ: view one
+app.get("/channels/:id",(req,res)=>{
+    const channel = channels.find((c) => c.id === Number(req.params.id));
+    if (!channel) return res.status(404).send("Channel not found");
+    res.render("channels/show.ejs", { channel: withDetails(channel) });
+});
+
+// UPDATE: edit page
+app.get("/channels/:id/edit",(req,res)=>{
+    const channel = channels.find((c) => c.id === Number(req.params.id));
+    if (!channel) return res.status(404).send("Channel not found");
+    res.render("channels/edit.ejs", { channel: channel, projects: projects });
+});
+
+// UPDATE: edit form submits here
+app.post("/channels/:id/edit",(req,res)=>{
+    console.log(`Edit channel ${req.params.id}, new name:`, req.body.name);
+    res.redirect(`/channels/${req.params.id}`);
+});
+
+// DELETE
+app.post("/channels/:id/delete",(req,res)=>{
+    console.log("Delete channel:", req.params.id);
+    res.redirect("/channels");
 });
 
 
