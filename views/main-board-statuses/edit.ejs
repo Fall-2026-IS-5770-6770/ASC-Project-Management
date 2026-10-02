@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit <%= status.name %></title>
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <main class="container p-4">
+        <h1>Edit main board status</h1>
+        <form action="/main-board/statuses/edit/<%= status.id %>" method="POST">
+            <div class="mb-3">
+                <label class="form-label" for="status-name">Name</label>
+                <input class="form-control" id="status-name" type="text" name="status_name" value="<%= status.name %>" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="status-description">Description</label>
+                <textarea class="form-control" id="status-description" name="status_description" rows="4" required><%= status.description %></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="status-order">Board order</label>
+                <input class="form-control" id="status-order" type="number" name="status_order" min="1" value="<%= status.order %>" required>
+            </div>
+            <button class="btn btn-primary" type="submit">Save changes</button>
+            <a class="btn btn-secondary" href="/main-board/statuses">Cancel</a>
+        </form>
+    </main>
+</body>
+</html>
