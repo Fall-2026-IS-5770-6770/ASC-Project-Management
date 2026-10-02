@@ -20,10 +20,10 @@ module.exports = [
         },
     },
     {
-    // Files in public/ run in the browser, not in Node
-    files: ["public/**/*.js"],
-    languageOptions: {
-        globals: globals.browser
+        // Files in public/ run in the browser, not in Node
+        files: ["public/**/*.js"],
+        languageOptions: {
+            globals: globals.browser
         },
     },
     js.configs.recommended
