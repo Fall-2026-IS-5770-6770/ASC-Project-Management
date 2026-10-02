@@ -9,7 +9,6 @@ const projectRouter = require("./routes/Projects.js")
 
 // required data for threads
 const threads = require("./data/threads");
-const people = require("./data/people");
 
 
 const app = express();
@@ -503,6 +502,11 @@ app.get("/threads", (req, res) => {
 app.get("/threads/edit/:id", (req, res) => {
     const thread = threads.find((t) => t.id === parseInt(req.params.id));
     res.render("partials/threads/edit/edit-thread-modal", { threadId: thread.id, threadName: thread.name });
+});
+
+app.post("/threads/edit/:id", (req, res) => {
+    console.log(req.body);
+    res.send(`This route saves edits to thread ${req.params.id}`);
 });
 
 // post request for deleting a thrad
