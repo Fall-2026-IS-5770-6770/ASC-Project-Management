@@ -1,6 +1,7 @@
 const express = require("express");
 const statuses = require("./data/statuses.js");
 const projectRouter = require("./routes/Projects.js")
+const skillRouter = require("./routes/Skills.js")
 
 const app = express();
 const PORT = 3000;
@@ -21,6 +22,9 @@ app.use(express.static('public'))
 
 // ===== PROJECTS (Issue #1) =====
 app.use("/projects/",projectRouter)
+
+// ===== SKILLS (Issue #66) =====
+app.use("/skills/", skillRouter)
 
 // ===== STATUSES (Issue #2) =====
 
