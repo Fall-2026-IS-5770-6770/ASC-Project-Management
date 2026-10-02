@@ -31,6 +31,7 @@ app.use(express.static("public"));
 
 const personSkills = require("./data/personSkills.js");
 
+
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({extended:true}));
 app.use(express.static('public'));
@@ -39,6 +40,9 @@ app.set('view engine', 'ejs')
 // TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
 
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
+app.set("view engine", "ejs");
+
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
@@ -1092,34 +1096,51 @@ app.get("/person-skill/:id", (req, res) => {
 
 // ===== PROJECT TYPES (Issue #14) =====
 
+// Create lives in a modal on the list page, so this route just sends you there
 app.get("/project-types/new", (req, res) => {
-    res.send("Create project type page");
+    res.redirect("/project-types");
 });
 
+// Save the new project type
 app.post("/project-types/new", (req, res) => {
-    console.log(req.body);
-    res.send("Project type created");
+    console.log("New project type saved:", req.body);
+    res.redirect("/project-types");
 });
 
+// List every project type
 app.get("/project-types", (req, res) => {
-    res.send("List of the available types of projects");
+    res.render("project-types/index", { projectTypes });
 });
 
+// Show the edit form for one project type
 app.get("/project-types/edit/:id", (req, res) => {
-    res.send(`Edit page for project type ${req.params.id}`);
+    const projectType = projectTypes.find((t) => t.id === parseInt(req.params.id));
+    if (!projectType) {
+        return res.status(404).send("Project type not found");
+    }
+    res.render("project-types/edit", { projectType });
 });
 
+// Save the edit form
 app.post("/project-types/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Project type ${req.params.id} updated`);
+    console.log(`Edited project type ${req.params.id}:`, req.body);
+    res.redirect("/project-types");
 });
 
+// Delete one project type
 app.post("/project-types/delete/:id", (req, res) => {
-    res.send(`Project type ${req.params.id} deleted`);
+    console.log("Deleted project type:", req.params.id);
+    res.redirect("/project-types");
 });
 
+// Show one project type
 app.get("/project-types/:id", (req, res) => {
-    res.send(`Project type ${req.params.id} details`);
+    const projectType = projectTypes.find((t) => t.id === parseInt(req.params.id));
+    if (!projectType) {
+        return res.status(404).send("Project type not found");
+    }
+    const skillNames = projectType.typicalSkillIds.map((id) => skills.find((skill) => skill.id === id).name);
+    res.render("project-types/show", { projectType, skillNames });
 });
 
 
