@@ -1,6 +1,7 @@
 const express = require("express");
 const statuses = require("./data/statuses.js");
 const projectRouter = require("./routes/Projects.js")
+const mentorRouter = require('./routes/Mentors.js')
 
 const app = express();
 const PORT = 3000;
@@ -262,37 +263,7 @@ app.get("/projects/:projectid/people/:id", (req, res) => {
 
 
 // ===== MENTORS (Issue #4) =====
-
-app.get("/mentors/new", (req, res) => {
-    res.send("Create mentors page");
-});
-
-app.post("/mentors/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new mentor");
-});
-
-app.get("/mentors", (req, res) => {
-    res.send("Get all mentors");
-});
-
-app.get("/mentors/edit/:id", (req, res) => {
-    res.send(`Edit mentor page for mentor ${req.params.id}`);
-});
-
-app.post("/mentors/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saving an edit on mentor ${req.params.id}`);
-});
-
-app.post("/mentors/delete/:id", (req, res) => {
-    res.send(`Deleting mentor ${req.params.id}`);
-});
-
-app.get("/mentors/:id", (req, res) => {
-    res.send(`Getting mentor ${req.params.id}`);
-});
-
+app.use("/mentors",mentorRouter)
 
 // ===== STUDENTS (Issue #5) =====
 
