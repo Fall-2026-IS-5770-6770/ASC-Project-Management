@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= document.name %></title>
+</head>
+
+<body>
+
+    <h1><%= document.name %></h1>
+
+    <p><strong>Type:</strong> <%= document.type %></p>
+
+    <p><strong>File Name:</strong> <%= document.fileName %></p>
+
+    <p><strong>File URL:</strong> <%= document.fileUrl %></p>
+
+    <p>
+        <strong>Project:</strong>
+        <%= project ? project.name : "Unknown Project" %>
+    </p>
+
+    <p>
+        <strong>Uploaded By:</strong>
+        <%= uploader ? uploader.firstName + " " + uploader.lastName : "Unknown" %>
+    </p>
+
+    <p><strong>Uploaded Date:</strong> <%= document.uploadedDate %></p>
+
+    <p><strong>Version:</strong> <%= document.version %></p>
+
+    <p><strong>Status:</strong> <%= document.status %></p>
+
+    <p>
+        <a href="/documents">← Back to Documents</a>
+    </p>
+
+</body>
+
+</html>
