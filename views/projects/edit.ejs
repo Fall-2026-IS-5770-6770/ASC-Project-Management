@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+    <%- include('../partials/head') %>
+    <body>
+        <div class="d-flex" id="wrapper">
+            <%- include('../partials/sidebar') %>
+            <!-- Page content wrapper-->
+            <div id="page-content-wrapper">
+                <%- include('../partials/topNav') %>
+                <!-- Page content-->
+                <div class="container-fluid" style="max-width: 900px;">
+                    <a href="/projects/<%= project.id %>" class="d-inline-block mt-3"><i class="bi bi-arrow-left"></i> Back to project</a>
+                    <h1 class="mt-2">Edit <%= project.name %></h1>
+
+                    <!-- Changing the status saves right away, which moves the card on the main board -->
+                    <form action="/projects/edit/<%= project.id %>" method="POST" class="mb-4" style="max-width: 20rem;">
+                        <label class="form-label" for="mainBoardStatusId">Status</label>
+                        <select class="form-select" id="mainBoardStatusId" name="mainBoardStatusId" onchange="this.form.submit()">
+                            <% statuses.forEach((status) => { %>
+                                <option value="<%= status.id %>" <%= project.mainBoardStatusId === status.id ? 'selected' : '' %>><%= status.name %></option>
+                            <% }) %>
+                        </select>
+                    </form>
+
+                    <form action="/projects/edit/<%= project.id %>" method="POST" class="mb-5">
+                        <%- include('components/projectFields', { project }) %>
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <a href="/projects/<%= project.id %>" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h2 class="h4 mb-0">Team</h2>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMentorModal">
+                                <i class="bi bi-plus-lg"></i> Add mentor
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                                <i class="bi bi-plus-lg"></i> Add student
+                            </button>
+                        </div>
+                    </div>
+                    <table class="table table-striped align-middle mt-2 mb-5">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% team.forEach((member) => { %>
+                                <tr>
+                                    <td><%= member.name %></td>
+                                    <td><%= member.role %></td>
+                                    <td><%= member.status %></td>
+                                </tr>
+                            <% }) %>
+                            <% if (team.length === 0) { %>
+                                <tr><td colspan="3" class="text-muted">No one is assigned to this project yet.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add mentor and add student modals share one layout -->
+        <% [
+            { id: 'addMentorModal', label: 'mentor', role: 'Faculty Mentor', options: availableMentors },
+            { id: 'addStudentModal', label: 'student', role: 'Student', options: availableStudents }
+        ].forEach((modal) => { %>
+            <div class="modal fade" id="<%= modal.id %>" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form class="modal-content" action="/projects/<%= project.id %>/people/new" method="POST">
+                        <input type="hidden" name="role" value="<%= modal.role %>" />
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add <%= modal.label %></h5>
+                            <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <% if (modal.options.length === 0) { %>
+                                <p class="text-muted mb-0">Every <%= modal.label %> is already on this project.</p>
+                            <% } else { %>
+                                <label class="form-label" for="<%= modal.id %>-person">Choose a <%= modal.label %></label>
+                                <select class="form-select" id="<%= modal.id %>-person" name="personId" required>
+                                    <% modal.options.forEach((option) => { %>
+                                        <option value="<%= option.personId %>"><%= option.name %></option>
+                                    <% }) %>
+                                </select>
+                            <% } %>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+                            <button class="btn btn-primary" type="submit" <%= modal.options.length === 0 ? 'disabled' : '' %>>Add</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        <% }) %>
+
+        <%- include('../partials/scripts') %>
+    </body>
+</html>
