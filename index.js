@@ -1,17 +1,46 @@
 const express = require("express");
+const path = require("path");
 const statuses = require("./data/statuses.js");
 const projectSkills = require("./data/projectSkills");
 const projects = require("./data/projects");
-const skills = require("./data/skills");    
+
+const mainBoardStatuses = require("./data/mainBoardStatuses.js");
+
+const students = require("./data/students.js");
+const projectTypes = require("./data/projectTypes.js");
+const skills = require("./data/skills.js");
+
+const projectRouter = require("./routes/Projects.js")
+
+// required data for threads
+const threads = require("./data/threads");
+
 
 const app = express();
 const PORT = 3000;
 const people = require("./data/people");
 
+app.set("view engine", "ejs");
+
+// use the public folder
+app.use(express.static("public"));
+
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.set("view engine", "ejs");
+
+
+
+// Serve static files (css, js, images) from the public folder
+app.use(express.static(path.join(__dirname, "public")));
+// Render pages with EJS from the views folder
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+
+app.set("view engine", "ejs")
+
+app.use(express.static('public'))
 
 // This is a server-rendered app, so browsers can only send GET and POST.
 // Every resource follows the same pattern:
@@ -185,6 +214,46 @@ app.get("/status/:id", (req, resp) => {
 });
 
 
+// ===== MAIN BOARD STATUSES =====
+
+const mainBoardStatusRoutes = ["/main-board/statuses", "/main-board-statuses"];
+
+app.get(mainBoardStatusRoutes, (req, res) => {
+    const orderedStatuses = [...mainBoardStatuses].sort((firstStatus, secondStatus) => firstStatus.order - secondStatus.order);
+    res.render("main-board-statuses/index", { statuses: orderedStatuses });
+});
+
+app.get(["/main-board/statuses/new", "/main-board-statuses/new"], (req, res) => {
+    res.redirect("/main-board/statuses");
+});
+
+app.post(["/main-board/statuses/new", "/main-board-statuses/new"], (req, res) => {
+    console.log("Main board status create request:", req.body);
+    res.redirect("/main-board/statuses");
+});
+
+app.get(["/main-board/statuses/edit/:id", "/main-board-statuses/edit/:id"], (req, res) => {
+    const statusId = Number(req.params.id);
+    const status = mainBoardStatuses.find(mainBoardStatus => mainBoardStatus.id === statusId);
+
+    if (!status) {
+        return res.status(404).send(`Main board status with id ${statusId} not found`);
+    }
+
+    res.render("main-board-statuses/edit", { status });
+});
+
+app.post(["/main-board/statuses/edit/:id", "/main-board-statuses/edit/:id"], (req, res) => {
+    console.log(`Main board status edit request for ${req.params.id}:`, req.body);
+    res.redirect("/main-board/statuses");
+});
+
+app.post(["/main-board/statuses/delete/:id", "/main-board-statuses/delete/:id"], (req, res) => {
+    console.log(`Main board status delete request for ${req.params.id}`);
+    res.redirect("/main-board/statuses");
+});
+
+
 // ===== PROJECT STATUSES (Issue #3) =====
 // Associates statuses with a specific project
 
@@ -295,36 +364,123 @@ app.get("/mentors/:id", (req, res) => {
 });
 
 
-// ===== STUDENTS (Issue #5) =====
+// ===== STUDENTS (Issue #5, pages for Issue #26) =====
+// A student row has no name on it; it points at a person by personId.
 
+const studentApprovalStatuses = ["Approved", "Pending", "Not Approved"];
+
+// Attach the matching person so views can show the student's name and contact info
+const withPerson = (student) => ({
+    ...student,
+    person: people.find((p) => p.id === student.personId)
+});
+
+// Data every page with the student form needs (create modal and edit page)
+const studentFormOptions = () => ({
+    projectTypes,
+    skills,
+    approvalStatuses: studentApprovalStatuses,
+    // Only people who are not already students can be made into one
+    availablePeople: people.filter((person) => !students.some((s) => s.personId === person.id))
+});
+
+const renderStudentList = (res, openCreateModal) => {
+    res.render("students/index", {
+        title: "Students",
+        activePage: "Students",
+        students: students.map(withPerson),
+        openCreateModal,
+        ...studentFormOptions()
+    });
+};
+
+// Create is a modal on the list page, so /students/new opens the list with the modal showing
 app.get("/students/new", (req, res) => {
-    res.send("This is the new student form page");
+    renderStudentList(res, true);
 });
 
 app.post("/students/new", (req, res) => {
-    console.log(req.body);
-    res.send("This saves the new student form data to the database");
+    const personId = Number(req.body.personId);
+
+    if (!people.some((p) => p.id === personId)) {
+        return res.status(400).send(`Person with id ${personId} not found`);
+    }
+    if (students.some((s) => s.personId === personId)) {
+        return res.status(400).send(`Person with id ${personId} is already a student`);
+    }
+
+    // Use the highest existing id so ids stay unique after deletes
+    const newStudentId = students.reduce((max, s) => Math.max(max, s.id), 0) + 1;
+
+    students.push({
+        id: newStudentId,
+        personId,
+        major: req.body.major,
+        graduationDate: req.body.graduationDate,
+        resumeUrl: req.body.resumeUrl,
+        minHoursPerWeek: Number(req.body.minHoursPerWeek),
+        maxHoursPerWeek: Number(req.body.maxHoursPerWeek),
+        workApprovalStatus: req.body.workApprovalStatus,
+        availability: req.body.availability,
+        preferredProjectTypeId: req.body.preferredProjectTypeId ? Number(req.body.preferredProjectTypeId) : null,
+        // One checked box comes through as a string, several as an array
+        skillIds: [].concat(req.body.skillIds ?? []).map(Number)
+    });
+
+    res.redirect("/students");
 });
 
 app.get("/students", (req, res) => {
-    res.send("This shows a list of all students");
+    renderStudentList(res, false);
 });
 
 app.get("/students/edit/:id", (req, res) => {
-    res.send(`This is the edit form for student with id ${req.params.id}`);
+    const student = students.find((s) => s.id === Number(req.params.id));
+
+    if (!student) {
+        return res.status(404).send(`Student with id ${req.params.id} not found`);
+    }
+
+    res.render("students/edit", {
+        title: "Edit Student",
+        activePage: "Students",
+        student: withPerson(student),
+        ...studentFormOptions()
+    });
 });
 
+// The data file is not updated yet; logging proves the edit form reached this route
 app.post("/students/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`This updates the student with id ${req.params.id} in the database`);
+    console.log(`Edit submitted for student ${req.params.id}: major = ${req.body.major}`);
+    res.redirect(`/students/${req.params.id}`);
 });
 
+// Removes only the student record; the underlying person is kept
 app.post("/students/delete/:id", (req, res) => {
-    res.send(`This deletes the student with id ${req.params.id} from the database`);
+    const studentIndex = students.findIndex((s) => s.id === Number(req.params.id));
+
+    if (studentIndex === -1) {
+        return res.status(404).send(`Student with id ${req.params.id} not found`);
+    }
+
+    students.splice(studentIndex, 1);
+    res.redirect("/students");
 });
 
 app.get("/students/:id", (req, res) => {
-    res.send(`This shows the details for student with id ${req.params.id}`);
+    const student = students.find((s) => s.id === Number(req.params.id));
+
+    if (!student) {
+        return res.status(404).send(`Student with id ${req.params.id} not found`);
+    }
+
+    res.render("students/show", {
+        title: "Student",
+        activePage: "Students",
+        student: withPerson(student),
+        preferredProjectType: projectTypes.find((type) => type.id === student.preferredProjectTypeId),
+        studentSkills: skills.filter((skill) => student.skillIds.includes(skill.id))
+    });
 });
 
 
@@ -370,21 +526,32 @@ app.get("/channels/:id", (req, res) => {
 
 // ===== THREADS (Issue #7) =====
 
+// create new thread
 app.get("/threads/new", (req, res) => {
-    res.send("This route sends the create thread page");
+    res.render('partials/threads/new/new-thread-modal.ejs');
 });
 
+// post request for new thread 
+// .redirect will send users back to a page following the post request
 app.post("/threads/new", (req, res) => {
-    console.log(req.body);
-    res.send("This route saves a new thread");
+    console.log('New thread submitted:', req.body.threadName);
+    res.redirect('/threads');
 });
 
+// see all threads
 app.get("/threads", (req, res) => {
-    res.send("This route sends all threads");
+    const channelThreads = threads
+        .filter((thread) => thread.channelId === 1)
+        .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
+
+    res.render("partials/threads/all/all-thread-modal", { threads: channelThreads });
 });
 
+
+// edit a thread
 app.get("/threads/edit/:id", (req, res) => {
-    res.send(`This route sends the edit page for thread ${req.params.id}`);
+    const thread = threads.find((t) => t.id === parseInt(req.params.id));
+    res.render("partials/threads/edit/edit-thread-modal", { threadId: thread.id, threadName: thread.name });
 });
 
 app.post("/threads/edit/:id", (req, res) => {
@@ -392,12 +559,17 @@ app.post("/threads/edit/:id", (req, res) => {
     res.send(`This route saves edits to thread ${req.params.id}`);
 });
 
+// post request for deleting a thrad
 app.post("/threads/delete/:id", (req, res) => {
+    console.log(`Thread ${req.params.id} deleted`);
     res.send(`This route deletes thread ${req.params.id}`);
 });
 
+// see threads by id
 app.get("/threads/:id", (req, res) => {
-    res.send(`This route returns thread ${req.params.id}`);
+    const thread = threads.find((t) => t.id === parseInt(req.params.id));
+    if (!thread) return res.status(404).send("Thread not found");
+    res.render("partials/threads/show/show-threads-modal", { threadId: thread.id, threadName: thread.name });
 });
 
 
