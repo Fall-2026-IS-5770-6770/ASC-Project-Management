@@ -195,7 +195,7 @@ app.get("/status/:id", (req, resp) => {
 
 // ===== PROJECT STATUSES (Issue #3) =====
 // Associates statuses with a specific project
-const projectStatusRouter = require("./routes/projectStatuses.js");
+const projectStatusRouter = require("./routes/ProjectStatuses.js");
 app.use("/project-status", projectStatusRouter);
 
 // ===== PROJECT PEOPLE (Issue #12) =====
