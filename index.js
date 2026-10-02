@@ -26,6 +26,12 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 
 // Allow body encoding for POST Requests
+app.use(express.urlencoded({extended:true}));
+app.use(express.static('public'));
+app.set('view engine', 'ejs')
+
+// TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.set("view engine", "ejs");
@@ -684,6 +690,78 @@ app.get("/project-skills/:id", (req, res) => {
         projectSkill: ps
     });
 });
+
+
+//---------------------------------TASK 28: The ASC needs pages to manage skills---------------------------------
+
+
+skills.forEach((skill) => {
+  console.log(skill.category, "-", skill.name);
+});
+
+// Grouped by category
+const categories = [...new Set(skills.map((skill) => skill.category))];
+
+categories.forEach((category) => {
+  const inCategory = skills.filter((skill) => skill.category === category);
+  console.log(category, inCategory.length + " skills");
+});
+
+// A single skill, for the page that shows one skill
+//const skill = skills.find((s) => s.id === Number(req.params.id));
+
+
+// CREATE
+// Get the create skill page
+app.get("/skills/new",(req,res)=>{
+    res.render("skills/index.ejs", {mode: "new"});
+    //res.send("Send the create skill page");
+});
+
+// Save the new skill from the create form
+app.post("/skills/new",(req,res)=>{
+    //res.send("Save the new skill");
+    res.redirect("/skills");
+});
+
+
+// READ
+// Get all skills
+app.get("/skills",(req,res)=>{
+    res.render("skills/index.ejs", {mode: "list", skills });
+});
+
+// Get one skill by id
+app.get("/skills/:id",(req,res)=>{
+    const skill = skills.find((s) => s.id === Number(req.params.id));
+    if (!skill) return res.status(404).send("Skill not found");
+    res.render("skills/index.ejs", {mode: "show", skill });
+});
+
+
+// UPDATE
+// Get the edit page for one skill
+app.get("/skills/:id/edit", (req,res)=>{
+    const skill = skills.find((s) => s.id === Number(req.params.id));
+    if (!skill) return res.status(404).send("Skill not found");
+    res.render("skills/index.ejs", {mode: "edit", skill });
+});
+
+// Save the edit form for one skill
+app.post("/skills/:id/edit",(req,res)=>{
+    //res.send(`Save the edits to skill ${req.params.id}`);
+    res.redirect(`/skills/${req.params.id}`);
+});
+
+
+//DELETE
+// Save the delete form for one skill
+app.post("/skills/:id/delete",(req,res)=>{
+    //res.send(`Delete skill ${req.params.id}`);
+    res.redirect("/skills")
+});
+
+
 
 app.post("/project-skills", (req, res) => {
     console.log("Adding new project skill:", req.body);
