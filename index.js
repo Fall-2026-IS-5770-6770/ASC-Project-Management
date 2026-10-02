@@ -1,6 +1,8 @@
 const express = require("express");
 const path = require("path");
 const statuses = require("./data/statuses.js");
+const mainBoardStatuses = require("./data/mainBoardStatuses.js");
+
 const students = require("./data/students.js");
 const projectTypes = require("./data/projectTypes.js");
 const skills = require("./data/skills.js");
@@ -22,6 +24,9 @@ app.use(express.static("public"));
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
+app.set("view engine", "ejs");
+
 // Serve static files (css, js, images) from the public folder
 app.use(express.static(path.join(__dirname, "public")));
 // Render pages with EJS from the views folder
@@ -201,6 +206,46 @@ app.get("/status/:id", (req, resp) => {
         <p>Order: ${selectedStatus.order}</p>
         <a href="/statuses">Back to all statuses</a>
     `);
+});
+
+
+// ===== MAIN BOARD STATUSES =====
+
+const mainBoardStatusRoutes = ["/main-board/statuses", "/main-board-statuses"];
+
+app.get(mainBoardStatusRoutes, (req, res) => {
+    const orderedStatuses = [...mainBoardStatuses].sort((firstStatus, secondStatus) => firstStatus.order - secondStatus.order);
+    res.render("main-board-statuses/index", { statuses: orderedStatuses });
+});
+
+app.get(["/main-board/statuses/new", "/main-board-statuses/new"], (req, res) => {
+    res.redirect("/main-board/statuses");
+});
+
+app.post(["/main-board/statuses/new", "/main-board-statuses/new"], (req, res) => {
+    console.log("Main board status create request:", req.body);
+    res.redirect("/main-board/statuses");
+});
+
+app.get(["/main-board/statuses/edit/:id", "/main-board-statuses/edit/:id"], (req, res) => {
+    const statusId = Number(req.params.id);
+    const status = mainBoardStatuses.find(mainBoardStatus => mainBoardStatus.id === statusId);
+
+    if (!status) {
+        return res.status(404).send(`Main board status with id ${statusId} not found`);
+    }
+
+    res.render("main-board-statuses/edit", { status });
+});
+
+app.post(["/main-board/statuses/edit/:id", "/main-board-statuses/edit/:id"], (req, res) => {
+    console.log(`Main board status edit request for ${req.params.id}:`, req.body);
+    res.redirect("/main-board/statuses");
+});
+
+app.post(["/main-board/statuses/delete/:id", "/main-board-statuses/delete/:id"], (req, res) => {
+    console.log(`Main board status delete request for ${req.params.id}`);
+    res.redirect("/main-board/statuses");
 });
 
 

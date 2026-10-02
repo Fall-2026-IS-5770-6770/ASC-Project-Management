@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Board Statuses</title>
+    <link href="/css/styles.css" rel="stylesheet">
+    <style>
+        .board-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+        .status-board { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+        .status-column { flex: 0 0 15rem; min-height: 16rem; padding: 1rem; background: #f1f3f5; border-top: 4px solid #0d6efd; border-radius: .375rem; }
+        .status-column h2 { font-size: 1.1rem; }
+        .status-actions { display: flex; gap: .5rem; margin-top: 1.5rem; }
+        .icon-button { border: 0; background: transparent; padding: .25rem; font-size: 1.25rem; text-decoration: none; cursor: pointer; }
+        .icon-button:hover { opacity: .7; }
+        dialog { border: 0; border-radius: .5rem; box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .25); padding: 1.5rem; width: min(32rem, calc(100% - 2rem)); }
+        dialog::backdrop { background: rgba(0, 0, 0, .45); }
+        .form-field { display: block; margin-bottom: 1rem; }
+        .form-field input, .form-field textarea { display: block; width: 100%; padding: .5rem; margin-top: .25rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: .5rem; }
+    </style>
+</head>
+<body>
+    <main class="container-fluid p-4">
+        <div class="board-header">
+            <div>
+                <h1>Main Board</h1>
+                <p class="text-muted">Project statuses in workflow order</p>
+            </div>
+            <button class="btn btn-primary" type="button" id="open-create-status">Add status</button>
+        </div>
+
+        <section class="status-board" aria-label="Main board statuses">
+            <% statuses.forEach(status => { %>
+                <article class="status-column">
+                    <h2>
+                        <%= status.name %>
+                        <a class="icon-button" href="/main-board/statuses/edit/<%= status.id %>" aria-label="Edit <%= status.name %>" title="Edit status">&#9998;</a>
+                    </h2>
+                    <p><%= status.description %></p>
+                    <div class="status-actions">
+                        <form action="/main-board/statuses/delete/<%= status.id %>" method="POST" onsubmit="return confirm('Delete <%= status.name %>?');">
+                            <button class="icon-button" type="submit" aria-label="Delete <%= status.name %>" title="Delete status">&#128465;</button>
+                        </form>
+                    </div>
+                </article>
+            <% }); %>
+        </section>
+    </main>
+
+    <dialog id="create-status-modal">
+        <form action="/main-board/statuses/new" method="POST">
+            <h2>Create main board status</h2>
+            <label class="form-field">Name<input type="text" name="status_name" required></label>
+            <label class="form-field">Description<textarea name="status_description" rows="4" required></textarea></label>
+            <label class="form-field">Board order<input type="number" name="status_order" min="1" required></label>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="close-create-status">Cancel</button>
+                <button class="btn btn-primary" type="submit">Save</button>
+            </div>
+        </form>
+    </dialog>
+    <script>
+        const createStatusModal = document.querySelector("#create-status-modal");
+        document.querySelector("#open-create-status").addEventListener("click", () => createStatusModal.showModal());
+        document.querySelector("#close-create-status").addEventListener("click", () => createStatusModal.close());
+    </script>
+</body>
+</html>
