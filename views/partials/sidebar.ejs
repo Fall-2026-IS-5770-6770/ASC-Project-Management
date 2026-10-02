@@ -1,0 +1,18 @@
+<!-- Sidebar-->
+<%
+    const navLinks = [
+        { label: "Projects", href: "/projects" },
+        { label: "Students", href: "/students" },
+        { label: "Mentors", href: "/mentors" },
+        { label: "People", href: "/people" },
+        { label: "Statuses", href: "/statuses" }
+    ];
+%>
+<div class="border-end bg-white" id="sidebar-wrapper">
+    <div class="sidebar-heading border-bottom bg-light">ASC Project Management</div>
+    <div class="list-group list-group-flush">
+        <% navLinks.forEach((link) => { %>
+            <a class="list-group-item list-group-item-action list-group-item-light p-3<%= locals.activePage === link.label ? ' active' : '' %>" href="<%= link.href %>"><%= link.label %></a>
+        <% }) %>
+    </div>
+</div>

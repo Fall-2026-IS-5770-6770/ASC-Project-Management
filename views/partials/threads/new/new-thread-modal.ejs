@@ -1,0 +1,16 @@
+<%- include('../../header') %>
+
+<div id="newThreadModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2>New Thread</h2>
+        <form id="newThreadForm" action="/threads/new" method="POST">
+            <label for="threadName">Thread Name</label>
+            <input type="text" id="threadName" name="threadName" required>
+
+            <button type="submit">Create Thread</button>
+        </form>
+    </div>
+</div>
+
+<%- include('../../footer') %>
