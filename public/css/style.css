@@ -1,0 +1,191 @@
+/* ===== Reset & Base ===== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f5f7;
+    color: #1d1d1f;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    line-height: 1.5;
+}
+
+h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #111;
+}
+
+/* ===== New Thread Button ===== */
+.new-thread-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: #4a154b;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: background-color 0.15s ease;
+}
+
+.new-thread-btn:hover {
+    background-color: #611f69;
+}
+
+/* ===== Thread List ===== */
+#thread-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.thread-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.15s ease;
+}
+
+.thread-item:last-child {
+    border-bottom: none;
+}
+
+.thread-item:hover {
+    background-color: #fafafa;
+}
+
+.thread-name {
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+
+.thread-name:hover {
+    background-color: #f0f0f0;
+}
+
+.thread-name input {
+    font-size: 15px;
+    font-weight: 500;
+    font-family: inherit;
+    border: 1px solid #4a154b;
+    border-radius: 4px;
+    padding: 3px 6px;
+}
+
+.trash-icon {
+    cursor: pointer;
+    opacity: 0.4;
+    font-size: 15px;
+    transition: opacity 0.15s ease;
+}
+
+.trash-icon:hover {
+    opacity: 1;
+}
+
+/* ===== Modal ===== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 28px;
+    border-radius: 10px;
+    min-width: 340px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.modal-content h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 18px;
+}
+
+.modal-content label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 6px;
+}
+
+.modal-content input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 18px;
+}
+
+.modal-content input[type="text"]:focus {
+    outline: none;
+    border-color: #4a154b;
+}
+
+.modal-content button[type="submit"] {
+    background-color: #4a154b;
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.modal-content button[type="submit"]:hover {
+    background-color: #611f69;
+}
+
+.close-btn {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    cursor: pointer;
+    font-size: 20px;
+    color: #999;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    color: #333;
+}
+
+.edit-input {
+    font-size: 15px;
+    font-weight: 500;
+    font-family: inherit;
+    border: 1px solid #4a154b;
+    border-radius: 4px;
+    padding: 3px 6px;
+}
