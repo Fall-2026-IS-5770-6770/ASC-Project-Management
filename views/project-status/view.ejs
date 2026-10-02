@@ -1,0 +1,29 @@
+<%- include('components/header'); %>
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-eye-fill me-1"></i>
+                Project Status <%=id%>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="projectid" class="form-label">Project</label>
+                    <input type="text" class="form-control" id="projectid" name="projectid" readonly value="<%=project.name%>">
+                </div>
+                <div class="mb-3">
+                    <label for="statusid" class="form-label">Status</label>
+                    <input type="text" class="form-control" id="statusid" name="statusid" readonly value="<%=status.name%>">
+                </div>
+                <div class="mb-3">
+                    <label for="order" class="form-label">Order</label>
+                    <input type="number" class="form-control" id="order" name="order" readonly value="<%=order%>">
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="/project-status/edit/<%=id%>" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i>&nbsp;&nbsp;Edit
+                </a>
+            </div>
+        </div>
+    </div>
+</main>
+<%- include('components/footer'); %>
