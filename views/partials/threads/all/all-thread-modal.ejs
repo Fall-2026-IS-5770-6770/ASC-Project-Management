@@ -1,0 +1,18 @@
+<%- include('../../header') %>
+
+<h1>Threads</h1>
+
+<button class="new-thread-btn" onclick="openNewThreadModal()">+ New Thread</button>
+
+<ul id="thread-list">
+    <% threads.forEach(function(thread) { %>
+        <li class="thread-item" data-id="<%= thread.id %>">
+            <span class="thread-name" ondblclick="enableEdit(this)"><%= thread.name %></span>
+            <span class="trash-icon" onclick="deleteThread('<%= thread.id %>')">🗑️</span>
+        </li>
+    <% }); %>
+</ul>
+
+<div id="modalContainer"></div>
+
+<%- include('../../footer') %>
