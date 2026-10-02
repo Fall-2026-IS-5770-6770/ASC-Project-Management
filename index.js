@@ -14,6 +14,7 @@ const projectTypes = require("./data/projectTypes.js");
 const skills = require("./data/skills.js");
 
 const projectRouter = require("./routes/Projects.js")
+const projectTypeRouter = require("./routes/ProjectTypes.js")
 
 // required data for threads
 const threads = require("./data/threads");
@@ -1096,53 +1097,7 @@ app.get("/person-skill/:id", (req, res) => {
 
 // ===== PROJECT TYPES (Issue #14) =====
 
-// Create lives in a modal on the list page, so this route just sends you there
-app.get("/project-types/new", (req, res) => {
-    res.redirect("/project-types");
-});
-
-// Save the new project type
-app.post("/project-types/new", (req, res) => {
-    console.log("New project type saved:", req.body);
-    res.redirect("/project-types");
-});
-
-// List every project type
-app.get("/project-types", (req, res) => {
-    res.render("project-types/index", { projectTypes });
-});
-
-// Show the edit form for one project type
-app.get("/project-types/edit/:id", (req, res) => {
-    const projectType = projectTypes.find((t) => t.id === parseInt(req.params.id));
-    if (!projectType) {
-        return res.status(404).send("Project type not found");
-    }
-    res.render("project-types/edit", { projectType });
-});
-
-// Save the edit form
-app.post("/project-types/edit/:id", (req, res) => {
-    console.log(`Edited project type ${req.params.id}:`, req.body);
-    res.redirect("/project-types");
-});
-
-// Delete one project type
-app.post("/project-types/delete/:id", (req, res) => {
-    console.log("Deleted project type:", req.params.id);
-    res.redirect("/project-types");
-});
-
-// Show one project type
-app.get("/project-types/:id", (req, res) => {
-    const projectType = projectTypes.find((t) => t.id === parseInt(req.params.id));
-    if (!projectType) {
-        return res.status(404).send("Project type not found");
-    }
-    const skillNames = projectType.typicalSkillIds.map((id) => skills.find((skill) => skill.id === id).name);
-    res.render("project-types/show", { projectType, skillNames });
-});
-
+app.use("project-types",projectTypeRouter)
 
 // ===== CLIENTS (Issue #16) =====
 
