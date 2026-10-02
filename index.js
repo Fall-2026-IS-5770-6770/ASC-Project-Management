@@ -14,6 +14,7 @@ const projectTypes = require("./data/projectTypes.js");
 const skills = require("./data/skills.js");
 
 const projectRouter = require("./routes/Projects.js")
+const skillRouter = require("./routes/Skills.js")
 
 // required data for threads
 const threads = require("./data/threads");
@@ -69,6 +70,9 @@ app.use(express.static('public'))
 
 // ===== PROJECTS (Issue #1) =====
 app.use("/projects/",projectRouter)
+
+// ===== SKILLS (Issue #66) =====
+app.use("/skills/", skillRouter)
 
 // ===== STATUSES (Issue #2) =====
 
