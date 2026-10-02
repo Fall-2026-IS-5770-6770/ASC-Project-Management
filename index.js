@@ -30,8 +30,6 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 
 const personSkills = require("./data/personSkills.js");
-const people = require("./data/people.js");
-const skills = require("./data/skills.js");
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({extended:true}));
