@@ -126,34 +126,6 @@ function saveProjectEdits(req, res){
     res.redirect(`/projects/edit/${project.id}`);
 }
 
-// Add a mentor or student to a project from the modals on the edit page
-function addPersonToProject(role){
-    return (req, res) => {
-        const project = findProject(req.params.id);
-        if (!project) {
-            return res.status(404).send("Project not found");
-        }
-
-        const nextId = projectPeople.reduce((max, a) => Math.max(max, a.id), 0) + 1;
-        projectPeople.push({
-            id: nextId,
-            projectId: project.id,
-            personId: Number(req.body.personId),
-            role,
-            startDate: project.startDate,
-            endDate: project.endDate,
-            assignedHours: 0,
-            approvalStatus: "Pending",
-            status: "Pending Onboarding"
-        });
-
-        res.redirect(`/projects/edit/${project.id}`);
-    };
-}
-
-const addMentor = addPersonToProject("Faculty Mentor");
-const addStudent = addPersonToProject("Student");
-
 // Delete one project by id
 function deleteProject(req, res){
     const index = projects.findIndex((project) => project.id === Number(req.params.id));
@@ -181,4 +153,4 @@ function getProject(req, res){
     });
 }
 
-module.exports = {getCreatePage,saveNewProject,getAllProjects,getEditPage,saveProjectEdits,addMentor,addStudent,deleteProject,getProject}
+module.exports = {getCreatePage,saveNewProject,getAllProjects,getEditPage,saveProjectEdits,deleteProject,getProject}

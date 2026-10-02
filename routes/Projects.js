@@ -2,7 +2,7 @@ const express = require("express");
 
 const router = express.Router();
 
-const {getCreatePage,saveNewProject,getAllProjects,getEditPage,saveProjectEdits,addMentor,addStudent,deleteProject,getProject} = require("../controllers/ProjectController")
+const {getCreatePage,saveNewProject,getAllProjects,getEditPage,saveProjectEdits,deleteProject,getProject} = require("../controllers/ProjectController")
 
 // Static paths (new, edit, delete) must be registered before /:id so they aren't shadowed.
 
@@ -20,10 +20,6 @@ router.get("/edit/:id", getEditPage);
 
 // Save the edit form for one project
 router.post("/edit/:id", saveProjectEdits);
-
-// Add a mentor or student to a project from the edit page
-router.post("/edit/:id/mentors", addMentor);
-router.post("/edit/:id/students", addStudent);
 
 // Delete one project by id
 router.post("/delete/:id", deleteProject);

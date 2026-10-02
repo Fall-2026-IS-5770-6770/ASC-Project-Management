@@ -68,12 +68,13 @@
 
         <!-- Add mentor and add student modals share one layout -->
         <% [
-            { id: 'addMentorModal', label: 'mentor', action: 'mentors', options: availableMentors },
-            { id: 'addStudentModal', label: 'student', action: 'students', options: availableStudents }
+            { id: 'addMentorModal', label: 'mentor', role: 'Faculty Mentor', options: availableMentors },
+            { id: 'addStudentModal', label: 'student', role: 'Student', options: availableStudents }
         ].forEach((modal) => { %>
             <div class="modal fade" id="<%= modal.id %>" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog">
-                    <form class="modal-content" action="/projects/edit/<%= project.id %>/<%= modal.action %>" method="POST">
+                    <form class="modal-content" action="/projects/<%= project.id %>/people/new" method="POST">
+                        <input type="hidden" name="role" value="<%= modal.role %>" />
                         <div class="modal-header">
                             <h5 class="modal-title">Add <%= modal.label %></h5>
                             <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
