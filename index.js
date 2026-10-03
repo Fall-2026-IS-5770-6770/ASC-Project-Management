@@ -1,5 +1,6 @@
 const express = require("express");
 const statuses = require("./data/statuses.js");
+const peopleProjectRouter = require("./routes/People-projects.js")
 
 const app = express();
 const PORT = 3000;
@@ -255,43 +256,7 @@ app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
 
 // ===== PROJECT PEOPLE (Issue #12) =====
 // Associates people (mentors and students) with a specific project
-
-// View all people associated with a project
-app.get("/projects/:projectid/people", (req, res) => {
-    res.send(`Show all people associated with project ${req.params.projectid}`);
-});
-
-// Form to create a relationship
-app.get("/projects/:projectid/people/new", (req, res) => {
-    res.send(`Show the form for adding a person to project ${req.params.projectid}`);
-});
-
-// Save new relationship
-app.post("/projects/:projectid/people/new", (req, res) => {
-    console.log(req.body);
-    res.send(`Saved a new relationship between a person and project ${req.params.projectid}`);
-});
-
-// Form to edit a relationship
-app.get("/projects/:projectid/people/edit/:id", (req, res) => {
-    res.send(`Show the form for editing relationship ${req.params.id} on project ${req.params.projectid}`);
-});
-
-// Save edited relationship
-app.post("/projects/:projectid/people/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Saved edits to relationship ${req.params.id} on project ${req.params.projectid}`);
-});
-
-// Delete a relationship
-app.post("/projects/:projectid/people/delete/:id", (req, res) => {
-    res.send(`Deleted relationship ${req.params.id} from project ${req.params.projectid}`);
-});
-
-// View a specific relationship
-app.get("/projects/:projectid/people/:id", (req, res) => {
-    res.send(`Show relationship ${req.params.id} between a person and project ${req.params.projectid}`);
-});
+app.use("/projects/:projectid/people", peopleProjectRouter);
 
 
 // ===== MENTORS (Issue #4) =====
