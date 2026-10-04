@@ -16,6 +16,8 @@ const skills = require("./data/skills.js");
 const projectRouter = require("./routes/Projects.js")
 const projectTypeRouter = require("./routes/ProjectTypes.js")
 
+const requirementRouter = require("./routes/Requirements.js")
+
 // required data for threads
 const threads = require("./data/threads");
 
@@ -785,43 +787,7 @@ app.get("/messages/:id", (req, res) => {
 
 
 // ===== REQUIREMENTS (Issue #9) =====
-
-// Users should be able to create requirements
-app.get("/requirements/new", (req, res) => {
-    res.send("Create requirements page");
-});
-
-// Save the new requirement
-app.post("/requirements/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new requirement");
-});
-
-// View all requirements
-app.get("/requirements", (req, res) => {
-    res.send("View all requirements");
-});
-
-// Users should be able to edit existing requirements
-app.get("/requirements/edit/:id", (req, res) => {
-    res.send(`Edit requirement page for ID: ${req.params.id}`);
-});
-
-// Save the edit form
-app.post("/requirements/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.send(`Save edited requirement with ID: ${req.params.id}`);
-});
-
-// Delete requirements that are no longer needed or were created accidentally
-app.post("/requirements/delete/:id", (req, res) => {
-    res.send(`Delete requirement with ID: ${req.params.id}`);
-});
-
-// View a specific requirement
-app.get("/requirements/:id", (req, res) => {
-    res.send(`View requirement page for ID: ${req.params.id}`);
-});
+app.use("/requirements", requirementRouter);
 
 // ===== PROJECT SKILLS EJS RENDERED (Issue #29) =====
 
