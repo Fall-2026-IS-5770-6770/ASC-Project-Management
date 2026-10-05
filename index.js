@@ -288,34 +288,34 @@ app.post(["/main-board/statuses/delete/:id", "/main-board-statuses/delete/:id"],
 
 // View all statuses used by a project
 app.get("/projects/:projectid/statuses", (req, res) => {
-    res.type("text/plain").send(`Show all statuses associated with project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show all statuses associated with project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Form to add a status to a project
 app.get("/projects/:projectid/statuses/new", (req, res) => {
-    res.type("text/plain").send(`Show the form for adding a status to project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show the form for adding a status to project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Save a status added to a project
 app.post("/projects/:projectid/statuses/new", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Saved a new status for project ${req.params.projectid}`);
+    res.type("text/plain").send(`Saved a new status for project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Form to update a project's status (e.g. its order in the workflow)
 app.get("/projects/:projectid/statuses/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Show the form for editing status association ${req.params.id} on project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show the form for editing status association ${escapeHtml(req.params.id)} on project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Save the updated project status
 app.post("/projects/:projectid/statuses/edit/:id", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Saved edits to status association ${req.params.id} on project ${req.params.projectid}`);
+    res.type("text/plain").send(`Saved edits to status association ${escapeHtml(req.params.id)} on project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Remove a status from a project
 app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Removed status association ${req.params.id} from project ${req.params.projectid}`);
+    res.type("text/plain").send(`Removed status association ${escapeHtml(req.params.id)} from project ${escapeHtml(req.params.projectid)}`);
 });
 
 
@@ -324,39 +324,39 @@ app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
 
 // View all people associated with a project
 app.get("/projects/:projectid/people", (req, res) => {
-    res.type("text/plain").send(`Show all people associated with project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show all people associated with project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Form to create a relationship
 app.get("/projects/:projectid/people/new", (req, res) => {
-    res.type("text/plain").send(`Show the form for adding a person to project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show the form for adding a person to project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Save new relationship
 app.post("/projects/:projectid/people/new", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Saved a new relationship between a person and project ${req.params.projectid}`);
+    res.type("text/plain").send(`Saved a new relationship between a person and project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Form to edit a relationship
 app.get("/projects/:projectid/people/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Show the form for editing relationship ${req.params.id} on project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show the form for editing relationship ${escapeHtml(req.params.id)} on project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Save edited relationship
 app.post("/projects/:projectid/people/edit/:id", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Saved edits to relationship ${req.params.id} on project ${req.params.projectid}`);
+    res.type("text/plain").send(`Saved edits to relationship ${escapeHtml(req.params.id)} on project ${escapeHtml(req.params.projectid)}`);
 });
 
 // Delete a relationship
 app.post("/projects/:projectid/people/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleted relationship ${req.params.id} from project ${req.params.projectid}`);
+    res.type("text/plain").send(`Deleted relationship ${escapeHtml(req.params.id)} from project ${escapeHtml(req.params.projectid)}`);
 });
 
 // View a specific relationship
 app.get("/projects/:projectid/people/:id", (req, res) => {
-    res.type("text/plain").send(`Show relationship ${req.params.id} between a person and project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show relationship ${escapeHtml(req.params.id)} between a person and project ${escapeHtml(req.params.projectid)}`);
 });
 
 
@@ -527,7 +527,7 @@ app.get("/mentors/edit/:id", (req, res) => {
 
 app.post("/mentors/edit/:id", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Saving an edit on mentor ${req.params.id}`);
+    res.type("text/plain").send(`Saving an edit on mentor ${escapeHtml(req.params.id)}`);
 });
 
 app.post("/mentors/delete/:id", (req, res) => {
@@ -548,7 +548,7 @@ app.post("/mentors/delete/:id", (req, res) => {
 });
 
 app.get("/mentors/:id", (req, res) => {
-    res.type("text/plain").send(`Getting mentor ${req.params.id}`);
+    res.type("text/plain").send(`Getting mentor ${escapeHtml(req.params.id)}`);
 });
 
 
@@ -591,10 +591,10 @@ app.post("/students/new", (req, res) => {
     const personId = Number(req.body.personId);
 
     if (!people.some((p) => p.id === personId)) {
-        return res.status(400).type("text/plain").send(`Person with id ${personId} not found`);
+        return res.status(400).type("text/plain").send(`Person with id ${escapeHtml(personId)} not found`);
     }
     if (students.some((s) => s.personId === personId)) {
-        return res.status(400).type("text/plain").send(`Person with id ${personId} is already a student`);
+        return res.status(400).type("text/plain").send(`Person with id ${escapeHtml(personId)} is already a student`);
     }
 
     // Use the highest existing id so ids stay unique after deletes
@@ -626,7 +626,7 @@ app.get("/students/edit/:id", (req, res) => {
     const student = students.find((s) => s.id === Number(req.params.id));
 
     if (!student) {
-        return res.status(404).type("text/plain").send(`Student with id ${req.params.id} not found`);
+        return res.status(404).type("text/plain").send(`Student with id ${escapeHtml(req.params.id)} not found`);
     }
 
     res.render("students/edit", {
@@ -648,7 +648,7 @@ app.post("/students/delete/:id", (req, res) => {
     const studentIndex = students.findIndex((s) => s.id === Number(req.params.id));
 
     if (studentIndex === -1) {
-        return res.status(404).type("text/plain").send(`Student with id ${req.params.id} not found`);
+        return res.status(404).type("text/plain").send(`Student with id ${escapeHtml(req.params.id)} not found`);
     }
 
     students.splice(studentIndex, 1);
@@ -659,7 +659,7 @@ app.get("/students/:id", (req, res) => {
     const student = students.find((s) => s.id === Number(req.params.id));
 
     if (!student) {
-        return res.status(404).type("text/plain").send(`Student with id ${req.params.id} not found`);
+        return res.status(404).type("text/plain").send(`Student with id ${escapeHtml(req.params.id)} not found`);
     }
 
     res.render("students/show", {
@@ -692,23 +692,23 @@ app.post("/channels/new", (req, res) => {
 
 // Edit a specific communication channel
 app.get("/channels/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit specific channel with ID: ${req.params.id}`);
+    res.type("text/plain").send(`Edit specific channel with ID: ${escapeHtml(req.params.id)}`);
 });
 
 // Save the edited communication channel
 app.post("/channels/edit/:id", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Saving the edited channel ${req.params.id}`);
+    res.type("text/plain").send(`Saving the edited channel ${escapeHtml(req.params.id)}`);
 });
 
 // Delete a specific communication channel
 app.post("/channels/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleting channel ${req.params.id}`);
+    res.type("text/plain").send(`Deleting channel ${escapeHtml(req.params.id)}`);
 });
 
 // View a specific communication channel
 app.get("/channels/:id", (req, res) => {
-    res.type("text/plain").send(`Viewing channel with ID: ${req.params.id}`);
+    res.type("text/plain").send(`Viewing channel with ID: ${escapeHtml(req.params.id)}`);
 });
 
 
@@ -744,13 +744,13 @@ app.get("/threads/edit/:id", (req, res) => {
 
 app.post("/threads/edit/:id", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`This route saves edits to thread ${req.params.id}`);
+    res.type("text/plain").send(`This route saves edits to thread ${escapeHtml(req.params.id)}`);
 });
 
 // post request for deleting a thrad
 app.post("/threads/delete/:id", (req, res) => {
     console.log(`Thread ${req.params.id} deleted`);
-    res.type("text/plain").send(`This route deletes thread ${req.params.id}`);
+    res.type("text/plain").send(`This route deletes thread ${escapeHtml(req.params.id)}`);
 });
 
 // see threads by id
@@ -777,20 +777,20 @@ app.get("/messages", (req, res) => {
 });
 
 app.get("/messages/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit message page for message ${req.params.id}`);
+    res.type("text/plain").send(`Edit message page for message ${escapeHtml(req.params.id)}`);
 });
 
 app.post("/messages/edit/:id", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Saving edits to message ${req.params.id}`);
+    res.type("text/plain").send(`Saving edits to message ${escapeHtml(req.params.id)}`);
 });
 
 app.post("/messages/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleting message ${req.params.id}`);
+    res.type("text/plain").send(`Deleting message ${escapeHtml(req.params.id)}`);
 });
 
 app.get("/messages/:id", (req, res) => {
-    res.type("text/plain").send(`View message ${req.params.id}`);
+    res.type("text/plain").send(`View message ${escapeHtml(req.params.id)}`);
 });
 
 
@@ -814,23 +814,23 @@ app.get("/requirements", (req, res) => {
 
 // Users should be able to edit existing requirements
 app.get("/requirements/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit requirement page for ID: ${req.params.id}`);
+    res.type("text/plain").send(`Edit requirement page for ID: ${escapeHtml(req.params.id)}`);
 });
 
 // Save the edit form
 app.post("/requirements/edit/:id", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Save edited requirement with ID: ${req.params.id}`);
+    res.type("text/plain").send(`Save edited requirement with ID: ${escapeHtml(req.params.id)}`);
 });
 
 // Delete requirements that are no longer needed or were created accidentally
 app.post("/requirements/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Delete requirement with ID: ${req.params.id}`);
+    res.type("text/plain").send(`Delete requirement with ID: ${escapeHtml(req.params.id)}`);
 });
 
 // View a specific requirement
 app.get("/requirements/:id", (req, res) => {
-    res.type("text/plain").send(`View requirement page for ID: ${req.params.id}`);
+    res.type("text/plain").send(`View requirement page for ID: ${escapeHtml(req.params.id)}`);
 });
 
 // ===== PROJECT SKILLS EJS RENDERED (Issue #29) =====
@@ -1136,7 +1136,7 @@ app.post("/person-skill/delete/:id", (req, res) => {
 });
 
 app.get("/person-skill/:id", (req, res) => {
-    res.type("text/plain").send(`Page to view person-skill association with id ${req.params.id}`);
+    res.type("text/plain").send(`Page to view person-skill association with id ${escapeHtml(req.params.id)}`);
 });
 
 
@@ -1164,23 +1164,23 @@ app.post("/clients/new", (req, res) => {
 
 // Edit client page by id
 app.get("/clients/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit specific client ${req.params.id}`);
+    res.type("text/plain").send(`Edit specific client ${escapeHtml(req.params.id)}`);
 });
 
 // Save edited client
 app.post("/clients/edit/:id", (req, res) => {
     console.log(req.body);
-    res.type("text/plain").send(`Saving edits to client ${req.params.id}`);
+    res.type("text/plain").send(`Saving edits to client ${escapeHtml(req.params.id)}`);
 });
 
 // Delete client
 app.post("/clients/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleting client ${req.params.id}`);
+    res.type("text/plain").send(`Deleting client ${escapeHtml(req.params.id)}`);
 });
 
 // View a specific client
 app.get("/clients/:id", (req, res) => {
-    res.type("text/plain").send(`Viewing a specific client ${req.params.id}`);
+    res.type("text/plain").send(`Viewing a specific client ${escapeHtml(req.params.id)}`);
 });
 
 
