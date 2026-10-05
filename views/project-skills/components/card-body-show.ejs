@@ -1,0 +1,31 @@
+<div class="card-body">
+    <table class="table table-borderless mb-4">
+        <tbody>
+            <tr>
+                <th scope="row" style="width: 40%">Project:</th>
+                <td><%= projectSkill.projectName %></td>
+            </tr>
+            <tr>
+                <th scope="row">Skill:</th>
+                <td><%= projectSkill.skillName %></td>
+            </tr>
+            <tr>
+                <th scope="row">Importance:</th>
+                <td>
+                    <span class="badge <%= projectSkill.importance === 'Required' ? 'bg-primary' : 'bg-secondary' %>">
+                        <%= projectSkill.importance %>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">Min. Proficiency:</th>
+                <td><%= projectSkill.minimumProficiency %></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-end gap-2">
+        <a href="/project-skills" class="btn btn-outline-secondary">Back to List</a>
+        <a href="/project-skills/edit/<%= projectSkill.id %>" class="btn btn-primary">Edit</a>
+    </div>
+</div>

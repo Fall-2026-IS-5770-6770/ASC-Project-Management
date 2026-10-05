@@ -1,0 +1,9 @@
+<%# Trash icon that confirms before posting to the delete route. Only the student record is removed, not the person.
+    Expects: student (with person attached) %>
+<form action="/students/delete/<%= student.id %>" method="POST" class="d-inline"
+      data-name="<%= student.person.firstName %> <%= student.person.lastName %>"
+      onsubmit="return confirm('Remove ' + this.dataset.name + ' as a student? Their person record will be kept.');">
+    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete student" aria-label="Delete student">
+        <i class="bi bi-trash"></i>
+    </button>
+</form>
