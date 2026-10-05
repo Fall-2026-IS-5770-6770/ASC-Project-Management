@@ -1,0 +1,17 @@
+<%- include('./components/head.ejs', { title: 'View Project Skill' }) %>
+
+<body class="bg-light">
+    <div class="container mt-5 d-flex justify-content-center">
+        <!-- Modal-style Card -->
+        <div class="card shadow" style="width: 100%; max-width: 500px;">
+            
+            <!-- Ingest the new view-specific head component -->
+            <%- include('./components/card-head-show.ejs', { action: 'View' }) %>
+            
+            <!-- Ingest the new view-specific body component -->
+            <%- include('./components/card-body-show.ejs') %>
+            
+        </div>
+    </div>
+
+<%- include('./components/foot.ejs') %>

@@ -1,0 +1,90 @@
+<% const title = mode === 'list' ? 'Skills'
+               : mode === 'new'  ? 'New Skill'
+               : mode === 'edit' ? 'Edit ' + skill.name
+               : skill.name; %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title><%= title %></title>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+    <link href="/css/styles.css" rel="stylesheet" />
+</head>
+<body>
+<div class="d-flex" id="wrapper">
+    <div class="border-end bg-white" id="sidebar-wrapper">
+        <div class="sidebar-heading border-bottom bg-light">ASC</div>
+        <div class="list-group list-group-flush">
+            <a class="list-group-item list-group-item-action list-group-item-light p-3" href="/skills">All Skills</a>
+            <a class="list-group-item list-group-item-action list-group-item-light p-3" href="/skills/new">Add a Skill</a>
+        </div>
+    </div>
+    <div id="page-content-wrapper">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+            <div class="container-fluid">
+                <button class="btn btn-primary" id="sidebarToggle">Toggle Menu</button>
+            </div>
+        </nav>
+        <div class="container-fluid">
+
+<% if (mode === 'list') { %>
+
+            <h1 class="mt-4">Skills</h1>
+            <a href="/skills/new" class="btn btn-primary mb-3">Add a Skill</a>
+            <table class="table">
+                <thead><tr><th>Name</th><th>Category</th><th>Description</th></tr></thead>
+                <tbody>
+                    <% skills.forEach((s) => { %>
+                        <tr>
+                            <td><a href="/skills/<%= s.id %>"><%= s.name %></a></td>
+                            <td><%= s.category %></td>
+                            <td><%= s.description %></td>
+                            <td><a href="/skills/<%= s.id %>/edit">Edit</a></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+
+<% } else if (mode === 'show') { %>
+
+            <h1 class="mt-4"><%= skill.name %></h1>
+            <p><strong>Category:</strong> <%= skill.category %></p>
+            <p><strong>Description:</strong> <%= skill.description %></p>
+            <a href="/skills/<%= skill.id %>/edit" class="btn btn-secondary">Edit</a>
+            <form action="/skills/<%= skill.id %>/delete" method="POST" class="d-inline">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+            <a href="/skills" class="btn btn-link">Back to all skills</a>
+
+<% } else if (mode === 'new' || mode === 'edit') { %>
+
+            <h1 class="mt-4"><%= mode === 'new' ? 'Add a Skill' : 'Edit ' + skill.name %></h1>
+            <form action="<%= mode === 'new' ? '/skills/new' : '/skills/' + skill.id + '/edit' %>" method="POST">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name"
+                           value="<%= mode === 'edit' ? skill.name : '' %>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <input type="text" class="form-control" id="category" name="category"
+                           value="<%= mode === 'edit' ? skill.category : '' %>" required>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <input type="text" class="form-control" id="description" name="description"
+                           value="<%= mode === 'edit' ? skill.description : '' %>" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="/skills" class="btn btn-link">Cancel</a>
+            </form>
+
+<% } %>
+
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/scripts.js"></script>
+</body>
+</html>
