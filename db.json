@@ -1,0 +1,1489 @@
+{
+  "mainBoardStatuses": [
+    {
+      "id": 1,
+      "name": "Lead Generation",
+      "description": "A possible project the ASC has heard about but has not scoped.",
+      "order": 1
+    },
+    {
+      "id": 2,
+      "name": "Statement of Work",
+      "description": "Scope and price are being written up for the client to sign.",
+      "order": 2
+    },
+    {
+      "id": 3,
+      "name": "Hiring",
+      "description": "The statement of work is signed and the ASC is staffing the team.",
+      "order": 3
+    },
+    {
+      "id": 4,
+      "name": "In Progress",
+      "description": "The team is actively working the project.",
+      "order": 4
+    },
+    {
+      "id": 5,
+      "name": "Billing",
+      "description": "Work is finished and the client is being invoiced.",
+      "order": 5
+    },
+    {
+      "id": 6,
+      "name": "Close Out",
+      "description": "Final documents, handoff, and retrospective.",
+      "order": 6
+    },
+    {
+      "id": 7,
+      "name": "Completed",
+      "description": "Fully delivered, billed, and closed.",
+      "order": 7
+    }
+  ],
+  "statuses": [
+    {
+      "id": 1,
+      "name": "To Do",
+      "description": "Work that has been defined but not started.",
+      "order": 1
+    },
+    {
+      "id": 2,
+      "name": "In Progress",
+      "description": "Work a team member is actively doing right now.",
+      "order": 2
+    },
+    {
+      "id": 3,
+      "name": "In Review",
+      "description": "Work that is finished and waiting on a mentor or PM to check it.",
+      "order": 3
+    },
+    {
+      "id": 4,
+      "name": "Blocked",
+      "description": "Work that cannot move forward until something outside the team happens.",
+      "order": 4
+    },
+    {
+      "id": 5,
+      "name": "Done",
+      "description": "Work that has been reviewed and accepted.",
+      "order": 5
+    }
+  ],
+  "skills": [
+    {
+      "id": 1,
+      "name": "JavaScript",
+      "category": "Programming",
+      "description": "Writing browser and Node.js code, including Express applications."
+    },
+    {
+      "id": 2,
+      "name": "SQL",
+      "category": "Data",
+      "description": "Querying and shaping data in relational databases."
+    },
+    {
+      "id": 3,
+      "name": "React",
+      "category": "Programming",
+      "description": "Building component-based front ends."
+    },
+    {
+      "id": 4,
+      "name": "Data Visualization",
+      "category": "Data",
+      "description": "Turning data into charts and dashboards people can read."
+    },
+    {
+      "id": 5,
+      "name": "Project Management",
+      "category": "Professional",
+      "description": "Planning scope, schedule, and team communication."
+    },
+    {
+      "id": 6,
+      "name": "Python",
+      "category": "Programming",
+      "description": "Scripting, data cleaning, and analysis."
+    },
+    {
+      "id": 7,
+      "name": "UX Design",
+      "category": "Design",
+      "description": "Wireframing and designing usable interfaces."
+    },
+    {
+      "id": 8,
+      "name": "Technical Writing",
+      "category": "Professional",
+      "description": "Documentation, statements of work, and client-facing reports."
+    }
+  ],
+  "projectTypes": [
+    {
+      "id": 1,
+      "name": "Full-Stack Application",
+      "description": "A web application with both a front end and a server-side back end.",
+      "typicalDurationWeeks": 15,
+      "typicalDeliverables": [
+        "Deployed web app",
+        "Source repository",
+        "User guide"
+      ],
+      "typicalSkillIds": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Data Engineering",
+      "description": "Pipelines that move, clean, and reshape data for downstream use.",
+      "typicalDurationWeeks": 12,
+      "typicalDeliverables": [
+        "ETL pipeline",
+        "Data dictionary",
+        "Runbook"
+      ],
+      "typicalSkillIds": [
+        2,
+        6
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Data Analytics",
+      "description": "Analysis that answers a specific business question for a client.",
+      "typicalDurationWeeks": 10,
+      "typicalDeliverables": [
+        "Written report",
+        "Analysis notebook",
+        "Client presentation"
+      ],
+      "typicalSkillIds": [
+        2,
+        6,
+        8
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Data Visualization",
+      "description": "Dashboards and interactive graphics built on top of client data.",
+      "typicalDurationWeeks": 8,
+      "typicalDeliverables": [
+        "Interactive dashboard",
+        "Design rationale",
+        "Handoff training"
+      ],
+      "typicalSkillIds": [
+        4,
+        7
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Mobile Application",
+      "description": "A phone or tablet application, usually paired with an existing back end.",
+      "typicalDurationWeeks": 14,
+      "typicalDeliverables": [
+        "Published app build",
+        "Source repository",
+        "Test plan"
+      ],
+      "typicalSkillIds": [
+        1,
+        3,
+        7
+      ]
+    }
+  ],
+  "people": [
+    {
+      "id": 1,
+      "firstName": "Maya",
+      "lastName": "Thompson",
+      "email": "maya.thompson@usu.edu",
+      "phone": "435-555-0142",
+      "address": {
+        "street": "812 N 600 E",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84321"
+      }
+    },
+    {
+      "id": 2,
+      "firstName": "Devin",
+      "lastName": "Okafor",
+      "email": "devin.okafor@usu.edu",
+      "phone": "435-555-0177",
+      "address": {
+        "street": "245 E 1000 N",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84321"
+      }
+    },
+    {
+      "id": 3,
+      "firstName": "Priya",
+      "lastName": "Raman",
+      "email": "priya.raman@usu.edu",
+      "phone": "435-555-0108",
+      "address": {
+        "street": "1400 Old Main Hill",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84322"
+      }
+    },
+    {
+      "id": 4,
+      "firstName": "Ethan",
+      "lastName": "Caldwell",
+      "email": "ethan.caldwell@usu.edu",
+      "phone": "435-555-0193",
+      "address": {
+        "street": "3500 Old Main Hill",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84322"
+      }
+    },
+    {
+      "id": 5,
+      "firstName": "Sofia",
+      "lastName": "Marquez",
+      "email": "sofia.marquez@usu.edu",
+      "phone": "435-555-0121",
+      "address": {
+        "street": "97 W Center St",
+        "city": "Providence",
+        "state": "UT",
+        "zip": "84332"
+      }
+    },
+    {
+      "id": 6,
+      "firstName": "Jonas",
+      "lastName": "Weber",
+      "email": "jonas.weber@usu.edu",
+      "phone": "435-555-0165",
+      "address": {
+        "street": "4205 Old Main Hill",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84322"
+      }
+    },
+    {
+      "id": 7,
+      "firstName": "Alice",
+      "lastName": "Nguyen",
+      "email": "alice.nguyen@usu.edu",
+      "phone": "435-555-0136",
+      "address": {
+        "street": "560 N 400 E",
+        "city": "Hyde Park",
+        "state": "UT",
+        "zip": "84318"
+      }
+    },
+    {
+      "id": 8,
+      "firstName": "Marcus",
+      "lastName": "Bell",
+      "email": "marcus.bell@usu.edu",
+      "phone": "435-555-0159",
+      "address": {
+        "street": "1122 S Main St",
+        "city": "Smithfield",
+        "state": "UT",
+        "zip": "84335"
+      }
+    }
+  ],
+  "students": [
+    {
+      "id": 1,
+      "personId": 1,
+      "major": "Data Analytics",
+      "graduationDate": "2027-05-07",
+      "resumeUrl": "/uploads/resumes/maya-thompson.pdf",
+      "minHoursPerWeek": 10,
+      "maxHoursPerWeek": 20,
+      "workApprovalStatus": "Approved",
+      "availability": "Weekday afternoons",
+      "preferredProjectTypeId": 3,
+      "skillIds": [
+        1,
+        4,
+        6
+      ]
+    },
+    {
+      "id": 2,
+      "personId": 2,
+      "major": "Computer Science",
+      "graduationDate": "2026-12-18",
+      "resumeUrl": "/uploads/resumes/devin-okafor.pdf",
+      "minHoursPerWeek": 15,
+      "maxHoursPerWeek": 25,
+      "workApprovalStatus": "Approved",
+      "availability": "Mornings before 11am",
+      "preferredProjectTypeId": 1,
+      "skillIds": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": 3,
+      "personId": 5,
+      "major": "Management Information Systems",
+      "graduationDate": "2027-05-07",
+      "resumeUrl": "/uploads/resumes/sofia-marquez.pdf",
+      "minHoursPerWeek": 8,
+      "maxHoursPerWeek": 15,
+      "workApprovalStatus": "Pending",
+      "availability": "Tuesdays and Thursdays, all day",
+      "preferredProjectTypeId": 5,
+      "skillIds": [
+        5,
+        7
+      ]
+    },
+    {
+      "id": 4,
+      "personId": 7,
+      "major": "Statistics",
+      "graduationDate": "2026-05-01",
+      "resumeUrl": "/uploads/resumes/alice-nguyen.pdf",
+      "minHoursPerWeek": 12,
+      "maxHoursPerWeek": 20,
+      "workApprovalStatus": "Approved",
+      "availability": "Flexible",
+      "preferredProjectTypeId": 2,
+      "skillIds": [
+        2,
+        6,
+        8
+      ]
+    },
+    {
+      "id": 5,
+      "personId": 8,
+      "major": "Economics",
+      "graduationDate": "2028-05-05",
+      "resumeUrl": "/uploads/resumes/marcus-bell.pdf",
+      "minHoursPerWeek": 6,
+      "maxHoursPerWeek": 12,
+      "workApprovalStatus": "Not Approved",
+      "availability": "Evenings only",
+      "preferredProjectTypeId": 4,
+      "skillIds": [
+        4,
+        8
+      ]
+    }
+  ],
+  "mentors": [
+    {
+      "id": 1,
+      "personId": 3,
+      "department": "Data Analytics and Information Systems",
+      "availability": "Tuesdays and Thursdays, 1-4pm",
+      "maxProjectLoad": 3,
+      "preferredProjectTypeId": 1,
+      "skillIds": [
+        1,
+        3,
+        5
+      ]
+    },
+    {
+      "id": 2,
+      "personId": 4,
+      "department": "Computer Science",
+      "availability": "Mondays and Wednesdays, 9am-12pm",
+      "maxProjectLoad": 2,
+      "preferredProjectTypeId": 2,
+      "skillIds": [
+        2,
+        6
+      ]
+    },
+    {
+      "id": 3,
+      "personId": 6,
+      "department": "Management Information Systems",
+      "availability": "Fridays, 10am-2pm",
+      "maxProjectLoad": 4,
+      "preferredProjectTypeId": 3,
+      "skillIds": [
+        4,
+        5,
+        8
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "id": 1,
+      "name": "USU Athletics Department",
+      "type": "Internal",
+      "contactPersonName": "Dana Kowalski",
+      "contactEmail": "dana.kowalski@usu.edu",
+      "phone": "435-555-0210",
+      "address": {
+        "street": "900 E 700 N",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84322"
+      },
+      "billingEmail": "athletics.billing@usu.edu",
+      "billingTerms": "Internal transfer, quarterly"
+    },
+    {
+      "id": 2,
+      "name": "Cache Community Food Pantry",
+      "type": "Non-Profit",
+      "contactPersonName": "Rosa Delgado",
+      "contactEmail": "rosa@cachefoodpantry.org",
+      "phone": "435-555-0233",
+      "address": {
+        "street": "359 S Main St",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84321"
+      },
+      "billingEmail": "accounts@cachefoodpantry.org",
+      "billingTerms": "Reduced non-profit rate, net 60"
+    },
+    {
+      "id": 3,
+      "name": "USU Alumni Association",
+      "type": "Internal",
+      "contactPersonName": "Grant Whitmore",
+      "contactEmail": "grant.whitmore@usu.edu",
+      "phone": "435-555-0248",
+      "address": {
+        "street": "1450 Old Main Hill",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84322"
+      },
+      "billingEmail": "alumni.billing@usu.edu",
+      "billingTerms": "Internal transfer, on completion"
+    },
+    {
+      "id": 4,
+      "name": "Cache Valley Transit District",
+      "type": "Profit",
+      "contactPersonName": "Nia Foster",
+      "contactEmail": "nfoster@cvtdbus.org",
+      "phone": "435-555-0261",
+      "address": {
+        "street": "754 W 600 N",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84321"
+      },
+      "billingEmail": "ap@cvtdbus.org",
+      "billingTerms": "Net 30, 50% due at kickoff"
+    },
+    {
+      "id": 5,
+      "name": "Analytics Solutions Center",
+      "type": "Internal",
+      "contactPersonName": "Priya Raman",
+      "contactEmail": "priya.raman@usu.edu",
+      "phone": "435-555-0108",
+      "address": {
+        "street": "3565 Old Main Hill",
+        "city": "Logan",
+        "state": "UT",
+        "zip": "84322"
+      },
+      "billingEmail": "asc.billing@usu.edu",
+      "billingTerms": "No charge, internal project"
+    }
+  ],
+  "projects": [
+    {
+      "id": 1,
+      "name": "Aggie Athletics Attendance Dashboard",
+      "description": "A dashboard showing ticket sales and attendance trends for USU home games.",
+      "clientId": 1,
+      "mainBoardStatusId": 4,
+      "projectManagerId": 3,
+      "startDate": "2026-01-12",
+      "midpointDate": "2026-02-23",
+      "endDate": "2026-04-24",
+      "budget": 12000,
+      "estimatedHours": 320,
+      "notes": "Client wants a read-only public view in phase two."
+    },
+    {
+      "id": 2,
+      "name": "Cache Community Food Pantry Inventory",
+      "description": "An inventory tracker so pantry staff can see what is stocked and what is running low.",
+      "clientId": 2,
+      "mainBoardStatusId": 4,
+      "projectManagerId": 3,
+      "startDate": "2026-01-20",
+      "midpointDate": "2026-03-02",
+      "endDate": "2026-04-30",
+      "budget": 8500,
+      "estimatedHours": 240,
+      "notes": "Volunteers will use this on tablets in the warehouse."
+    },
+    {
+      "id": 3,
+      "name": "Alumni Donation Trends Report",
+      "description": "An analytics report on ten years of alumni giving, broken out by college and class year.",
+      "clientId": 3,
+      "mainBoardStatusId": 2,
+      "projectManagerId": 4,
+      "startDate": "2026-02-02",
+      "midpointDate": "2026-03-09",
+      "endDate": "2026-05-08",
+      "budget": 15000,
+      "estimatedHours": 400,
+      "notes": "Waiting on a signed statement of work before the team is assigned."
+    },
+    {
+      "id": 4,
+      "name": "Cache Valley Transit Route Map",
+      "description": "An interactive map of bus routes and stop-level ridership for the transit district.",
+      "clientId": 4,
+      "mainBoardStatusId": 1,
+      "projectManagerId": 4,
+      "startDate": "2026-03-01",
+      "midpointDate": "2026-04-05",
+      "endDate": "2026-06-12",
+      "budget": 9500,
+      "estimatedHours": 260,
+      "notes": "Initial lead came in through the ASC contact form."
+    },
+    {
+      "id": 5,
+      "name": "ASC Intern Onboarding Portal",
+      "description": "An internal portal that walks new ASC student hires through paperwork and training.",
+      "clientId": 5,
+      "mainBoardStatusId": 7,
+      "projectManagerId": 6,
+      "startDate": "2025-09-02",
+      "midpointDate": "2025-10-14",
+      "endDate": "2025-12-05",
+      "budget": 6000,
+      "estimatedHours": 180,
+      "notes": "Delivered and closed out. Keep it on the board as a completed example."
+    }
+  ],
+  "projectPeople": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "personId": 3,
+      "role": "Project Manager",
+      "startDate": "2026-01-12",
+      "endDate": "2026-04-24",
+      "assignedHours": 40,
+      "approvalStatus": "Approved",
+      "status": "Active"
+    },
+    {
+      "id": 2,
+      "projectId": 1,
+      "personId": 2,
+      "role": "Student",
+      "startDate": "2026-01-12",
+      "endDate": "2026-04-24",
+      "assignedHours": 180,
+      "approvalStatus": "Approved",
+      "status": "Active"
+    },
+    {
+      "id": 3,
+      "projectId": 1,
+      "personId": 1,
+      "role": "Student",
+      "startDate": "2026-01-26",
+      "endDate": "2026-04-24",
+      "assignedHours": 120,
+      "approvalStatus": "Approved",
+      "status": "Active"
+    },
+    {
+      "id": 4,
+      "projectId": 1,
+      "personId": 4,
+      "role": "Faculty Mentor",
+      "startDate": "2026-01-12",
+      "endDate": "2026-04-24",
+      "assignedHours": 20,
+      "approvalStatus": "Approved",
+      "status": "Active"
+    },
+    {
+      "id": 5,
+      "projectId": 2,
+      "personId": 3,
+      "role": "Project Manager",
+      "startDate": "2026-01-20",
+      "endDate": "2026-04-30",
+      "assignedHours": 35,
+      "approvalStatus": "Approved",
+      "status": "Active"
+    },
+    {
+      "id": 6,
+      "projectId": 2,
+      "personId": 7,
+      "role": "Student",
+      "startDate": "2026-01-20",
+      "endDate": "2026-04-30",
+      "assignedHours": 160,
+      "approvalStatus": "Approved",
+      "status": "Active"
+    },
+    {
+      "id": 7,
+      "projectId": 2,
+      "personId": 8,
+      "role": "Student",
+      "startDate": "2026-02-09",
+      "endDate": "2026-04-30",
+      "assignedHours": 90,
+      "approvalStatus": "Pending",
+      "status": "Pending Onboarding"
+    },
+    {
+      "id": 8,
+      "projectId": 3,
+      "personId": 4,
+      "role": "Project Manager",
+      "startDate": "2026-02-02",
+      "endDate": "2026-05-08",
+      "assignedHours": 45,
+      "approvalStatus": "Approved",
+      "status": "Active"
+    },
+    {
+      "id": 9,
+      "projectId": 3,
+      "personId": 5,
+      "role": "Student",
+      "startDate": "2026-02-16",
+      "endDate": "2026-05-08",
+      "assignedHours": 150,
+      "approvalStatus": "Pending",
+      "status": "Pending Onboarding"
+    },
+    {
+      "id": 10,
+      "projectId": 5,
+      "personId": 6,
+      "role": "Faculty Mentor",
+      "startDate": "2025-09-02",
+      "endDate": "2025-12-05",
+      "assignedHours": 25,
+      "approvalStatus": "Approved",
+      "status": "Completed"
+    }
+  ],
+  "projectProjectTypes": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "projectTypeId": 1,
+      "isPrimary": true
+    },
+    {
+      "id": 2,
+      "projectId": 1,
+      "projectTypeId": 4,
+      "isPrimary": false
+    },
+    {
+      "id": 3,
+      "projectId": 2,
+      "projectTypeId": 1,
+      "isPrimary": true
+    },
+    {
+      "id": 4,
+      "projectId": 3,
+      "projectTypeId": 3,
+      "isPrimary": true
+    },
+    {
+      "id": 5,
+      "projectId": 3,
+      "projectTypeId": 2,
+      "isPrimary": false
+    },
+    {
+      "id": 6,
+      "projectId": 4,
+      "projectTypeId": 4,
+      "isPrimary": true
+    },
+    {
+      "id": 7,
+      "projectId": 4,
+      "projectTypeId": 5,
+      "isPrimary": false
+    },
+    {
+      "id": 8,
+      "projectId": 5,
+      "projectTypeId": 1,
+      "isPrimary": true
+    }
+  ],
+  "projectSkills": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "skillId": 1,
+      "importance": "Required",
+      "minimumProficiency": "Intermediate"
+    },
+    {
+      "id": 2,
+      "projectId": 1,
+      "skillId": 3,
+      "importance": "Required",
+      "minimumProficiency": "Intermediate"
+    },
+    {
+      "id": 3,
+      "projectId": 1,
+      "skillId": 4,
+      "importance": "Required",
+      "minimumProficiency": "Advanced"
+    },
+    {
+      "id": 4,
+      "projectId": 1,
+      "skillId": 7,
+      "importance": "Preferred",
+      "minimumProficiency": "Beginner"
+    },
+    {
+      "id": 5,
+      "projectId": 2,
+      "skillId": 1,
+      "importance": "Required",
+      "minimumProficiency": "Beginner"
+    },
+    {
+      "id": 6,
+      "projectId": 2,
+      "skillId": 2,
+      "importance": "Required",
+      "minimumProficiency": "Intermediate"
+    },
+    {
+      "id": 7,
+      "projectId": 2,
+      "skillId": 7,
+      "importance": "Preferred",
+      "minimumProficiency": "Intermediate"
+    },
+    {
+      "id": 8,
+      "projectId": 3,
+      "skillId": 2,
+      "importance": "Required",
+      "minimumProficiency": "Advanced"
+    },
+    {
+      "id": 9,
+      "projectId": 3,
+      "skillId": 6,
+      "importance": "Required",
+      "minimumProficiency": "Intermediate"
+    },
+    {
+      "id": 10,
+      "projectId": 3,
+      "skillId": 8,
+      "importance": "Preferred",
+      "minimumProficiency": "Intermediate"
+    },
+    {
+      "id": 11,
+      "projectId": 4,
+      "skillId": 4,
+      "importance": "Required",
+      "minimumProficiency": "Advanced"
+    },
+    {
+      "id": 12,
+      "projectId": 4,
+      "skillId": 6,
+      "importance": "Preferred",
+      "minimumProficiency": "Beginner"
+    },
+    {
+      "id": 13,
+      "projectId": 5,
+      "skillId": 1,
+      "importance": "Required",
+      "minimumProficiency": "Beginner"
+    },
+    {
+      "id": 14,
+      "projectId": 5,
+      "skillId": 8,
+      "importance": "Required",
+      "minimumProficiency": "Intermediate"
+    }
+  ],
+  "projectStatuses": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "statusId": 1,
+      "order": 1
+    },
+    {
+      "id": 2,
+      "projectId": 1,
+      "statusId": 2,
+      "order": 2
+    },
+    {
+      "id": 3,
+      "projectId": 1,
+      "statusId": 3,
+      "order": 3
+    },
+    {
+      "id": 4,
+      "projectId": 1,
+      "statusId": 5,
+      "order": 4
+    },
+    {
+      "id": 5,
+      "projectId": 2,
+      "statusId": 1,
+      "order": 1
+    },
+    {
+      "id": 6,
+      "projectId": 2,
+      "statusId": 2,
+      "order": 2
+    },
+    {
+      "id": 7,
+      "projectId": 2,
+      "statusId": 4,
+      "order": 3
+    },
+    {
+      "id": 8,
+      "projectId": 2,
+      "statusId": 5,
+      "order": 4
+    },
+    {
+      "id": 9,
+      "projectId": 3,
+      "statusId": 1,
+      "order": 1
+    },
+    {
+      "id": 10,
+      "projectId": 3,
+      "statusId": 2,
+      "order": 2
+    },
+    {
+      "id": 11,
+      "projectId": 3,
+      "statusId": 5,
+      "order": 3
+    },
+    {
+      "id": 12,
+      "projectId": 5,
+      "statusId": 1,
+      "order": 1
+    },
+    {
+      "id": 13,
+      "projectId": 5,
+      "statusId": 2,
+      "order": 2
+    },
+    {
+      "id": 14,
+      "projectId": 5,
+      "statusId": 3,
+      "order": 3
+    },
+    {
+      "id": 15,
+      "projectId": 5,
+      "statusId": 5,
+      "order": 4
+    }
+  ],
+  "personSkills": [
+    {
+      "id": 1,
+      "personId": 1,
+      "skillId": 1,
+      "proficiency": "Intermediate",
+      "yearsExperience": 2,
+      "lastUsed": "2026-01-30"
+    },
+    {
+      "id": 2,
+      "personId": 1,
+      "skillId": 4,
+      "proficiency": "Advanced",
+      "yearsExperience": 3,
+      "lastUsed": "2026-02-05"
+    },
+    {
+      "id": 3,
+      "personId": 1,
+      "skillId": 6,
+      "proficiency": "Beginner",
+      "yearsExperience": 1,
+      "lastUsed": "2025-11-14"
+    },
+    {
+      "id": 4,
+      "personId": 2,
+      "skillId": 1,
+      "proficiency": "Advanced",
+      "yearsExperience": 4,
+      "lastUsed": "2026-02-10"
+    },
+    {
+      "id": 5,
+      "personId": 2,
+      "skillId": 2,
+      "proficiency": "Intermediate",
+      "yearsExperience": 2,
+      "lastUsed": "2026-01-22"
+    },
+    {
+      "id": 6,
+      "personId": 2,
+      "skillId": 3,
+      "proficiency": "Intermediate",
+      "yearsExperience": 2,
+      "lastUsed": "2026-02-10"
+    },
+    {
+      "id": 7,
+      "personId": 3,
+      "skillId": 5,
+      "proficiency": "Expert",
+      "yearsExperience": 11,
+      "lastUsed": "2026-02-12"
+    },
+    {
+      "id": 8,
+      "personId": 3,
+      "skillId": 1,
+      "proficiency": "Advanced",
+      "yearsExperience": 8,
+      "lastUsed": "2025-12-02"
+    },
+    {
+      "id": 9,
+      "personId": 4,
+      "skillId": 2,
+      "proficiency": "Expert",
+      "yearsExperience": 14,
+      "lastUsed": "2026-02-11"
+    },
+    {
+      "id": 10,
+      "personId": 4,
+      "skillId": 6,
+      "proficiency": "Advanced",
+      "yearsExperience": 9,
+      "lastUsed": "2026-01-19"
+    },
+    {
+      "id": 11,
+      "personId": 5,
+      "skillId": 5,
+      "proficiency": "Beginner",
+      "yearsExperience": 1,
+      "lastUsed": "2026-02-01"
+    },
+    {
+      "id": 12,
+      "personId": 5,
+      "skillId": 7,
+      "proficiency": "Intermediate",
+      "yearsExperience": 2,
+      "lastUsed": "2026-02-06"
+    },
+    {
+      "id": 13,
+      "personId": 6,
+      "skillId": 8,
+      "proficiency": "Expert",
+      "yearsExperience": 15,
+      "lastUsed": "2026-02-09"
+    },
+    {
+      "id": 14,
+      "personId": 7,
+      "skillId": 2,
+      "proficiency": "Advanced",
+      "yearsExperience": 3,
+      "lastUsed": "2026-02-08"
+    },
+    {
+      "id": 15,
+      "personId": 7,
+      "skillId": 6,
+      "proficiency": "Advanced",
+      "yearsExperience": 3,
+      "lastUsed": "2026-02-08"
+    },
+    {
+      "id": 16,
+      "personId": 8,
+      "skillId": 4,
+      "proficiency": "Beginner",
+      "yearsExperience": 1,
+      "lastUsed": "2026-01-15"
+    }
+  ],
+  "requirements": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "title": "Load historical ticket sales",
+      "description": "Import five seasons of ticket sales from the Athletics export into the working database.",
+      "priority": "High",
+      "statusId": 5,
+      "dueDate": "2026-01-30",
+      "assignedPersonId": 2,
+      "mentorPersonId": 4,
+      "acceptanceCriteria": "All five seasons load with no null game dates and row counts match the source export.",
+      "estimatedHours": 16,
+      "actualHours": 19
+    },
+    {
+      "id": 2,
+      "projectId": 1,
+      "title": "Build attendance-by-sport chart",
+      "description": "A bar chart of average attendance per sport, filterable by season.",
+      "priority": "High",
+      "statusId": 2,
+      "dueDate": "2026-02-20",
+      "assignedPersonId": 1,
+      "mentorPersonId": 4,
+      "acceptanceCriteria": "Chart renders under two seconds and the season filter updates it without a page reload.",
+      "estimatedHours": 24,
+      "actualHours": 11
+    },
+    {
+      "id": 3,
+      "projectId": 1,
+      "title": "Draft the public read-only view",
+      "description": "A stripped-down version of the dashboard that does not require a login.",
+      "priority": "Low",
+      "statusId": 1,
+      "dueDate": "2026-04-10",
+      "assignedPersonId": 1,
+      "mentorPersonId": 4,
+      "acceptanceCriteria": "Public view shows charts but no student or staff names.",
+      "estimatedHours": 20,
+      "actualHours": 0
+    },
+    {
+      "id": 4,
+      "projectId": 1,
+      "title": "Confirm 2019 season data handling",
+      "description": "Get a written answer from the client on whether the incomplete 2019 season should appear.",
+      "priority": "Medium",
+      "statusId": 4,
+      "dueDate": "2026-02-14",
+      "assignedPersonId": 3,
+      "mentorPersonId": 4,
+      "acceptanceCriteria": "Client decision recorded in the project notes.",
+      "estimatedHours": 2,
+      "actualHours": 1
+    },
+    {
+      "id": 5,
+      "projectId": 1,
+      "title": "Accessibility pass on the dashboard",
+      "description": "Check color contrast, keyboard navigation, and screen reader labels.",
+      "priority": "Medium",
+      "statusId": 3,
+      "dueDate": "2026-03-06",
+      "assignedPersonId": 1,
+      "mentorPersonId": 4,
+      "acceptanceCriteria": "No contrast failures and every control is reachable by keyboard.",
+      "estimatedHours": 8,
+      "actualHours": 8
+    },
+    {
+      "id": 6,
+      "projectId": 2,
+      "title": "Design the inventory item form",
+      "description": "A form volunteers use to add and update stocked items on a tablet.",
+      "priority": "High",
+      "statusId": 2,
+      "dueDate": "2026-02-27",
+      "assignedPersonId": 7,
+      "mentorPersonId": 6,
+      "acceptanceCriteria": "Form is usable one-handed on a ten inch tablet and validates required fields.",
+      "estimatedHours": 18,
+      "actualHours": 6
+    },
+    {
+      "id": 7,
+      "projectId": 2,
+      "title": "Low-stock alert rules",
+      "description": "Flag items that fall below the threshold the pantry sets per item.",
+      "priority": "Medium",
+      "statusId": 1,
+      "dueDate": "2026-03-20",
+      "assignedPersonId": 8,
+      "mentorPersonId": 6,
+      "acceptanceCriteria": "Items below threshold appear in a low-stock list sorted by how far below they are.",
+      "estimatedHours": 12,
+      "actualHours": 0
+    },
+    {
+      "id": 8,
+      "projectId": 3,
+      "title": "Request the alumni giving extract",
+      "description": "Submit the data request to the Alumni Association and track approval.",
+      "priority": "High",
+      "statusId": 4,
+      "dueDate": "2026-02-16",
+      "assignedPersonId": 5,
+      "mentorPersonId": 3,
+      "acceptanceCriteria": "Extract received and stored in the project folder.",
+      "estimatedHours": 4,
+      "actualHours": 2
+    }
+  ],
+  "documents": [
+    {
+      "id": 1,
+      "name": "Athletics Dashboard Statement of Work",
+      "type": "Statement of Work",
+      "fileName": "athletics-sow-v2.pdf",
+      "fileUrl": "/uploads/documents/athletics-sow-v2.pdf",
+      "projectId": 1,
+      "personId": 3,
+      "uploadedDate": "2026-01-08",
+      "version": "2.0",
+      "status": "Approved"
+    },
+    {
+      "id": 2,
+      "name": "Ticket Sales Data Dictionary",
+      "type": "Reference",
+      "fileName": "ticket-sales-data-dictionary.xlsx",
+      "fileUrl": "/uploads/documents/ticket-sales-data-dictionary.xlsx",
+      "projectId": 1,
+      "personId": 2,
+      "uploadedDate": "2026-01-21",
+      "version": "1.1",
+      "status": "Final"
+    },
+    {
+      "id": 3,
+      "name": "Dashboard Wireframes",
+      "type": "Design",
+      "fileName": "dashboard-wireframes.pdf",
+      "fileUrl": "/uploads/documents/dashboard-wireframes.pdf",
+      "projectId": 1,
+      "personId": 1,
+      "uploadedDate": "2026-02-03",
+      "version": "0.3",
+      "status": "Draft"
+    },
+    {
+      "id": 4,
+      "name": "Pantry Inventory Requirements",
+      "type": "Requirements",
+      "fileName": "pantry-requirements.docx",
+      "fileUrl": "/uploads/documents/pantry-requirements.docx",
+      "projectId": 2,
+      "personId": 7,
+      "uploadedDate": "2026-01-27",
+      "version": "1.0",
+      "status": "In Review"
+    },
+    {
+      "id": 5,
+      "name": "Alumni Giving Extract Notes",
+      "type": "Reference",
+      "fileName": "alumni-extract-notes.md",
+      "fileUrl": "/uploads/documents/alumni-extract-notes.md",
+      "projectId": 3,
+      "personId": 4,
+      "uploadedDate": "2026-02-09",
+      "version": "1.0",
+      "status": "Draft"
+    },
+    {
+      "id": 6,
+      "name": "Intern Portal Final Handoff",
+      "type": "Handoff",
+      "fileName": "intern-portal-handoff.pdf",
+      "fileUrl": "/uploads/documents/intern-portal-handoff.pdf",
+      "projectId": 5,
+      "personId": 6,
+      "uploadedDate": "2025-12-05",
+      "version": "1.0",
+      "status": "Final"
+    }
+  ],
+  "channels": [
+    {
+      "id": 1,
+      "name": "athletics-dashboard-general",
+      "type": "Team",
+      "url": "https://teams.example.com/asc/athletics-dashboard-general",
+      "projectId": 1,
+      "participantPersonIds": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "createdDate": "2026-01-12"
+    },
+    {
+      "id": 2,
+      "name": "athletics-dashboard-client",
+      "type": "Client",
+      "url": "https://teams.example.com/asc/athletics-dashboard-client",
+      "projectId": 1,
+      "participantPersonIds": [
+        3,
+        4
+      ],
+      "createdDate": "2026-01-14"
+    },
+    {
+      "id": 3,
+      "name": "food-pantry-general",
+      "type": "Team",
+      "url": "https://teams.example.com/asc/food-pantry-general",
+      "projectId": 2,
+      "participantPersonIds": [
+        3,
+        7,
+        8
+      ],
+      "createdDate": "2026-01-20"
+    },
+    {
+      "id": 4,
+      "name": "alumni-report-general",
+      "type": "Team",
+      "url": "https://teams.example.com/asc/alumni-report-general",
+      "projectId": 3,
+      "participantPersonIds": [
+        4,
+        5
+      ],
+      "createdDate": "2026-02-02"
+    },
+    {
+      "id": 5,
+      "name": "intern-portal-archive",
+      "type": "Archived",
+      "url": "https://teams.example.com/asc/intern-portal-archive",
+      "projectId": 5,
+      "participantPersonIds": [
+        6
+      ],
+      "createdDate": "2025-09-02"
+    }
+  ],
+  "threads": [
+    {
+      "id": 1,
+      "channelId": 1,
+      "name": "Kickoff and scheduling",
+      "createdByPersonId": 3,
+      "createdAt": "2026-01-12T15:04:00",
+      "lastActivityAt": "2026-01-15T09:20:00",
+      "messageCount": 4
+    },
+    {
+      "id": 2,
+      "channelId": 1,
+      "name": "Attendance data questions",
+      "createdByPersonId": 2,
+      "createdAt": "2026-01-22T10:11:00",
+      "lastActivityAt": "2026-02-04T16:45:00",
+      "messageCount": 3
+    },
+    {
+      "id": 3,
+      "channelId": 1,
+      "name": "Chart color palette",
+      "createdByPersonId": 1,
+      "createdAt": "2026-02-03T13:30:00",
+      "lastActivityAt": "2026-02-05T08:12:00",
+      "messageCount": 2
+    },
+    {
+      "id": 4,
+      "channelId": 2,
+      "name": "Phase two scope",
+      "createdByPersonId": 3,
+      "createdAt": "2026-01-28T11:00:00",
+      "lastActivityAt": "2026-01-29T14:37:00",
+      "messageCount": 2
+    },
+    {
+      "id": 5,
+      "channelId": 3,
+      "name": "Tablet hardware for the warehouse",
+      "createdByPersonId": 7,
+      "createdAt": "2026-01-26T09:45:00",
+      "lastActivityAt": "2026-02-02T12:05:00",
+      "messageCount": 2
+    },
+    {
+      "id": 6,
+      "channelId": 4,
+      "name": "Waiting on the alumni data extract",
+      "createdByPersonId": 4,
+      "createdAt": "2026-02-09T08:30:00",
+      "lastActivityAt": "2026-02-09T08:30:00",
+      "messageCount": 1
+    }
+  ],
+  "messages": [
+    {
+      "id": 1,
+      "threadId": 1,
+      "channelId": 1,
+      "senderPersonId": 3,
+      "body": "Welcome to the project, everyone. Kickoff is Thursday at 2pm in the ASC conference room.",
+      "postedAt": "2026-01-12T15:04:00",
+      "editedAt": null
+    },
+    {
+      "id": 2,
+      "threadId": 1,
+      "channelId": 1,
+      "senderPersonId": 2,
+      "body": "I can make Thursday. Should I bring the data access request form?",
+      "postedAt": "2026-01-12T15:22:00",
+      "editedAt": null
+    },
+    {
+      "id": 3,
+      "threadId": 1,
+      "channelId": 1,
+      "senderPersonId": 3,
+      "body": "Yes please, bring it signed and I will walk it over to Athletics.",
+      "postedAt": "2026-01-12T15:31:00",
+      "editedAt": null
+    },
+    {
+      "id": 4,
+      "threadId": 1,
+      "channelId": 1,
+      "senderPersonId": 1,
+      "body": "Thursday works for me too. I will be about ten minutes late coming from class.",
+      "postedAt": "2026-01-15T09:20:00",
+      "editedAt": "2026-01-15T09:24:00"
+    },
+    {
+      "id": 5,
+      "threadId": 2,
+      "channelId": 1,
+      "senderPersonId": 2,
+      "body": "The attendance export has null values for the 2019 season. Do we drop those rows or backfill them?",
+      "postedAt": "2026-01-22T10:11:00",
+      "editedAt": null
+    },
+    {
+      "id": 6,
+      "threadId": 2,
+      "channelId": 1,
+      "senderPersonId": 4,
+      "body": "Drop them for now and note it in the data dictionary. We can revisit if the client cares about 2019.",
+      "postedAt": "2026-01-22T14:02:00",
+      "editedAt": null
+    },
+    {
+      "id": 7,
+      "threadId": 2,
+      "channelId": 1,
+      "senderPersonId": 2,
+      "body": "Done, noted in version 1.1 of the dictionary.",
+      "postedAt": "2026-02-04T16:45:00",
+      "editedAt": null
+    },
+    {
+      "id": 8,
+      "threadId": 3,
+      "channelId": 1,
+      "senderPersonId": 1,
+      "body": "Draft palette is up in the wireframes doc. It is colorblind safe.",
+      "postedAt": "2026-02-03T13:30:00",
+      "editedAt": null
+    },
+    {
+      "id": 9,
+      "threadId": 3,
+      "channelId": 1,
+      "senderPersonId": 3,
+      "body": "Looks good. Check it against the university brand colors before we show the client.",
+      "postedAt": "2026-02-05T08:12:00",
+      "editedAt": null
+    },
+    {
+      "id": 10,
+      "threadId": 5,
+      "channelId": 3,
+      "senderPersonId": 7,
+      "body": "Pantry has four tablets on hand, all Android. Planning to test on those.",
+      "postedAt": "2026-01-26T09:45:00",
+      "editedAt": null
+    },
+    {
+      "id": 11,
+      "threadId": 5,
+      "channelId": 3,
+      "senderPersonId": 8,
+      "body": "I can borrow one this week and check the layout at that screen size.",
+      "postedAt": "2026-02-02T12:05:00",
+      "editedAt": null
+    }
+  ],
+  "currentUser": {
+    "personId": 2
+  }
+}
