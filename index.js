@@ -1,4 +1,5 @@
 const express = require("express");
+const escapeHtml = require("ejs").escapeXML;
 
 const statuses = require("./data/statuses.js");
 const documents = require("./data/documents.js");
@@ -100,9 +101,9 @@ app.get("/statuses", (req, resp) => {
         .map(status => {
             return `
                 <div style="margin-bottom: 10px;">
-                    <strong>${status.id}:</strong> <a href="/status/${status.id}">${status.name}</a>
-                    <a href="/status/edit/${status.id}"><button>Edit</button></a>
-                    <form action="/status/delete/${status.id}" method="POST" style="display: inline;" onsubmit="return confirm('Delete status ${status.name}?')">
+                    <strong>${escapeHtml(status.id)}:</strong> <a href="/status/${escapeHtml(status.id)}">${escapeHtml(status.name)}</a>
+                    <a href="/status/edit/${escapeHtml(status.id)}"><button>Edit</button></a>
+                    <form action="/status/delete/${escapeHtml(status.id)}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this status?')">
                         <button type="submit">Delete</button>
                     </form>
                 </div>
@@ -165,7 +166,7 @@ app.get("/status/edit/:id", (req, resp) => {
     const selectedStatus = statuses.find(status => status.id === statusId);
 
     if (!selectedStatus) {
-        return resp.status(404).send(`Status with id ${statusId} not found`);
+        return resp.status(404).type("text/plain").send(`Status with id ${statusId} not found`);
     }
 
     resp.send(`
@@ -177,11 +178,11 @@ app.get("/status/edit/:id", (req, resp) => {
             <title>Edit Status</title>
         </head>
         <body>
-            <h2>Edit Status: ${selectedStatus.name}</h2>
-            <form action="/status/edit/${selectedStatus.id}" method="POST">
-                <input type="text" value="${selectedStatus.name}" name="status_name" required>
-                <input type="text" value="${selectedStatus.description}" name="status_description" required>
-                <input type="number" value="${selectedStatus.order}" name="status_order" required>
+            <h2>Edit Status: ${escapeHtml(selectedStatus.name)}</h2>
+            <form action="/status/edit/${escapeHtml(selectedStatus.id)}" method="POST">
+                <input type="text" value="${escapeHtml(selectedStatus.name)}" name="status_name" required>
+                <input type="text" value="${escapeHtml(selectedStatus.description)}" name="status_description" required>
+                <input type="number" value="${escapeHtml(selectedStatus.order)}" name="status_order" required>
                 <input type="submit" value="Update">
             </form>
             <a href="/statuses">Cancel</a>
@@ -195,7 +196,7 @@ app.post("/status/edit/:id", (req, resp) => {
     const selectedStatus = statuses.find(status => status.id === statusId);
 
     if (!selectedStatus) {
-        return resp.status(404).send(`Status with id ${statusId} not found`);
+        return resp.status(404).type("text/plain").send(`Status with id ${statusId} not found`);
     }
 
     const { status_name, status_description, status_order } = req.body;
@@ -216,7 +217,7 @@ app.post("/status/delete/:id", (req, resp) => {
     const statusIndex = statuses.findIndex(status => status.id === statusId);
 
     if (statusIndex === -1) {
-        return resp.status(404).send(`Status with id ${statusId} not found`);
+        return resp.status(404).type("text/plain").send(`Status with id ${statusId} not found`);
     }
 
     statuses.splice(statusIndex, 1);
@@ -230,13 +231,13 @@ app.get("/status/:id", (req, resp) => {
     const selectedStatus = statuses.find(status => status.id === statusId);
 
     if (!selectedStatus) {
-        return resp.status(404).send(`Status with id ${statusId} not found`);
+        return resp.status(404).type("text/plain").send(`Status with id ${statusId} not found`);
     }
 
     resp.send(`
-        <h2>${selectedStatus.name}</h2>
-        <p>${selectedStatus.description}</p>
-        <p>Order: ${selectedStatus.order}</p>
+        <h2>${escapeHtml(selectedStatus.name)}</h2>
+        <p>${escapeHtml(selectedStatus.description)}</p>
+        <p>Order: ${escapeHtml(selectedStatus.order)}</p>
         <a href="/statuses">Back to all statuses</a>
     `);
 });
@@ -265,19 +266,19 @@ app.get(["/main-board/statuses/edit/:id", "/main-board-statuses/edit/:id"], (req
     const status = mainBoardStatuses.find(mainBoardStatus => mainBoardStatus.id === statusId);
 
     if (!status) {
-        return res.status(404).send(`Main board status with id ${statusId} not found`);
+        return res.status(404).type("text/plain").send(`Main board status with id ${statusId} not found`);
     }
 
     res.render("main-board-statuses/edit", { status });
 });
 
 app.post(["/main-board/statuses/edit/:id", "/main-board-statuses/edit/:id"], (req, res) => {
-    console.log(`Main board status edit request for ${req.params.id}:`, req.body);
+    console.log("Main board status edit request for", req.params.id, req.body);
     res.redirect("/main-board/statuses");
 });
 
 app.post(["/main-board/statuses/delete/:id", "/main-board-statuses/delete/:id"], (req, res) => {
-    console.log(`Main board status delete request for ${req.params.id}`);
+    console.log("Main board status delete request for", req.params.id);
     res.redirect("/main-board/statuses");
 });
 
@@ -287,34 +288,34 @@ app.post(["/main-board/statuses/delete/:id", "/main-board-statuses/delete/:id"],
 
 // View all statuses used by a project
 app.get("/projects/:projectid/statuses", (req, res) => {
-    res.send(`Show all statuses associated with project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show all statuses associated with project ${req.params.projectid}`);
 });
 
 // Form to add a status to a project
 app.get("/projects/:projectid/statuses/new", (req, res) => {
-    res.send(`Show the form for adding a status to project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show the form for adding a status to project ${req.params.projectid}`);
 });
 
 // Save a status added to a project
 app.post("/projects/:projectid/statuses/new", (req, res) => {
     console.log(req.body);
-    res.send(`Saved a new status for project ${req.params.projectid}`);
+    res.type("text/plain").send(`Saved a new status for project ${req.params.projectid}`);
 });
 
 // Form to update a project's status (e.g. its order in the workflow)
 app.get("/projects/:projectid/statuses/edit/:id", (req, res) => {
-    res.send(`Show the form for editing status association ${req.params.id} on project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show the form for editing status association ${req.params.id} on project ${req.params.projectid}`);
 });
 
 // Save the updated project status
 app.post("/projects/:projectid/statuses/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`Saved edits to status association ${req.params.id} on project ${req.params.projectid}`);
+    res.type("text/plain").send(`Saved edits to status association ${req.params.id} on project ${req.params.projectid}`);
 });
 
 // Remove a status from a project
 app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
-    res.send(`Removed status association ${req.params.id} from project ${req.params.projectid}`);
+    res.type("text/plain").send(`Removed status association ${req.params.id} from project ${req.params.projectid}`);
 });
 
 
@@ -323,39 +324,39 @@ app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
 
 // View all people associated with a project
 app.get("/projects/:projectid/people", (req, res) => {
-    res.send(`Show all people associated with project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show all people associated with project ${req.params.projectid}`);
 });
 
 // Form to create a relationship
 app.get("/projects/:projectid/people/new", (req, res) => {
-    res.send(`Show the form for adding a person to project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show the form for adding a person to project ${req.params.projectid}`);
 });
 
 // Save new relationship
 app.post("/projects/:projectid/people/new", (req, res) => {
     console.log(req.body);
-    res.send(`Saved a new relationship between a person and project ${req.params.projectid}`);
+    res.type("text/plain").send(`Saved a new relationship between a person and project ${req.params.projectid}`);
 });
 
 // Form to edit a relationship
 app.get("/projects/:projectid/people/edit/:id", (req, res) => {
-    res.send(`Show the form for editing relationship ${req.params.id} on project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show the form for editing relationship ${req.params.id} on project ${req.params.projectid}`);
 });
 
 // Save edited relationship
 app.post("/projects/:projectid/people/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`Saved edits to relationship ${req.params.id} on project ${req.params.projectid}`);
+    res.type("text/plain").send(`Saved edits to relationship ${req.params.id} on project ${req.params.projectid}`);
 });
 
 // Delete a relationship
 app.post("/projects/:projectid/people/delete/:id", (req, res) => {
-    res.send(`Deleted relationship ${req.params.id} from project ${req.params.projectid}`);
+    res.type("text/plain").send(`Deleted relationship ${req.params.id} from project ${req.params.projectid}`);
 });
 
 // View a specific relationship
 app.get("/projects/:projectid/people/:id", (req, res) => {
-    res.send(`Show relationship ${req.params.id} between a person and project ${req.params.projectid}`);
+    res.type("text/plain").send(`Show relationship ${req.params.id} between a person and project ${req.params.projectid}`);
 });
 
 
@@ -526,7 +527,7 @@ app.get("/mentors/edit/:id", (req, res) => {
 
 app.post("/mentors/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`Saving an edit on mentor ${req.params.id}`);
+    res.type("text/plain").send(`Saving an edit on mentor ${req.params.id}`);
 });
 
 app.post("/mentors/delete/:id", (req, res) => {
@@ -547,7 +548,7 @@ app.post("/mentors/delete/:id", (req, res) => {
 });
 
 app.get("/mentors/:id", (req, res) => {
-    res.send(`Getting mentor ${req.params.id}`);
+    res.type("text/plain").send(`Getting mentor ${req.params.id}`);
 });
 
 
@@ -590,10 +591,10 @@ app.post("/students/new", (req, res) => {
     const personId = Number(req.body.personId);
 
     if (!people.some((p) => p.id === personId)) {
-        return res.status(400).send(`Person with id ${personId} not found`);
+        return res.status(400).type("text/plain").send(`Person with id ${personId} not found`);
     }
     if (students.some((s) => s.personId === personId)) {
-        return res.status(400).send(`Person with id ${personId} is already a student`);
+        return res.status(400).type("text/plain").send(`Person with id ${personId} is already a student`);
     }
 
     // Use the highest existing id so ids stay unique after deletes
@@ -625,7 +626,7 @@ app.get("/students/edit/:id", (req, res) => {
     const student = students.find((s) => s.id === Number(req.params.id));
 
     if (!student) {
-        return res.status(404).send(`Student with id ${req.params.id} not found`);
+        return res.status(404).type("text/plain").send(`Student with id ${req.params.id} not found`);
     }
 
     res.render("students/edit", {
@@ -647,7 +648,7 @@ app.post("/students/delete/:id", (req, res) => {
     const studentIndex = students.findIndex((s) => s.id === Number(req.params.id));
 
     if (studentIndex === -1) {
-        return res.status(404).send(`Student with id ${req.params.id} not found`);
+        return res.status(404).type("text/plain").send(`Student with id ${req.params.id} not found`);
     }
 
     students.splice(studentIndex, 1);
@@ -658,7 +659,7 @@ app.get("/students/:id", (req, res) => {
     const student = students.find((s) => s.id === Number(req.params.id));
 
     if (!student) {
-        return res.status(404).send(`Student with id ${req.params.id} not found`);
+        return res.status(404).type("text/plain").send(`Student with id ${req.params.id} not found`);
     }
 
     res.render("students/show", {
@@ -691,23 +692,23 @@ app.post("/channels/new", (req, res) => {
 
 // Edit a specific communication channel
 app.get("/channels/edit/:id", (req, res) => {
-    res.send(`Edit specific channel with ID: ${req.params.id}`);
+    res.type("text/plain").send(`Edit specific channel with ID: ${req.params.id}`);
 });
 
 // Save the edited communication channel
 app.post("/channels/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`Saving the edited channel ${req.params.id}`);
+    res.type("text/plain").send(`Saving the edited channel ${req.params.id}`);
 });
 
 // Delete a specific communication channel
 app.post("/channels/delete/:id", (req, res) => {
-    res.send(`Deleting channel ${req.params.id}`);
+    res.type("text/plain").send(`Deleting channel ${req.params.id}`);
 });
 
 // View a specific communication channel
 app.get("/channels/:id", (req, res) => {
-    res.send(`Viewing channel with ID: ${req.params.id}`);
+    res.type("text/plain").send(`Viewing channel with ID: ${req.params.id}`);
 });
 
 
@@ -743,13 +744,13 @@ app.get("/threads/edit/:id", (req, res) => {
 
 app.post("/threads/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`This route saves edits to thread ${req.params.id}`);
+    res.type("text/plain").send(`This route saves edits to thread ${req.params.id}`);
 });
 
 // post request for deleting a thrad
 app.post("/threads/delete/:id", (req, res) => {
     console.log(`Thread ${req.params.id} deleted`);
-    res.send(`This route deletes thread ${req.params.id}`);
+    res.type("text/plain").send(`This route deletes thread ${req.params.id}`);
 });
 
 // see threads by id
@@ -776,20 +777,20 @@ app.get("/messages", (req, res) => {
 });
 
 app.get("/messages/edit/:id", (req, res) => {
-    res.send(`Edit message page for message ${req.params.id}`);
+    res.type("text/plain").send(`Edit message page for message ${req.params.id}`);
 });
 
 app.post("/messages/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`Saving edits to message ${req.params.id}`);
+    res.type("text/plain").send(`Saving edits to message ${req.params.id}`);
 });
 
 app.post("/messages/delete/:id", (req, res) => {
-    res.send(`Deleting message ${req.params.id}`);
+    res.type("text/plain").send(`Deleting message ${req.params.id}`);
 });
 
 app.get("/messages/:id", (req, res) => {
-    res.send(`View message ${req.params.id}`);
+    res.type("text/plain").send(`View message ${req.params.id}`);
 });
 
 
@@ -813,23 +814,23 @@ app.get("/requirements", (req, res) => {
 
 // Users should be able to edit existing requirements
 app.get("/requirements/edit/:id", (req, res) => {
-    res.send(`Edit requirement page for ID: ${req.params.id}`);
+    res.type("text/plain").send(`Edit requirement page for ID: ${req.params.id}`);
 });
 
 // Save the edit form
 app.post("/requirements/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`Save edited requirement with ID: ${req.params.id}`);
+    res.type("text/plain").send(`Save edited requirement with ID: ${req.params.id}`);
 });
 
 // Delete requirements that are no longer needed or were created accidentally
 app.post("/requirements/delete/:id", (req, res) => {
-    res.send(`Delete requirement with ID: ${req.params.id}`);
+    res.type("text/plain").send(`Delete requirement with ID: ${req.params.id}`);
 });
 
 // View a specific requirement
 app.get("/requirements/:id", (req, res) => {
-    res.send(`View requirement page for ID: ${req.params.id}`);
+    res.type("text/plain").send(`View requirement page for ID: ${req.params.id}`);
 });
 
 // ===== PROJECT SKILLS EJS RENDERED (Issue #29) =====
@@ -1009,7 +1010,7 @@ app.get("/project-skills/edit/:id", (req, res) => {
 });
 
 app.post("/project-skills/edit/:id", (req, res) => {
-    console.log(`Editing project skill ${req.params.id}:`, req.body);
+    console.log("Editing project skill", req.params.id, req.body);
 
     const idToEdit = Number(req.params.id);
     const skillIndex = projectSkills.findIndex(row => row.id === idToEdit);
@@ -1135,7 +1136,7 @@ app.post("/person-skill/delete/:id", (req, res) => {
 });
 
 app.get("/person-skill/:id", (req, res) => {
-    res.send(`Page to view person-skill association with id ${req.params.id}`);
+    res.type("text/plain").send(`Page to view person-skill association with id ${req.params.id}`);
 });
 
 
@@ -1163,23 +1164,23 @@ app.post("/clients/new", (req, res) => {
 
 // Edit client page by id
 app.get("/clients/edit/:id", (req, res) => {
-    res.send(`Edit specific client ${req.params.id}`);
+    res.type("text/plain").send(`Edit specific client ${req.params.id}`);
 });
 
 // Save edited client
 app.post("/clients/edit/:id", (req, res) => {
     console.log(req.body);
-    res.send(`Saving edits to client ${req.params.id}`);
+    res.type("text/plain").send(`Saving edits to client ${req.params.id}`);
 });
 
 // Delete client
 app.post("/clients/delete/:id", (req, res) => {
-    res.send(`Deleting client ${req.params.id}`);
+    res.type("text/plain").send(`Deleting client ${req.params.id}`);
 });
 
 // View a specific client
 app.get("/clients/:id", (req, res) => {
-    res.send(`Viewing a specific client ${req.params.id}`);
+    res.type("text/plain").send(`Viewing a specific client ${req.params.id}`);
 });
 
 

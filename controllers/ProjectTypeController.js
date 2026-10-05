@@ -28,7 +28,7 @@ function getEditPage(req, res){
 
 // Save the edit form for one project type
 function saveProjectTypeEdits(req, res){
-    console.log(`Edited project type ${req.params.id}:`, req.body);
+    console.log("Edited project type", req.params.id, req.body);
     res.redirect("/project-types");
 }
 
