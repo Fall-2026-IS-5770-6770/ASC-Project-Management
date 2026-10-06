@@ -5,7 +5,6 @@ const path = require("path");
 const projects = require("./data/projects");
 const projectPeople = require("./data/projectPeople");
 
-const students = require("./data/students.js");
 const skills = require("./data/skills.js");
 
 const projectRouter = require("./routes/Projects.js")
