@@ -19,7 +19,7 @@ Example:
 
 @hcronley: "Here is my comment that I am adding to this file :>"
 
-@jaxonwebster: Toa is the goat
+@jaxonwebster: "Toa is the goat" -me
 
 @ellieangus: Hey guys what's up
 
@@ -34,3 +34,4 @@ Example:
 @mteeples: "Most good programmers do programming not because they expect to get paid or get adulation by the public, but because it is fun to program." - Linus Torvalds 
 
 @NelsonA255: Learning Node.js one step at a time and understanding how server-side applications work.
+

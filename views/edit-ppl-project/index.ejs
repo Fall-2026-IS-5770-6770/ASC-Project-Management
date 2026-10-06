@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Edit Project Person Associations</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="page">
+    <h2>Edit Association</h2>
+    <form action="/projects/people/<%= row.id %>" method="POST">
+
+    <div class="form-group">
+        <label for="projectId">Project</label>
+        <select name="projectId" id="projectId">
+        <% projects.forEach(p => { %>
+            <option value="<%= p.id %>" <% if (p.id === row.projectId) { %> selected <% } %>>
+                <%= p.name %>
+            </option>
+        <% }) %>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="personId">Person</label>
+        <select name="personId" id="personId">
+        <% people.forEach(p => { %>
+            <option value="<%= p.id %>" <% if (p.id === row.personId) { %> selected <% } %>>
+                <%= p.firstName %> <%= p.lastName %>
+            </option>
+        <% }) %>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="role">Role</label>
+        <input type="text" name="role" id="role" placeholder="e.g. Student" value="<%=row.role%>">
+    </div>
+
+    <div class="form-group">
+        <label for="status">Status</label>
+        <select name="status" id="status">
+            <option value="Active" <% if (row.status === "Active") { %> selected <% } %>>Active</option>
+            <option value="Pending Onboarding" <% if (row.status === "Pending Onboarding") { %> selected <% } %>>Pending Onboarding</option>
+            <option value="Completed" <% if (row.status === "Completed") { %> selected <% } %>>Completed</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="approvalStatus">Approval Status</label>
+        <select name="approvalStatus" id="approvalStatus">
+            <option value="Approved" <% if (row.approvalStatus === "Approved") { %> selected <% } %>>Approved</option>
+            <option value="Pending" <% if (row.approvalStatus === "Pending") { %> selected <% } %>>Pending</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="startDate">Start Date</label>
+        <input type="date" name="startDate" id="startDate" placeholder="e.g. 2026-02-03" value="<%= row.startDate %>">
+    </div>
+
+    <div class="form-group">
+        <label for="endDate">End Date</label>
+        <input type="date" name="endDate" id="endDate" placeholder="e.g. 2026-08-25" value="<%= row.endDate %>">
+    </div>
+
+    <div class="form-group">
+        <label for="assignedHours">Assigned Hours</label>
+        <input type="number" name="assignedHours" id="assignedHours" placeholder="e.g. 20" value="<%= row.assignedHours %>">
+    </div>
+
+    <div class="form-group">
+        <a class="btn" href="/projects/people/<%=row.id%>">Cancel</a>
+        <button type="submit" class="btn">Save</button>
+    </div>
+
+    </form>
+</div>
+
+
+<script src="/js/main.js"></script>
+</body>
+</html>

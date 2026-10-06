@@ -1,191 +1,167 @@
-/* ===== Reset & Base ===== */
-* {
-    box-sizing: border-box;
+/* ===========================================================
+   Project Person Associations — base styles (Option 1: Minimal Clean)
+   =========================================================== */
+
+:root {
+  box-sizing: border-box;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
+* { box-sizing: inherit; }
+
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f4f5f7;
-    color: #1d1d1f;
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 40px 24px;
-    line-height: 1.5;
+  margin: 0;
+  padding: 32px 16px;
+  background: #eef0f3;
+  color: #222;
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  padding: 24px;
 }
 
 h1 {
-    font-size: 24px;
-    font-weight: 600;
-    margin-bottom: 20px;
-    color: #111;
+  font-size: 1.2rem;
+  margin: 0 0 4px;
 }
 
-/* ===== New Thread Button ===== */
-.new-thread-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background-color: #4a154b;
-    color: #fff;
-    border: none;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    margin-bottom: 24px;
-    transition: background-color 0.15s ease;
+p.sub {
+  color: #666;
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: .85rem;
 }
 
-.new-thread-btn:hover {
-    background-color: #611f69;
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
-/* ===== Thread List ===== */
-#thread-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
+/* ---------- buttons ---------- */
+
+.btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 5px;
+  font-size: .85rem;
+  cursor: pointer;
 }
 
-.thread-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 18px;
-    border-bottom: 1px solid #eee;
-    transition: background-color 0.15s ease;
+.btn:hover { background: #1d4ed8; }
+
+.btn-secondary {
+  background: #fff;
+  color: #444;
+  border: 1px solid #ccc;
 }
 
-.thread-item:last-child {
-    border-bottom: none;
+.btn-secondary:hover { background: #f3f4f6; }
+
+/* ---------- table (view all) ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #dde1e6;
+  font-size: .82rem;
 }
 
-.thread-item:hover {
-    background-color: #fafafa;
+th {
+  background: #f7f8fa;
+  border-bottom: 1px solid #dde1e6;
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 600;
 }
 
-.thread-name {
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 4px 6px;
-    border-radius: 4px;
+td {
+  border-bottom: 1px solid #eef0f2;
+  padding: 8px 10px;
 }
 
-.thread-name:hover {
-    background-color: #f0f0f0;
+/* status badges — driven off the "status" field in projectPeople.js */
+.badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: .72rem;
+  font-weight: 600;
+}
+.badge.active    { background: #dcfce7; color: #166534; }
+.badge.pending   { background: #fef9c3; color: #854d0e; }
+.badge.completed { background: #e0e7ff; color: #3730a3; }
+
+/* ---------- row action icons ---------- */
+
+.icon {
+  cursor: pointer;
+  font-size: .9rem;
+  margin-right: 6px;
+  background: none;
+  border: none;
+}
+.icon.edit { color: #2563eb; }
+.icon.del  { color: #dc2626; }
+
+/* ---------- create / edit form + modal ---------- */
+
+.form-group {
+  margin-bottom: 14px;
 }
 
-.thread-name input {
-    font-size: 15px;
-    font-weight: 500;
-    font-family: inherit;
-    border: 1px solid #4a154b;
-    border-radius: 4px;
-    padding: 3px 6px;
+.form-group label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #444;
 }
 
-.trash-icon {
-    cursor: pointer;
-    opacity: 0.4;
-    font-size: 15px;
-    transition: opacity 0.15s ease;
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid #ccd0d6;
+  border-radius: 5px;
+  font-size: .85rem;
 }
 
-.trash-icon:hover {
-    opacity: 1;
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
 }
 
-/* ===== Modal ===== */
+.modal-overlay.open { display: flex; }
+
 .modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.45);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
+  background: #fff;
+  border-radius: 10px;
+  padding: 22px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
 }
 
-.modal-content {
-    background: #fff;
-    padding: 28px;
-    border-radius: 10px;
-    min-width: 340px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    position: relative;
+.modal h2 {
+  margin-top: 0;
+  font-size: 1rem;
 }
 
-.modal-content h2 {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 18px;
-}
-
-.modal-content label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    color: #555;
-    margin-bottom: 6px;
-}
-
-.modal-content input[type="text"] {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
-    margin-bottom: 18px;
-}
-
-.modal-content input[type="text"]:focus {
-    outline: none;
-    border-color: #4a154b;
-}
-
-.modal-content button[type="submit"] {
-    background-color: #4a154b;
-    color: #fff;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-.modal-content button[type="submit"]:hover {
-    background-color: #611f69;
-}
-
-.close-btn {
-    position: absolute;
-    top: 16px;
-    right: 18px;
-    cursor: pointer;
-    font-size: 20px;
-    color: #999;
-    line-height: 1;
-}
-
-.close-btn:hover {
-    color: #333;
-}
-
-.edit-input {
-    font-size: 15px;
-    font-weight: 500;
-    font-family: inherit;
-    border: 1px solid #4a154b;
-    border-radius: 4px;
-    padding: 3px 6px;
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
 }
