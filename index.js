@@ -74,59 +74,11 @@ app.use("/projects/",projectRouter)
 // ===== STATUSES (Issue #2) =====
 
 app.get("/statuses", (req, resp) => {
-    const statusMessagePrefix = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>All Statuses</title>
-        </head>
-        <body>
-            <h2>All existing project statuses are:</h2>
-            <a href="/status/new"><button>Add New</button></a>
-            <hr />
-    `;
-
-    const statusMessageSuffix = statuses
-        .map(status => {
-            return `
-                <div style="margin-bottom: 10px;">
-                    <strong>${status.id}:</strong> <a href="/status/${status.id}">${status.name}</a>
-                    <a href="/status/edit/${status.id}"><button>Edit</button></a>
-                    <form action="/status/delete/${status.id}" method="POST" style="display: inline;" onsubmit="return confirm('Delete status ${status.name}?')">
-                        <button type="submit">Delete</button>
-                    </form>
-                </div>
-            `;
-        })
-        .join("");
-
-    const statusMessage = statusMessagePrefix + statusMessageSuffix + "</body></html>";
-
-    resp.send(statusMessage);
+    resp.render("statuses/index", { statuses, title: "Statuses", activePage: "Statuses" });
 });
 
-app.get("/status/new", (req, res) => {
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Create Status</title>
-        </head>
-        <body>
-            <h2>Create a New Status</h2>
-            <form action="/status/new" method="POST">
-                <input type="text" placeholder="Status Name" name="status_name" required>
-                <input type="text" placeholder="Status Description" name="status_description" required>
-                <input type="number" placeholder="Status Order" name="status_order">
-                <input type="submit" value="Save">
-            </form>
-            <a href="/statuses">Back to all statuses</a>
-        </body>
-        </html>
-    `);
+app.get("/status/new", (req, resp) => {
+    resp.render("statuses/new", { title: "Statuses", activePage: "Statuses" });
 });
 
 app.post("/status/new", (req, resp) => {
@@ -159,26 +111,7 @@ app.get("/status/edit/:id", (req, resp) => {
         return resp.status(404).send(`Status with id ${statusId} not found`);
     }
 
-    resp.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Edit Status</title>
-        </head>
-        <body>
-            <h2>Edit Status: ${selectedStatus.name}</h2>
-            <form action="/status/edit/${selectedStatus.id}" method="POST">
-                <input type="text" value="${selectedStatus.name}" name="status_name" required>
-                <input type="text" value="${selectedStatus.description}" name="status_description" required>
-                <input type="number" value="${selectedStatus.order}" name="status_order" required>
-                <input type="submit" value="Update">
-            </form>
-            <a href="/statuses">Cancel</a>
-        </body>
-        </html>
-    `);
+    resp.render("statuses/edit", { status: selectedStatus, title: "Statuses", activePage: "Statuses" });
 });
 
 app.post("/status/edit/:id", (req, resp) => {
@@ -224,12 +157,7 @@ app.get("/status/:id", (req, resp) => {
         return resp.status(404).send(`Status with id ${statusId} not found`);
     }
 
-    resp.send(`
-        <h2>${selectedStatus.name}</h2>
-        <p>${selectedStatus.description}</p>
-        <p>Order: ${selectedStatus.order}</p>
-        <a href="/statuses">Back to all statuses</a>
-    `);
+    resp.render("statuses/show", { status: selectedStatus, title: "Statuses", activePage: "Statuses" });
 });
 
 

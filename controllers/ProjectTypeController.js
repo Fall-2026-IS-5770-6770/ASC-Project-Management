@@ -1,5 +1,5 @@
 const skills = require("../data/skills.js");
-const projectTypes = require("./data/projectTypes.js");
+const projectTypes = require("../data/projectTypes.js");
 
 // Get the create project type page
 function getCreatePage(req, res){

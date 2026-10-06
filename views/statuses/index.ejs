@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Head partial -->
+<%- include('../partials/head') %>
+
+    <body>
+        <div class="d-flex" id="wrapper">
+            <%- include('../partials/sidebar') %>
+
+                <!-- Page content wrapper-->
+                <div id="page-content-wrapper">
+                    <%- include('../partials/topNav') %>
+
+                        <!-- Page content-->
+                        <div class="container-fluid px-4 py-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h3 mb-0">Project Statuses</h2>
+                                <a href="/status/new" class="btn btn-primary btn-sm">Add New Status</a>
+                            </div>
+                            <hr />
+
+                            <% if (!statuses || statuses.length===0) { %>
+                                <div class="alert alert-info" role="alert">
+                                    No statuses found. Click "Add New Status" to create one.
+                                </div>
+                                <% } else { %>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-bordered align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 80px;">ID</th>
+                                                    <th>Name</th>
+                                                    <th>Description</th>
+                                                    <th style="width: 100px;">Order</th>
+                                                    <th style="width: 160px;" class="text-center">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% statuses.forEach(status=> { %>
+                                                    <tr>
+                                                        <td><strong>
+                                                                <%= status.id %>
+                                                            </strong></td>
+                                                        <td>
+                                                            <a href="/status/<%= status.id %>"
+                                                                class="text-decoration-none fw-semibold">
+                                                                <%= status.name %>
+                                                            </a>
+                                                        </td>
+                                                        <td>
+                                                            <%= status.description || '—' %>
+                                                        </td>
+                                                        <td>
+                                                            <%= status.order %>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="btn-group" role="group">
+                                                                <a href="/status/edit/<%= status.id %>"
+                                                                    class="btn btn-sm btn-outline-secondary">
+                                                                    Edit
+                                                                </a>
+                                                                <form action="/status/delete/<%= status.id %>"
+                                                                    method="POST" class="d-inline"
+                                                                    onsubmit="return confirm('Delete status <%= status.name %>?')">
+                                                                    <button type="submit"
+                                                                        class="btn btn-sm btn-outline-danger">
+                                                                        Delete
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <% }); %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <% } %>
+                        </div>
+                </div>
+        </div>
+
+        <!-- Page content footer -->
+        <%- include('../partials/footer') %>
+    </body>
+
+</html>
