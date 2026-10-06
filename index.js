@@ -1,8 +1,6 @@
 const express = require("express");
 const escapeHtml = require("ejs").escapeXML;
 
-const documents = require("./data/documents.js");
-
 const path = require("path");
 const projectSkills = require("./data/projectSkills");
 const projects = require("./data/projects");
@@ -17,6 +15,8 @@ const skills = require("./data/skills.js");
 const projectRouter = require("./routes/Projects.js")
 const projectTypeRouter = require("./routes/ProjectTypes.js")
 const projectStatusRouter = require("./routes/projectStatuses.js");
+
+const documentRouter = require("./routes/Documents.js");
 
 // required data for threads
 const threads = require("./data/threads");
@@ -133,6 +133,7 @@ app.post("/projects/people/:relationshipid/delete", (req, res) => {
 
 // ===== PROJECTS (Issue #1) =====
 app.use("/projects/",projectRouter)
+app.use("/documents", documentRouter);
 
 // ===== STATUSES (Issue #2) =====
 
@@ -1047,86 +1048,6 @@ app.get("/clients/:id", (req, res) => {
 
 // ===== PEOPLE (Issue #18) =====
 app.use("/people", peopleRouter);
-
-// ==================== DOCUMENTS ====================
-
-// View all documents
-app.get("/documents", (req, res) => {
-    console.log("DOCUMENTS ROUTE REACHED");
-    
-    const documentList = documents.map((document) => {
-        const project = projects.find((p) => p.id === document.projectId);
-        const uploader = people.find((p) => p.id === document.personId);
-
-        return {
-            ...document,
-            projectName: project ? project.name : "Unknown Project",
-            uploaderName: uploader
-                ? `${uploader.firstName} ${uploader.lastName}`
-                : "Unknown"
-        };
-    });
-
-    res.render("documents/index", {
-        documents: documentList,
-        projects,
-        people
-    });
-});
-
-// Add a document
-app.post("/documents/new", (req, res) => {
-    console.log("Document submitted:", req.body.name);
-    res.redirect("/documents");
-});
-
-// Edit document page
-app.get("/documents/edit/:id", (req, res) => {
-    const documentId = Number(req.params.id);
-    const document = documents.find((d) => d.id === documentId);
-
-    if (!document) {
-        return res.status(404).send("Document not found");
-    }
-
-    res.render("documents/edit", {
-        document,
-        projects,
-        people
-    });
-});
-
-// Submit document edits
-app.post("/documents/edit/:id", (req, res) => {
-    console.log("Edited document:", req.body.name);
-    res.redirect("/documents");
-});
-
-// Delete document
-app.post("/documents/delete/:id", (req, res) => {
-    const documentId = Number(req.params.id);
-    console.log("Delete document:", documentId);
-    res.redirect("/documents");
-});
-
-// View one document
-app.get("/documents/:id", (req, res) => {
-    const documentId = Number(req.params.id);
-    const document = documents.find((d) => d.id === documentId);
-
-    if (!document) {
-        return res.status(404).send("Document not found");
-    }
-
-    const project = projects.find((p) => p.id === document.projectId);
-    const uploader = people.find((p) => p.id === document.personId);
-
-    res.render("documents/show", {
-        document,
-        project,
-        uploader
-    });
-});
 
 // Start listening
 app.listen(PORT, () => {
