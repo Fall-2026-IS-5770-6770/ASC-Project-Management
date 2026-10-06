@@ -1,26 +1,14 @@
 
 const statuses = require("../data/statuses.js");
-const escapeHtml = require("ejs").escapeXML;
 
 // all statuses
 function getAllStatuses(req, res){
-    const list = statuses
-        .map(s => `<p>${escapeHtml(s.id)}: <a href="/status/${escapeHtml(s.id)}">${escapeHtml(s.name)}</a></p>`)
-        .join("");
-    res.send(`<h2>All statuses</h2><a href="/status/new">Add New</a>${list}`);
+    res.render("statuses/index", { statuses, title: "Statuses", activePage: "Statuses" });
 }
 
 // create status page
 function getNewStatusForm(req, res){
-    res.send(`
-        <h2>Create a status</h2>
-        <form action="/status/new" method="POST">
-            <input name="status_name" placeholder="Name" required>
-            <input name="status_description" placeholder="Description" required>
-            <input name="status_order" type="number" placeholder="Order">
-            <button>Save</button>
-        </form>
-    `);
+    res.render("statuses/new", { title: "Statuses", activePage: "Statuses" });
 }
 
 // save the new status 
@@ -51,15 +39,7 @@ function getEditStatusForm(req, res){
         return res.status(404).type("text/plain").send(`Status with id ${req.params.id} not found`);
     }
 
-    res.send(`
-        <h2>Edit status ${escapeHtml(status.id)}</h2>
-        <form action="/status/edit/${escapeHtml(status.id)}" method="POST">
-            <input name="status_name" value="${escapeHtml(status.name)}" required>
-            <input name="status_description" value="${escapeHtml(status.description)}" required>
-            <input name="status_order" type="number" value="${escapeHtml(status.order)}" required>
-            <button>Update</button>
-        </form>
-    `);
+    res.render("statuses/edit", { status, title: "Statuses", activePage: "Statuses" });
 }
 
 // save the edit form for one status
@@ -103,7 +83,7 @@ function getStatus(req, res){
         return res.status(404).type("text/plain").send(`Status with id ${req.params.id} not found`);
     }
 
-    res.send(`<h2>${escapeHtml(status.name)}</h2><p>${escapeHtml(status.description)}</p><p>Order: ${escapeHtml(status.order)}</p>`);
+    res.render("statuses/show", { status, title: "Statuses", activePage: "Statuses" });
 }
 
 module.exports = {getAllStatuses,getNewStatusForm,createStatus,getEditStatusForm,updateStatus,deleteStatus,getStatus}

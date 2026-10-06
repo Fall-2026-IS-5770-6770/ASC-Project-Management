@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Head partial -->
+<%- include('../partials/head') %>
+
+    <body>
+        <div class="d-flex" id="wrapper">
+            <%- include('../partials/sidebar') %>
+
+                <!-- Page content wrapper-->
+                <div id="page-content-wrapper">
+                    <%- include('../partials/topNav') %>
+
+                        <!-- Page content-->
+                    <div>
+                        <h2>Edit Status: <%= status.name %>
+                        </h2>
+                        <form action="/status/edit/<%= status.id %>" method="POST">
+                            <input type="text" value="<%= status.name %>" name="status_name" required>
+                            <input type="text" value="<%= status.description %>" name="status_description" required>
+                            <input type="number" value="<%= status.order %>" name="status_order" required>
+                            <input type="submit" value="Update">
+                        </form>
+                        <br>
+                        <a href="/statuses">Cancel</a>
+                    </div>
+                </div>
+        </div>
+
+        <!-- Page content footer -->
+        <%- include("../partials/footer") %>
+    </body>
+</html>
