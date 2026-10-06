@@ -30,6 +30,8 @@ const statusRouter = require("./routes/Status.js");
 
 const peopleProjectRouter = require("./routes/People-projects.js")
 
+const messageRouter = require("./routes/messages.js");
+
 const app = express();
 app.set("view engine", "ejs");
 const PORT = 3000;
@@ -137,6 +139,7 @@ app.post("/projects/people/:relationshipid/delete", (req, res) => {
 // ===== PROJECTS (Issue #1) =====
 app.use("/projects/",projectRouter)
 app.use("/documents", documentRouter);
+app.use("/messages", messageRouter);
 
 // ===== STATUSES (Issue #2) =====
 
@@ -512,36 +515,6 @@ app.get("/threads/:id", (req, res) => {
 
 
 // ===== MESSAGES (Issue #8) =====
-
-app.get("/messages/new", (req, res) => {
-    res.send("Send the create message page");
-});
-
-app.post("/messages/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new message");
-});
-
-app.get("/messages", (req, res) => {
-    res.send("View all messages");
-});
-
-app.get("/messages/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit message page for message ${escapeHtml(req.params.id)}`);
-});
-
-app.post("/messages/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`Saving edits to message ${escapeHtml(req.params.id)}`);
-});
-
-app.post("/messages/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleting message ${escapeHtml(req.params.id)}`);
-});
-
-app.get("/messages/:id", (req, res) => {
-    res.type("text/plain").send(`View message ${escapeHtml(req.params.id)}`);
-});
 
 
 // ===== REQUIREMENTS (Issue #9) =====
