@@ -37,6 +37,8 @@ const projectSkillsRouter = require("./routes/projectSkills.js");
 
 const mentorRouter = require('./routes/Mentors.js')
 
+const skillRouter = require("./routes/Skills.js")
+
 const app = express();
 app.set("view engine", "ejs");
 const PORT = 3000;
@@ -145,6 +147,9 @@ app.post("/projects/people/:relationshipid/delete", (req, res) => {
 app.use("/projects/",projectRouter)
 app.use("/documents", documentRouter);
 app.use("/messages", messageRouter);
+
+// ===== SKILLS (Issue #66) =====
+app.use("/skills/", skillRouter)
 
 // ===== STATUSES (Issue #2) =====
 
@@ -328,47 +333,7 @@ categories.forEach((category) => {
 //const skill = skills.find((s) => s.id === Number(req.params.id));
 
 
-// CREATE
-// Get the create skill page
-app.get("/skills/new",(req,res)=>{
-    res.render("skills/index.ejs", {mode: "new"});
-    //res.send("Send the create skill page");
-});
 
-// Save the new skill from the create form
-app.post("/skills/new",(req,res)=>{
-    //res.send("Save the new skill");
-    res.redirect("/skills");
-});
-
-
-// READ
-// Get all skills
-app.get("/skills",(req,res)=>{
-    res.render("skills/index.ejs", {mode: "list", skills });
-});
-
-// Get one skill by id
-app.get("/skills/:id",(req,res)=>{
-    const skill = skills.find((s) => s.id === Number(req.params.id));
-    if (!skill) return res.status(404).send("Skill not found");
-    res.render("skills/index.ejs", {mode: "show", skill });
-});
-
-
-// UPDATE
-// Get the edit page for one skill
-app.get("/skills/:id/edit", (req,res)=>{
-    const skill = skills.find((s) => s.id === Number(req.params.id));
-    if (!skill) return res.status(404).send("Skill not found");
-    res.render("skills/index.ejs", {mode: "edit", skill });
-});
-
-// Save the edit form for one skill
-app.post("/skills/:id/edit",(req,res)=>{
-    //res.send(`Save the edits to skill ${req.params.id}`);
-    res.redirect(`/skills/${req.params.id}`);
-});
 
 
 // ---------- CHANNELS ----------
@@ -404,13 +369,6 @@ app.post("/channels/:id/edit",(req,res)=>{
 app.post("/channels/:id/delete",(req,res)=>{
     console.log("Delete channel:", req.params.id);
     res.redirect("/channels");
-});
-
-//DELETE
-// Save the delete form for one skill
-app.post("/skills/:id/delete",(req,res)=>{
-    //res.send(`Delete skill ${req.params.id}`);
-    res.redirect("/skills")
 });
 
 
