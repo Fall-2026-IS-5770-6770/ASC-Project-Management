@@ -2,11 +2,8 @@ const express = require("express");
 const escapeHtml = require("ejs").escapeXML;
 
 const path = require("path");
-const projectSkills = require("./data/projectSkills");
 const projects = require("./data/projects");
 const projectPeople = require("./data/projectPeople");
-
-const mainBoardStatuses = require("./data/mainBoardStatuses.js");
 
 const students = require("./data/students.js");
 const skills = require("./data/skills.js");
@@ -21,6 +18,10 @@ const studentsRouter = require("./routes/Students.js")
 
 const requirementRouter = require("./routes/Requirements.js")
 
+const channelRouter = require("./routes/CommunicationChannels.js")
+
+const mainBoardStatusRouter = require("./routes/MainBoardStatuses.js")
+
 // required data for threads
 const threads = require("./data/threads");
 
@@ -29,6 +30,14 @@ const peopleRouter = require("./routes/People.js");
 const statusRouter = require("./routes/Status.js");
 
 const peopleProjectRouter = require("./routes/People-projects.js")
+
+const messageRouter = require("./routes/messages.js");
+
+const projectSkillsRouter = require("./routes/projectSkills.js");
+
+const mentorRouter = require('./routes/Mentors.js')
+
+const skillRouter = require("./routes/Skills.js")
 
 const app = express();
 app.set("view engine", "ejs");
@@ -137,6 +146,10 @@ app.post("/projects/people/:relationshipid/delete", (req, res) => {
 // ===== PROJECTS (Issue #1) =====
 app.use("/projects/",projectRouter)
 app.use("/documents", documentRouter);
+app.use("/messages", messageRouter);
+
+// ===== SKILLS (Issue #66) =====
+app.use("/skills/", skillRouter)
 
 // ===== STATUSES (Issue #2) =====
 
@@ -145,42 +158,8 @@ app.use("/", statusRouter);
 
 // ===== MAIN BOARD STATUSES =====
 
-const mainBoardStatusRoutes = ["/main-board/statuses", "/main-board-statuses"];
-
-app.get(mainBoardStatusRoutes, (req, res) => {
-    const orderedStatuses = [...mainBoardStatuses].sort((firstStatus, secondStatus) => firstStatus.order - secondStatus.order);
-    res.render("main-board-statuses/index", { statuses: orderedStatuses });
-});
-
-app.get(["/main-board/statuses/new", "/main-board-statuses/new"], (req, res) => {
-    res.redirect("/main-board/statuses");
-});
-
-app.post(["/main-board/statuses/new", "/main-board-statuses/new"], (req, res) => {
-    console.log("Main board status create request:", req.body);
-    res.redirect("/main-board/statuses");
-});
-
-app.get(["/main-board/statuses/edit/:id", "/main-board-statuses/edit/:id"], (req, res) => {
-    const statusId = Number(req.params.id);
-    const status = mainBoardStatuses.find(mainBoardStatus => mainBoardStatus.id === statusId);
-
-    if (!status) {
-        return res.status(404).type("text/plain").send(`Main board status with id ${statusId} not found`);
-    }
-
-    res.render("main-board-statuses/edit", { status });
-});
-
-app.post(["/main-board/statuses/edit/:id", "/main-board-statuses/edit/:id"], (req, res) => {
-    console.log("Main board status edit request for", req.params.id, req.body);
-    res.redirect("/main-board/statuses");
-});
-
-app.post(["/main-board/statuses/delete/:id", "/main-board-statuses/delete/:id"], (req, res) => {
-    console.log("Main board status delete request for", req.params.id);
-    res.redirect("/main-board/statuses");
-});
+// ===== MAIN BOARD STATUSES (Issue #23 pages, Issue #61 controller) =====
+app.use(["/main-board/statuses", "/main-board-statuses"], mainBoardStatusRouter);
 
 
 // ===== PROJECT STATUSES (Issue #3) =====
@@ -227,195 +206,7 @@ app.use("/projects/:projectid/people", peopleProjectRouter);
 
 // ===== MENTORS (Issue #4) =====
 
-app.get("/mentors/new", (req, res) => {
-    const people = require("./data/people");
-    const projectTypes = require("./data/projectTypes")
-
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Mentors</title>
-        </head>
-
-        <body>
-
-            <h1>Mentors</h1>
-
-            <h2>Create a New Mentor</h2>
-
-            <form action="/mentors/new" method="POST">
-
-                <label for="personId">Person:</label>
-
-                <select name="personId" id="personId" required>
-
-                    <option value="">Select a person</option>
-
-                    ${people.map(person => `
-                        <option value="${person.id}">
-                            ${person.firstName} ${person.lastName}
-                        </option>
-                    `).join("")}
-
-                </select>
-
-                <br><br>
-
-                <label for="department">Department:</label>
-                <input
-                    type="text"
-                    name="department"
-                    placeholder="Mentor Department"
-                >
-
-                <br><br>
-
-                <label for="availability">Availability:</label>
-                <input
-                    type="text"
-                    name="availability"
-                    placeholder="Days and Times available"
-                >
-
-                <br><br>
-
-                <label for="maxProjectLoad">Max Project Load:</label>
-                <input
-                    type="number" 
-                    name="maxProjectLoad"
-                >
-
-                <br><br>
-
-                <label for="preferredProjectTypeId">Preferred Project Type:</label>
-
-                <select name="preferredProjectTypeId" id="preferredProjectTypeId" required>
-
-                    <option value="">Preferred Project Type</option>
-
-                    ${projectTypes.map(project => `
-                        <option value="${project.id}">
-                            ${project.name}
-                        </option>
-                    `)}
-
-                </select>
-
-                <input type="submit" value="Create Mentor">
-
-            </form>
-
-            <hr>
-
-        </body>
-        </html>
-    `);
-});
-
-app.post("/mentors/new", (req, res) => {
-    //console.log(req.body);
-    //res.send("Saving a new mentor");
-    const mentors = require("../data/mentors");
-
-    const newMentor = {
-        id: mentors.length + 1,
-        personId: Number(req.body.personId),
-        department: req.body.department,
-        availability: req.body.availability,
-        maxProjectLoad: Number(req.body.maxProjectLoad),
-        preferredProjectTypeId: req.body.preferredProjectTypeId,
-        skillIds: []
-    };
-
-    mentors.push(newMentor);
-
-    res.redirect("/mentors");
-});
-
-app.get("/mentors", (req, res) => {
-
-    const mentors = require("./data/mentors");
-    const people = require("./data/people");
-    const skills = require("./data/skills");
-
-    const mentorData = mentors.map((mentor) => {
-        const person = people.find((p) => p.id === mentor.personId);
-
-        const mentorSkills = mentor.skillIds.map((id) =>
-            skills.find((s) => s.id === id)
-        );
-
-        return {
-            mentor,
-            person,
-            skills: mentorSkills
-        };
-    });
-    res.render("mentors/index.ejs", { mentorData });
-
-});
-
-app.get("/mentors/edit/:id", (req, res) => {
-    const mentors = require("./data/mentors");
-    //res.send(`Edit mentor page for mentor ${req.params.id}`);
-    const mentorId = Number(req.params.id);
-    const selectedMentor = mentors.find(status => status.id === mentorId);
-
-    if (!selectedMentor) {
-        return res.status(404).send(`Status with id ${mentorId} not found`);
-    }
-
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Edit Status</title>
-        </head>
-        <body>
-            <h2>Edit Mentor: ${selectedMentor.id}</h2>
-            <form action="/mentors/edit/${selectedMentor.id}" method="POST">
-                <input type="text" value="${selectedMentor.department}" name="mentor_deparment" required>
-                <input type="text" value="${selectedMentor.availability}" name="mentor_availability" required>
-                <input type="number" value="${selectedMentor.maxProjectLoad}" name="mentor_project_load" required>
-                <input type="submit" value="Update">
-            </form>
-            <a href="/mentors">Cancel</a>
-        </body>
-        </html>
-    `);
-});
-
-app.post("/mentors/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`Saving an edit on mentor ${escapeHtml(req.params.id)}`);
-});
-
-app.post("/mentors/delete/:id", (req, res) => {
-    //res.send(`Deleting mentor ${req.params.id}`);
-    const mentors = require("./data/mentors");
-
-    const mentorId = Number(req.params.id);
-
-    const index = mentors.findIndex(
-        (mentor) => mentor.id === mentorId
-    );
-
-    if (index !== -1) {
-        mentors.splice(index, 1);
-    }
-
-    res.redirect("/mentors");
-});
-
-app.get("/mentors/:id", (req, res) => {
-    res.type("text/plain").send(`Getting mentor ${escapeHtml(req.params.id)}`);
-});
-
+app.use("/mentors",mentorRouter)
 
 // ===== STUDENTS (Issue #5, pages for Issue #26) =====
 
@@ -424,42 +215,7 @@ app.use("/students/", studentsRouter);
 
 // ===== COMMUNICATION CHANNELS (Issue #6) =====
 
-// View all communication channels
-app.get("/channels/all", (req, res) => {
-    res.send("Viewing all channels");
-});
-
-// Create a new communication channel
-app.get("/channels/new", (req, res) => {
-    res.send("Send the create channel page");
-});
-
-// Save a new communication channel
-app.post("/channels/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new channel");
-});
-
-// Edit a specific communication channel
-app.get("/channels/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit specific channel with ID: ${escapeHtml(req.params.id)}`);
-});
-
-// Save the edited communication channel
-app.post("/channels/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`Saving the edited channel ${escapeHtml(req.params.id)}`);
-});
-
-// Delete a specific communication channel
-app.post("/channels/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleting channel ${escapeHtml(req.params.id)}`);
-});
-
-// View a specific communication channel
-app.get("/channels/:id", (req, res) => {
-    res.type("text/plain").send(`Viewing channel with ID: ${escapeHtml(req.params.id)}`);
-});
+app.use("/channels", channelRouter);
 
 
 // ===== THREADS (Issue #7) =====
@@ -513,79 +269,15 @@ app.get("/threads/:id", (req, res) => {
 
 // ===== MESSAGES (Issue #8) =====
 
-app.get("/messages/new", (req, res) => {
-    res.send("Send the create message page");
-});
-
-app.post("/messages/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new message");
-});
-
-app.get("/messages", (req, res) => {
-    res.send("View all messages");
-});
-
-app.get("/messages/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit message page for message ${escapeHtml(req.params.id)}`);
-});
-
-app.post("/messages/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`Saving edits to message ${escapeHtml(req.params.id)}`);
-});
-
-app.post("/messages/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleting message ${escapeHtml(req.params.id)}`);
-});
-
-app.get("/messages/:id", (req, res) => {
-    res.type("text/plain").send(`View message ${escapeHtml(req.params.id)}`);
-});
-
 
 // ===== REQUIREMENTS (Issue #9) =====
 app.use("/requirements", requirementRouter);
 
+// ===== PROJECT SKILLS (Issue #29 pages, Issue #67 controller) =====
+app.use("/project-skills", projectSkillsRouter);
+
 // ===== PROJECT SKILLS EJS RENDERED (Issue #29) =====
 
-app.get("/project-skills", (req, res) => {
-    const enrichedProjectSkills = projectSkills.map(ps => {
-        const project = projects.find(p => p.id === Number(ps.projectId));
-        const skill = skills.find(s => s.id === Number(ps.skillId));
-        return {
-            ...ps,
-            projectName: project ? project.name : "Unknown Project",
-            skillName: skill ? skill.name : "Unknown Skill"
-        };
-    })
-    .sort((a, b) => {
-        // Primary sort: Compare Project IDs (Least to Greatest)
-        if (a.projectId !== b.projectId) {
-            return a.projectId - b.projectId;
-        }
-        // Secondary sort: If Project IDs are the same, compare Skill IDs (Least to Greatest)
-        return a.skillId - b.skillId;
-    });
-    
-    res.render("project-skills/index.ejs", { projectSkills: enrichedProjectSkills });
-});
-
-
-app.get("/project-skills/new", (req, res) => {
-    res.render("project-skills/create.ejs", { projects, skills })
-})
-
-app.get("/project-skills/:id", (req, res) => {
-    let ps = projectSkills.find(row => row.id === Number(req.params.id));
-    ps["projectName"] = projects.find(row => row.id === Number(ps.projectId)).name
-    ps["skillName"] = skills.find(row => row.id === Number(ps.skillId)).name
-    if (!ps) return res.status(404).send("Not found");
-    
-    res.render("project-skills/show.ejs", { 
-        projectSkill: ps
-    });
-});
 
 
 //---------------------------------TASK 28: The ASC needs pages to manage skills---------------------------------
@@ -607,47 +299,7 @@ categories.forEach((category) => {
 //const skill = skills.find((s) => s.id === Number(req.params.id));
 
 
-// CREATE
-// Get the create skill page
-app.get("/skills/new",(req,res)=>{
-    res.render("skills/index.ejs", {mode: "new"});
-    //res.send("Send the create skill page");
-});
 
-// Save the new skill from the create form
-app.post("/skills/new",(req,res)=>{
-    //res.send("Save the new skill");
-    res.redirect("/skills");
-});
-
-
-// READ
-// Get all skills
-app.get("/skills",(req,res)=>{
-    res.render("skills/index.ejs", {mode: "list", skills });
-});
-
-// Get one skill by id
-app.get("/skills/:id",(req,res)=>{
-    const skill = skills.find((s) => s.id === Number(req.params.id));
-    if (!skill) return res.status(404).send("Skill not found");
-    res.render("skills/index.ejs", {mode: "show", skill });
-});
-
-
-// UPDATE
-// Get the edit page for one skill
-app.get("/skills/:id/edit", (req,res)=>{
-    const skill = skills.find((s) => s.id === Number(req.params.id));
-    if (!skill) return res.status(404).send("Skill not found");
-    res.render("skills/index.ejs", {mode: "edit", skill });
-});
-
-// Save the edit form for one skill
-app.post("/skills/:id/edit",(req,res)=>{
-    //res.send(`Save the edits to skill ${req.params.id}`);
-    res.redirect(`/skills/${req.params.id}`);
-});
 
 
 // ---------- CHANNELS ----------
@@ -685,74 +337,7 @@ app.post("/channels/:id/delete",(req,res)=>{
     res.redirect("/channels");
 });
 
-//DELETE
-// Save the delete form for one skill
-app.post("/skills/:id/delete",(req,res)=>{
-    //res.send(`Delete skill ${req.params.id}`);
-    res.redirect("/skills")
-});
 
-
-
-app.post("/project-skills", (req, res) => {
-    console.log("Adding new project skill:", req.body);
-    const nextProjectSkillId = projectSkills.length > 0 
-        ? Math.max(...projectSkills.map(ps => ps.id)) + 1 
-        : 1;
-    const newProjectSkill = {
-        id: nextProjectSkillId,
-        projectId: Number(req.body.projectId),
-        skillId: Number(req.body.skillId),
-        importance: req.body.importance,
-        minimumProficiency: req.body.minimumProficiency
-    };
-
-    projectSkills.push(newProjectSkill);
-    res.redirect("/project-skills");
-    res.redirect("/project-skills");
-});
-
-app.get("/project-skills/edit/:id", (req, res) => {
-    const ps = projectSkills.find(row => row.id === Number(req.params.id));
-    if (!ps) return res.status(404).send("Not found");
-    
-    res.render("project-skills/edit.ejs", { 
-        projectSkill: ps, 
-        projects, 
-        skills 
-    });
-});
-
-app.post("/project-skills/edit/:id", (req, res) => {
-    console.log("Editing project skill", req.params.id, req.body);
-
-    const idToEdit = Number(req.params.id);
-    const skillIndex = projectSkills.findIndex(row => row.id === idToEdit);
-
-    if (skillIndex !== -1) {
-        // 2. Update its properties
-        projectSkills[skillIndex].projectId = Number(req.body.projectId);
-        projectSkills[skillIndex].skillId = Number(req.body.skillId);
-        projectSkills[skillIndex].importance = req.body.importance;
-        projectSkills[skillIndex].minimumProficiency = req.body.minimumProficiency;
-    }
-
-    res.redirect("/project-skills");
-});
-
-app.post("/project-skills/delete/:id", (req, res) => {
-    console.log(`Deleting project skill ${req.params.id}`);
-    const idToDelete = Number(req.params.id);
-
-    const skillIndex = projectSkills.findIndex(row => row.id === idToDelete);
-
-    if (skillIndex !== -1) {
-        // 2. Use splice to remove 1 item at that index
-        projectSkills.splice(skillIndex, 1);
-    }
-
-    res.redirect("/project-skills");
-});
 
 // ===== PERSON SKILLS (Issue #13) =====
 
