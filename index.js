@@ -20,6 +20,8 @@ const studentsRouter = require("./routes/Students.js")
 
 const requirementRouter = require("./routes/Requirements.js")
 
+const channelRouter = require("./routes/CommunicationChannels.js")
+
 // required data for threads
 const threads = require("./data/threads");
 
@@ -242,42 +244,7 @@ app.use("/students/", studentsRouter);
 
 // ===== COMMUNICATION CHANNELS (Issue #6) =====
 
-// View all communication channels
-app.get("/channels/all", (req, res) => {
-    res.send("Viewing all channels");
-});
-
-// Create a new communication channel
-app.get("/channels/new", (req, res) => {
-    res.send("Send the create channel page");
-});
-
-// Save a new communication channel
-app.post("/channels/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new channel");
-});
-
-// Edit a specific communication channel
-app.get("/channels/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit specific channel with ID: ${escapeHtml(req.params.id)}`);
-});
-
-// Save the edited communication channel
-app.post("/channels/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`Saving the edited channel ${escapeHtml(req.params.id)}`);
-});
-
-// Delete a specific communication channel
-app.post("/channels/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleting channel ${escapeHtml(req.params.id)}`);
-});
-
-// View a specific communication channel
-app.get("/channels/:id", (req, res) => {
-    res.type("text/plain").send(`Viewing channel with ID: ${escapeHtml(req.params.id)}`);
-});
+app.use("/channels", channelRouter);
 
 
 // ===== THREADS (Issue #7) =====
