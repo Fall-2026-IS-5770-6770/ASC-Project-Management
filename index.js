@@ -1191,7 +1191,7 @@ app.get("/person-skill/:id", (req, res) => {
 
 // ===== PROJECT TYPES (Issue #14) =====
 
-app.use("project-types",projectTypeRouter)
+app.use("/project-types",projectTypeRouter)
 
 // ===== CLIENTS (Issue #16) =====
 
