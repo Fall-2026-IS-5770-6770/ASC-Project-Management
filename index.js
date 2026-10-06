@@ -16,6 +16,7 @@ const skills = require("./data/skills.js");
 
 const projectRouter = require("./routes/Projects.js")
 const projectTypeRouter = require("./routes/ProjectTypes.js")
+const projectStatusRouter = require("./routes/projectStatuses.js");
 
 // required data for threads
 const threads = require("./data/threads");
@@ -318,6 +319,7 @@ app.post("/projects/:projectid/statuses/delete/:id", (req, res) => {
     res.type("text/plain").send(`Removed status association ${escapeHtml(req.params.id)} from project ${escapeHtml(req.params.projectid)}`);
 });
 
+app.use("/project-status", projectStatusRouter);
 
 // ===== PROJECT PEOPLE (Issue #12) =====
 // Associates people (mentors and students) with a specific project
