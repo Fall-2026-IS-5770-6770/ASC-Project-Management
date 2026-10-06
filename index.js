@@ -25,6 +25,8 @@ const peopleRouter = require("./routes/People.js");
 
 const statusRouter = require("./routes/Status.js");
 
+const peopleProjectRouter = require("./routes/People-projects.js")
+
 const app = express();
 app.set("view engine", "ejs");
 const PORT = 3000;
@@ -216,43 +218,7 @@ app.use("/project-status", projectStatusRouter);
 
 // ===== PROJECT PEOPLE (Issue #12) =====
 // Associates people (mentors and students) with a specific project
-
-// View all people associated with a project
-app.get("/projects/:projectid/people", (req, res) => {
-    res.type("text/plain").send(`Show all people associated with project ${escapeHtml(req.params.projectid)}`);
-});
-
-// Form to create a relationship
-app.get("/projects/:projectid/people/new", (req, res) => {
-    res.type("text/plain").send(`Show the form for adding a person to project ${escapeHtml(req.params.projectid)}`);
-});
-
-// Save new relationship
-app.post("/projects/:projectid/people/new", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`Saved a new relationship between a person and project ${escapeHtml(req.params.projectid)}`);
-});
-
-// Form to edit a relationship
-app.get("/projects/:projectid/people/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Show the form for editing relationship ${escapeHtml(req.params.id)} on project ${escapeHtml(req.params.projectid)}`);
-});
-
-// Save edited relationship
-app.post("/projects/:projectid/people/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`Saved edits to relationship ${escapeHtml(req.params.id)} on project ${escapeHtml(req.params.projectid)}`);
-});
-
-// Delete a relationship
-app.post("/projects/:projectid/people/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleted relationship ${escapeHtml(req.params.id)} from project ${escapeHtml(req.params.projectid)}`);
-});
-
-// View a specific relationship
-app.get("/projects/:projectid/people/:id", (req, res) => {
-    res.type("text/plain").send(`Show relationship ${escapeHtml(req.params.id)} between a person and project ${escapeHtml(req.params.projectid)}`);
-});
+app.use("/projects/:projectid/people", peopleProjectRouter);
 
 
 // ===== MENTORS (Issue #4) =====
