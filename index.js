@@ -1010,7 +1010,7 @@ app.get("/channels/:id/edit",(req,res)=>{
 
 // UPDATE: edit form submits here
 app.post("/channels/:id/edit",(req,res)=>{
-    console.log(`Edit channel ${req.params.id}, new name:`, req.body.name);
+    console.log("Edit channel", req.params.id, "new name:", req.body.name);
     res.redirect(`/channels/${req.params.id}`);
 });
 
