@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+    <%- include('../partials/head') %>
+    <body>
+        <div class="d-flex" id="wrapper">
+            <%- include('../partials/sidebar') %>
+            <!-- Page content wrapper-->
+            <div id="page-content-wrapper">
+                <%- include('../partials/topNav') %>
+                <!-- Page content-->
+                <div class="container-fluid" style="max-width: 900px;">
+                    <a href="/projects" class="d-inline-block mt-3"><i class="bi bi-arrow-left"></i> Back to main board</a>
+                    <div class="d-flex align-items-start justify-content-between mt-2">
+                        <div>
+                            <h1 class="mb-1"><%= project.name %></h1>
+                            <span class="badge bg-primary"><%= status ? status.name : 'No status' %></span>
+                        </div>
+                        <div class="text-nowrap">
+                            <a class="btn btn-outline-secondary" href="/projects/edit/<%= project.id %>" aria-label="Edit project">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form class="d-inline" action="/projects/delete/<%= project.id %>" method="POST" onsubmit="return confirm('Delete this project?')">
+                                <button class="btn btn-outline-danger" type="submit" aria-label="Delete project">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <p class="mt-3"><%= project.description %></p>
+
+                    <dl class="row">
+                        <dt class="col-sm-3">Client</dt>
+                        <dd class="col-sm-9"><%= client ? client.name : 'No client' %></dd>
+                        <dt class="col-sm-3">Project manager</dt>
+                        <dd class="col-sm-9"><%= managerName %></dd>
+                        <dt class="col-sm-3">Dates</dt>
+                        <dd class="col-sm-9"><%= project.startDate %> &rarr; <%= project.midpointDate %> (midpoint) &rarr; <%= project.endDate %></dd>
+                        <dt class="col-sm-3">Budget</dt>
+                        <dd class="col-sm-9">$<%= project.budget.toLocaleString() %></dd>
+                        <dt class="col-sm-3">Estimated hours</dt>
+                        <dd class="col-sm-9"><%= project.estimatedHours %></dd>
+                        <dt class="col-sm-3">Notes</dt>
+                        <dd class="col-sm-9"><%= project.notes %></dd>
+                    </dl>
+
+                    <h2 class="h4 mt-4">Team</h2>
+                    <% if (team.length === 0) { %>
+                        <p class="text-muted">No one is assigned to this project yet.</p>
+                    <% } else { %>
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Hours</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% team.forEach((member) => { %>
+                                    <tr>
+                                        <td><%= member.name %></td>
+                                        <td><%= member.role %></td>
+                                        <td><%= member.assignedHours %></td>
+                                        <td><%= member.status %></td>
+                                    </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+        <%- include('../partials/scripts') %>
+    </body>
+</html>

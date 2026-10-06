@@ -1,0 +1,61 @@
+<%# Shared fields for the create modal and the edit page. Pass project = {} when creating. %>
+<div class="row g-3">
+    <div class="col-12">
+        <label class="form-label" for="name">Name</label>
+        <input class="form-control" id="name" name="name" value="<%= project.name ?? '' %>" required />
+    </div>
+    <div class="col-12">
+        <label class="form-label" for="description">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3"><%= project.description ?? '' %></textarea>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label" for="clientId">Client</label>
+        <select class="form-select" id="clientId" name="clientId" required>
+            <% clients.forEach((client) => { %>
+                <option value="<%= client.id %>" <%= project.clientId === client.id ? 'selected' : '' %>><%= client.name %></option>
+            <% }) %>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label" for="projectManagerId">Project manager</label>
+        <select class="form-select" id="projectManagerId" name="projectManagerId" required>
+            <% managers.forEach((manager) => { %>
+                <option value="<%= manager.personId %>" <%= project.projectManagerId === manager.personId ? 'selected' : '' %>><%= manager.name %></option>
+            <% }) %>
+        </select>
+    </div>
+    <% if (locals.includeStatus) { %>
+        <div class="col-md-6">
+            <label class="form-label" for="mainBoardStatusId">Status</label>
+            <select class="form-select" id="mainBoardStatusId" name="mainBoardStatusId" required>
+                <% statuses.forEach((status) => { %>
+                    <option value="<%= status.id %>" <%= project.mainBoardStatusId === status.id ? 'selected' : '' %>><%= status.name %></option>
+                <% }) %>
+            </select>
+        </div>
+    <% } %>
+    <div class="col-md-4">
+        <label class="form-label" for="startDate">Start date</label>
+        <input class="form-control" id="startDate" name="startDate" type="date" value="<%= project.startDate ?? '' %>" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label" for="midpointDate">Midpoint date</label>
+        <input class="form-control" id="midpointDate" name="midpointDate" type="date" value="<%= project.midpointDate ?? '' %>" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label" for="endDate">End date</label>
+        <input class="form-control" id="endDate" name="endDate" type="date" value="<%= project.endDate ?? '' %>" />
+    </div>
+    <div class="col-md-6">
+        <label class="form-label" for="budget">Budget ($)</label>
+        <input class="form-control" id="budget" name="budget" type="number" min="0" value="<%= project.budget ?? '' %>" />
+    </div>
+    <div class="col-md-6">
+        <label class="form-label" for="estimatedHours">Estimated hours</label>
+        <input class="form-control" id="estimatedHours" name="estimatedHours" type="number" min="0" value="<%= project.estimatedHours ?? '' %>" />
+    </div>
+    <div class="col-12">
+        <label class="form-label" for="notes">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="2"><%= project.notes ?? '' %></textarea>
+    </div>
+</div>
