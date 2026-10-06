@@ -13,7 +13,7 @@ const skills = require("./data/skills.js");
 
 const projectRouter = require("./routes/Projects.js")
 const projectTypeRouter = require("./routes/ProjectTypes.js")
-const projectStatusRouter = require("./routes/projectStatuses.js");
+const projectStatusRouter = require("./routes/ProjectStatuses.js");
 
 const documentRouter = require("./routes/Documents.js");
 
