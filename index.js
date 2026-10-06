@@ -7,6 +7,7 @@ const documents = require("./data/documents.js");
 const path = require("path");
 const projectSkills = require("./data/projectSkills");
 const projects = require("./data/projects");
+const projectPeople = require("./data/projectPeople");
 
 const mainBoardStatuses = require("./data/mainBoardStatuses.js");
 
@@ -78,6 +79,52 @@ app.use(express.static('public'))
 //   GET  /thing/edit/:id    -> edit form         POST /thing/edit/:id    -> save edit
 //                                                POST /thing/delete/:id  -> delete (confirmed on the frontend)
 // Static paths (new, edit, all) must be registered before /:id so they aren't shadowed.
+
+// ===== PROJECT PEOPLE ASSOCIATIONS =====
+app.get("/projects/people", (req, res) => {
+    res.render("people-projects/index.ejs", {
+        rows: projectPeople,
+        people,
+        projects
+    });
+});
+
+app.post("/projects/people", (req, res) => {
+    console.log("Attempted relationship creation");
+    res.redirect("/projects/people/");
+});
+
+app.get("/projects/people/:relationshipid", (req, res) => {
+    const rows = projectPeople.find((pp) => pp.id === Number(req.params.relationshipid));
+    const person = people.find((ps) => ps.id === rows.personId);
+    const project = projects.find((pr) => pr.id === rows.projectId);
+
+    res.render("single-person-project/index.ejs", {
+        rows,
+        person,
+        project
+    });
+});
+
+app.get("/projects/people/:relationshipid/edit", (req, res) => {
+    const row = projectPeople.find((pp) => pp.id === Number(req.params.relationshipid));
+
+    res.render("edit-ppl-project/index.ejs", {
+        row,
+        people,
+        projects
+    });
+});
+
+app.post("/projects/people/:relationshipid", (req, res) => {
+    console.log("Attempted edit for relationship", req.params.relationshipid, ":", req.body.role, "| Project", req.body.projectId, "| Person", req.body.personId);
+    res.redirect("/projects/people/" + req.params.relationshipid);
+});
+
+app.post("/projects/people/:relationshipid/delete", (req, res) => {
+    console.log("Attempted deletion for relationship", req.params.relationshipid);
+    res.redirect("/projects/people/");
+});
 
 // ===== PROJECTS (Issue #1) =====
 app.use("/projects/",projectRouter)

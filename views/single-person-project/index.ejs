@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Single Project Person Association</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="page">
+
+  <div class="toolbar">
+    <div>
+      <h1>Single Project Person Association</h1>
+      <p class="sub"><%=person.firstName%> <%=person.lastName%> | <%=project.name%></p>
+    </div>
+    <!--
+      This button just opens the modal below.
+      In your EJS this stays exactly as-is — no *% %> needed here.
+    -->
+    <a class="btn" href="/projects/people">Back</a>
+  </div>
+
+  <table>
+    <tr>
+      <th>Person</th>
+      <th>Project</th>
+      <th>Role</th>
+      <th>Status</th>
+      <th>Start Date</th>
+      <th>End Date</th>
+      <th>Assigned Hours</th>
+      <th></th>
+    </tr>
+
+    <!--
+      ROW BELOW IS ONE STATIC EXAMPLE ROW.
+      In your EJS view, this <tr> is what you loop with *% rows.forEach(row => { %> ... *% }) %>
+      Everywhere you see plain text here (project name, person name, role) becomes *%= %>
+    -->
+    <tr>
+        <td><%=person.firstName%> <%=person.lastName%></td>
+        <td><%=project.name%></td>
+        <td><%=rows.role%></td>
+        <td><span class="badge active"><%=rows.status%></span></td>
+        <td><%=rows.startDate%></td>
+        <td><%=rows.endDate%></td>
+        <td><%=rows.assignedHours%></td>
+        <td>
+            <!-- pencil = plain link styled as an icon, NOT a form -->
+            <a class="icon edit" href="/projects/people/<%=rows.id%>/edit">✏️</a>
+
+            <!-- trash = its own tiny form, intercepted by main.js before it submits -->
+            <form action="/projects/people/<%=rows.id%>/delete" method="POST" class="delete-form" style="display:inline;">
+            <button type="submit" class="icon del">🗑️</button>
+            </form>
+        </td>
+    </tr>
+  </table>
+
+<script src="/js/main.js"></script>
+</body>
+</html>
