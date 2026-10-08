@@ -21,6 +21,8 @@ const channelRouter = require("./routes/CommunicationChannels.js")
 
 const mainBoardStatusRouter = require("./routes/MainBoardStatuses.js")
 
+const clientsRouter = require("./routes/clients.js");
+
 // required data for threads
 const threads = require("./data/threads");
 
@@ -443,44 +445,7 @@ app.get("/person-skill/:id", (req, res) => {
 app.use("/project-types",projectTypeRouter)
 
 // ===== CLIENTS (Issue #16) =====
-
-// View all clients
-app.get("/clients/all", (req, res) => {
-    res.send("Viewing all clients");
-});
-
-// New client page
-app.get("/clients/new", (req, res) => {
-    res.send("Send the new client page");
-});
-
-// Form submission for creating a new client
-app.post("/clients/new", (req, res) => {
-    console.log(req.body);
-    res.send("Saving a new client");
-});
-
-// Edit client page by id
-app.get("/clients/edit/:id", (req, res) => {
-    res.type("text/plain").send(`Edit specific client ${escapeHtml(req.params.id)}`);
-});
-
-// Save edited client
-app.post("/clients/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`Saving edits to client ${escapeHtml(req.params.id)}`);
-});
-
-// Delete client
-app.post("/clients/delete/:id", (req, res) => {
-    res.type("text/plain").send(`Deleting client ${escapeHtml(req.params.id)}`);
-});
-
-// View a specific client
-app.get("/clients/:id", (req, res) => {
-    res.type("text/plain").send(`Viewing a specific client ${escapeHtml(req.params.id)}`);
-});
-
+app.use("/clients", clientsRouter);
 
 // ===== PEOPLE (Issue #18) =====
 app.use("/people", peopleRouter);
