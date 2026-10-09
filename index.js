@@ -8,6 +8,8 @@ const projectPeople = require("./data/projectPeople");
 const skills = require("./data/skills.js");
 
 const projectRouter = require("./routes/Projects.js")
+const projectTypesRouter = require("./routes/ProjectTypes.js")
+
 const projectTypeRouter = require("./routes/ProjectTypes.js")
 const projectStatusRouter = require("./routes/ProjectStatuses.js");
 
@@ -441,6 +443,8 @@ app.get("/person-skill/:id", (req, res) => {
 
 
 // ===== PROJECT TYPES (Issue #14) =====
+app.use("/project-types",projectTypesRouter)
+
 
 app.use("/project-types",projectTypeRouter)
 
