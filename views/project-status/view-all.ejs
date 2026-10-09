@@ -1,0 +1,18 @@
+<%- include('components/header'); %>
+    <%- include('components/delete-modal'); %>
+    <%- include('components/new-item-modal', {projects, statuses}); %>
+        <button type="button" class="btn btn-primary mb-4" data-bs-toggle="modal" data-bs-target="#newItemModal">
+            New Project Status
+        </button>
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                All Project Statuses
+            </div>
+            <div class="card-body">
+                <%- include('components/table', {projectStatuses}) %>
+            </div>
+        </div>
+    </div>
+</main>
+<%- include('components/footer'); %>

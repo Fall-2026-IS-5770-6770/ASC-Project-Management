@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Page content header-->
+<%- include('../partials/head') %>
+
+    <body>
+        <div class="d-flex" id="wrapper">
+            <%- include('../partials/sidebar') %>
+                <div id="page-content-wrapper">
+                    <%- include('../partials/topNav') %>
+                    
+                        <!-- Page content-->
+                        <div>
+                            <h2>
+                                <%= status.name %>
+                            </h2>
+                            <p>
+                                <%= status.description %>
+                            </p>
+                            <p>Order: <%= status.order %>
+                            </p>
+                            <a href="/statuses">Back to all statuses</a>
+                        </div>
+                </div>
+        </div>
+
+        <!-- Page content footer -->
+        <%- include("../partials/footer") %>
+    </body>
+</html>

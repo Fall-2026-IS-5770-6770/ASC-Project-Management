@@ -1,0 +1,36 @@
+<div class="modal fade" tabindex="-1" id="newItemModal">
+  <div class="modal-dialog">
+        <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">New message</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="/project-status/new" method="post" id="newProjectStatusForm">
+          <div class="mb-3">
+            <label for="projectid" class="form-label">Project</label>
+            <select class="form-select" aria-label="Project" id="projectid" name="projectid">
+              <option selected>Select a project</option>
+              <% for (let project of projects) {%>
+              <option value=<%=project.id%>><%=project.name%></option>
+              <%}%>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="statusid" class="form-label">Status</label>
+            <select class="form-select" aria-label="Status" id="statusid" name="statusid">
+              <option selected>Select a status</option>
+              <% for (let status of statuses) {%>
+              <option value=<%=status.id%>><%=status.name%></option>
+              <%}%>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" form="newProjectStatusForm" class="btn btn-primary">Create</button>
+      </div>
+    </div>
+  </div>
+</div>
