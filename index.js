@@ -1,6 +1,8 @@
 const express = require("express");
 const escapeHtml = require("ejs").escapeXML;
 
+const CommunicationThreadController = require("./controllers/CommunicationThreadController");
+
 const path = require("path");
 const projects = require("./data/projects");
 const projectPeople = require("./data/projectPeople");
@@ -223,55 +225,28 @@ app.use("/channels", channelRouter);
 
 // ===== THREADS (Issue #7) =====
 
-// create new thread
-app.get("/threads/new", (req, res) => {
-    res.render('partials/threads/new/new-thread-modal.ejs');
-});
+// Display the new thread form
+app.get("/threads/new", CommunicationThreadController.getNewThreadPage);
 
-// post request for new thread 
-// .redirect will send users back to a page following the post request
-app.post("/threads/new", (req, res) => {
-    console.log('New thread submitted:', req.body.threadName);
-    res.redirect('/threads');
-});
+// Submit a new thread
+app.post("/threads/new", CommunicationThreadController.saveNewThread);
 
-// see all threads
-app.get("/threads", (req, res) => {
-    const channelThreads = threads
-        .filter((thread) => thread.channelId === 1)
-        .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
+// Display all threads
+app.get("/threads", CommunicationThreadController.getAllThreads);
 
-    res.render("partials/threads/all/all-thread-modal", { threads: channelThreads });
-});
+// Display the edit thread form
+app.get("/threads/edit/:id", CommunicationThreadController.getEditThreadPage);
 
+// Save thread edits
+app.post("/threads/edit/:id", CommunicationThreadController.saveThreadEdits);
 
-// edit a thread
-app.get("/threads/edit/:id", (req, res) => {
-    const thread = threads.find((t) => t.id === parseInt(req.params.id));
-    res.render("partials/threads/edit/edit-thread-modal", { threadId: thread.id, threadName: thread.name });
-});
+// Delete a thread
+app.post("/threads/delete/:id", CommunicationThreadController.deleteThread);
 
-app.post("/threads/edit/:id", (req, res) => {
-    console.log(req.body);
-    res.type("text/plain").send(`This route saves edits to thread ${escapeHtml(req.params.id)}`);
-});
-
-// post request for deleting a thrad
-app.post("/threads/delete/:id", (req, res) => {
-    console.log(`Thread ${req.params.id} deleted`);
-    res.type("text/plain").send(`This route deletes thread ${escapeHtml(req.params.id)}`);
-});
-
-// see threads by id
-app.get("/threads/:id", (req, res) => {
-    const thread = threads.find((t) => t.id === parseInt(req.params.id));
-    if (!thread) return res.status(404).send("Thread not found");
-    res.render("partials/threads/show/show-threads-modal", { threadId: thread.id, threadName: thread.name });
-});
-
+// Display a specific thread
+app.get("/threads/:id", CommunicationThreadController.getThread);
 
 // ===== MESSAGES (Issue #8) =====
-
 
 // ===== REQUIREMENTS (Issue #9) =====
 app.use("/requirements", requirementRouter);
