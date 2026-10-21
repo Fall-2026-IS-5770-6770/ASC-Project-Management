@@ -1,0 +1,40 @@
+
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Skill {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  category      String
+  description   String
+  projectSkills ProjectSkill[]
+}
+
+model Project {
+  id            Int            @id @default(autoincrement())
+  name          String
+  description   String
+  projectSkills ProjectSkill[]
+}
+
+model ProjectSkill {
+  id                 Int     @id @default(autoincrement())
+  projectId          Int
+  skillId            Int
+  importance         String  // "Required" or "Preferred"
+  minimumProficiency String  // "Beginner" | "Intermediate" | "Advanced"
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, skillId])
+}
