@@ -156,3 +156,4 @@ generated
 .pnpm-store
 pnpm-lock.yaml
 pnpm-workspace.yaml
+/generated/prisma
