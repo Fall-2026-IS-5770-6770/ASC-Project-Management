@@ -1,4 +1,6 @@
 const escapeHtml = require("ejs").escapeXML;
+const postgres = require("../app-data-source");
+const CommunicationChannelTable = require("../entities/communicationchannels.entities");
 // Communication Channel controller (Issue #6)
 // Each function is a route handler. The route file only maps method + path to these.
 
