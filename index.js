@@ -1,5 +1,10 @@
+require("dotenv").config();
+require("reflect-metadata");
 const express = require("express");
 const escapeHtml = require("ejs").escapeXML;
+
+
+const postgres = require("./app-data-source")
 
 const path = require("path");
 const projects = require("./data/projects");
