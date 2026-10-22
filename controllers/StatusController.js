@@ -1,90 +1,60 @@
+const postgres = requires("../app-data-source");
+const statusTable = require("../entities/Status.entities.js");
 
-const statuses = require("../data/statuses.js");
+const statusRepo = postgres.manager.getRepository(statusTable);
 
-// all statuses
-function getAllStatuses(req, res){
-    res.render("statuses/index", { statuses, title: "Statuses", activePage: "Statuses" });
-}
+// GET /status
+const index = async (req, res) => {
+  const status = await statusRepo.find();
+  res.render("StatusController/index", { title: "status", status, notice: req.query.notice });
+};
 
-// create status page
-function getNewStatusForm(req, res){
-    res.render("statuses/new", { title: "Statuses", activePage: "Statuses" });
-}
+// GET /status/new
+const newStatus = (req, res) => {
+  res.render("StatusController/newStatus", { title: "Add Status" });
+};
 
-// save the new status 
-function createStatus(req, res){
-    const { status_name, status_description, status_order } = req.body;
+// POST /status
+const createStatus = async(req, res) => {
+  // TODO: create a status from req.body
+  const newStatus = statusRepo.create()
+  newStatus.name = req.body.name;
+  newStatus.description = req.body.description;
+  await statusRepo.save(newStatus)
+  res.redirect("/status?notice=created");
+};
 
-    if (!status_name || !status_description) {
-        return res.status(400).type("text/plain").send("Missing required fields: status_name or status_description");
-    }
+// GET /status/:id
+const showStatus = (req, res) => {
+  // TODO: load status by req.params.id
+  const status = null;
+  res.render("StatusController/showStatus", { title: "Status Info", id: req.params.id, status, notice: req.query.notice });
+};
 
-    const newId = statuses.reduce((max, s) => Math.max(max, s.id), 0) + 1;
+// GET /status/:id/edit
+const editStatus = (req, res) => {
+  // TODO: load status by req.params.id
+  const status = null;
+  res.render("StatusController/editStatus", { title: "Edit Status", id: req.params.id, status });
+};
 
-    statuses.push({
-        id: newId,
-        name: status_name,
-        description: status_description,
-        order: status_order ? Number(status_order) : newId
-    });
+// POST /status/:id/edit
+const updateStatus = async(req, res) => {
+  // TODO: update status req.params.id with req.body
+  const status = await statusRepo.findOneBy({id:req.params.id})
+  status.name = req.body.name;
+  status.description = req.body.description;
+  await statusRepo.save(status)
+  res.redirect(`/StatusController/${req.params.id}?notice=updated`);
+};
 
-    res.redirect("/statuses");
-}
+// POST /status/:id/delete
+const destroyStatus = async(req, res) => {
+  // TODO: delete status req.params.id
+  const status = await statusRepo.findOneBy({id:req.params.id})
+  await statusRepo.remove(status)
+  res.redirect("/status?notice=deleted");
+};
 
-// get the edit page for one status
-function getEditStatusForm(req, res){
-    const status = statuses.find(s => s.id === Number(req.params.id));
-
-    if (!status) {
-        return res.status(404).type("text/plain").send(`Status with id ${req.params.id} not found`);
-    }
-
-    res.render("statuses/edit", { status, title: "Statuses", activePage: "Statuses" });
-}
-
-// save the edit form for one status
-function updateStatus(req, res){
-    const status = statuses.find(s => s.id === Number(req.params.id));
-
-    if (!status) {
-        return res.status(404).type("text/plain").send(`Status with id ${req.params.id} not found`);
-    }
-
-    const { status_name, status_description, status_order } = req.body;
-
-    if (!status_name || !status_description) {
-        return res.status(400).type("text/plain").send("Missing required fields: status_name or status_description");
-    }
-
-    status.name = status_name;
-    status.description = status_description;
-    status.order = status_order ? Number(status_order) : status.order;
-
-    res.redirect("/statuses");
-}
-
-// delete status by id
-function deleteStatus(req, res){
-    const index = statuses.findIndex(s => s.id === Number(req.params.id));
-
-    if (index === -1) {
-        return res.status(404).type("text/plain").send(`Status with id ${req.params.id} not found`);
-    }
-
-    statuses.splice(index, 1);
-    res.redirect("/statuses");
-}
-
-// get status by id
-function getStatus(req, res){
-    const status = statuses.find(s => s.id === Number(req.params.id));
-
-    if (!status) {
-        return res.status(404).type("text/plain").send(`Status with id ${req.params.id} not found`);
-    }
-
-    res.render("statuses/show", { status, title: "Statuses", activePage: "Statuses" });
-}
-
-module.exports = {getAllStatuses,getNewStatusForm,createStatus,getEditStatusForm,updateStatus,deleteStatus,getStatus}
+module.exports = { index, newStatus, createStatus, showStatus, editStatus, updateStatus, destroyStatus }
 
