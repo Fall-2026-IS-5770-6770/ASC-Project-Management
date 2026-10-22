@@ -67,6 +67,7 @@ function withDetails(channel) {
 
 // Allow body encoding for POST Requests
 app.use(express.urlencoded({extended:true}));
+app.use(express.json());
 app.use(express.static('public'));
 app.set("view engine","ejs");
 // TASK 12: TRACKIN PEOPLE (MENTORS/STUDENTS) ASSOCIATED WITH PROJECTS
@@ -276,6 +277,14 @@ app.get("/threads/:id", (req, res) => {
 // ===== REQUIREMENTS (Issue #9) =====
 app.use("/requirements", requirementRouter);
 
+// ===== REQUIREMENTS API =====
+// Keep JSON API routes separate from the existing HTML page routes.
+const requirementApiRouter = require("./routes/RequirementsAPI.js");
+app.use("/api/v1", requirementApiRouter);
+app.use("/api/v1", (req, res) => {
+    res.status(404).json({ error: "API endpoint not found." });
+});
+
 // ===== PROJECT SKILLS (Issue #29 pages, Issue #67 controller) =====
 app.use("/project-skills", projectSkillsRouter);
 
@@ -455,6 +464,19 @@ app.use("/clients", clientsRouter);
 app.use("/people", peopleRouter);
 
 // Start listening
+app.use((err, req, res, next) => {
+    if (req.path === "/api/v1" || req.path.startsWith("/api/v1/")) {
+        const statusCode = err.status || 400;
+        return res.status(statusCode).json({
+            error: statusCode === 400
+                ? "The request body must contain valid JSON."
+                : "The request could not be processed."
+        });
+    }
+
+    next(err);
+});
+
 app.listen(PORT, () => {
     console.log(`App is listening on http://localhost:${PORT}`);
 });
