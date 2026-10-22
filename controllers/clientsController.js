@@ -1,5 +1,6 @@
 const escapeHtml = require("ejs").escapeXML;
 
+
 // GET /clients/all
 function getViewAllClients(req, res) {
     res.send("Viewing all clients");
