@@ -1,6 +1,11 @@
 const express = require("express");
 const escapeHtml = require("ejs").escapeXML;
 
+require("dotenv").config();
+require("reflect-metadata");
+
+const postgres = require("./app-data-source")
+
 const path = require("path");
 const projects = require("./data/projects");
 const projectPeople = require("./data/projectPeople");
@@ -455,6 +460,8 @@ app.use("/clients", clientsRouter);
 app.use("/people", peopleRouter);
 
 // Start listening
-app.listen(PORT, () => {
-    console.log(`App is listening on http://localhost:${PORT}`);
-});
+postgres.initialize().then(()=>{
+    app.listen(PORT, () => {
+        console.log(`App is listening on http://localhost:${PORT}`);
+    });
+})

@@ -1,47 +1,59 @@
-// Skills (Issue #28 pages, moved into a controller for Issue #66)
-const skills = require("../data/skills.js");
+const postgres = require("../app-data-source");
+const SkillTable = require("../entities/Skill.entities")
 
-// GET /skills/new
-function getCreatePage(req,res) {
-    res.render("skills/index.ejs", {mode: "new"});
-    //res.send("Send the create skill page");
-}
-
-// POST /skills/new
-function saveNewSkill(req,res) {
-    //res.send("Save the new skill");
-    res.redirect("/skills");
-}
+const skillRepo = postgres.manager.getRepository(SkillTable)
 
 // GET /skills
-function getAllSkills(req,res) {
-    res.render("skills/index.ejs", {mode: "list", skills });
+const index = async (req, res) => {
+    const skill = await skillRepo.find()
+    res.render("Skill/index", { title: "skill", skill, notice:req.query.notice});
 }
 
-// GET /skills/:id/edit
-function getEditPage(req,res) {
-    const skill = skills.find((s) => s.id === Number(req.params.id));
-    if (!skill) return res.status(404).send("Skill not found");
-    res.render("skills/index.ejs", {mode: "edit", skill });
+// GET /skills/new
+const newForm = (req, res) => {
+    res.render("Skill/new", { title: "Add Skill"});
 }
 
-// POST /skills/:id/edit
-function saveSkillEdits(req,res) {
-    //res.send(`Save the edits to skill ${req.params.id}`);
-    res.redirect(`/skills/${req.params.id}`);
+// POST /skills
+const create = async (req, res) => {
+    const newSkill = await skillRepo.create();
+    newSkill.skillName = req.body.skillName;
+    newSkill.category = req.body.category;
+    newSkill.description = req.body.description;
+    await skillRepo.save(newSkill);
+    res.redirect("/skills?notice=created");
 }
 
-// POST /skills/:id/delete
-function deleteSkill(req,res) {
-    //res.send(`Delete skill ${req.params.id}`);
-    res.redirect("/skills")
+//GET /skill/:id
+const show = (req, res) => {
+    const skill = null;
+    res.render("Skill/edit", {title: "Edit Skill", id:req.params.id, skill});
 }
 
-// GET /skills/:id
-function getSkill(req,res) {
-    const skill = skills.find((s) => s.id === Number(req.params.id));
-    if (!skill) return res.status(404).send("Skill not found");
-    res.render("skills/index.ejs", {mode: "show", skill });
+//GET /skill/:id/edit
+const editForm = (req, res) => {
+    const skill = null;
+    res.render("Skill/edit", {title: "Edit Skill", id: req.params.id, skill})
 }
 
-module.exports = { getCreatePage, saveNewSkill, getAllSkills, getEditPage, saveSkillEdits, deleteSkill, getSkill };
+//POST /skill/:id/edit
+const update = async (req, res) => {
+    const skill = await skillRepo.findOneBy({id:req.params.id})
+    skill.skillName = req.body.skillName;
+    skill.category = req.body.category;
+    skill.description = req.body.description;
+    await skillRepo.save(skill);
+    res.redirect(`/skill/${req.params.id}?notice-updated`);
+};
+
+//POST /skill/:id/delete
+const destroy = async (req, res) => {
+    const skill = await skillRepo.findOneBy({id:req.params.id})
+    skill.skillName = req.body.skillName;
+    skill.category = req.body.category;
+    skill.description = req.body.description;
+    await skillRepo.remove(skill);
+    res.redirect("/people?notice=deleted");
+};
+
+module.exports = {index, newForm, create, show, editForm, update, destroy}
