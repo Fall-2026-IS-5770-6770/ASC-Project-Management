@@ -1,6 +1,14 @@
-const people = require("../data/people");
+const postgres = require("../app-data-source")
+const PersonTable = require("../entities/Person.entities");
+const personRepo = postgres.manager.getRepository(PersonTable);
 
-function getCreatePerson(req, res) {
+
+async function getAllSortedPeople() {
+  return await personRepo.find({order:{lastName:"ASC"}});
+}
+
+async function getCreatePerson(req, res) {
+  const people = await getAllSortedPeople();
   res.render("people/index", {
     people,
     openCreateModal: true,
@@ -9,8 +17,15 @@ function getCreatePerson(req, res) {
   });
 }
 
-function createPerson(req, res) {
-  console.log("Submitted new person:", req.body.firstName);
+async function createPerson(req, res) {
+  const newPerson = personRepo.create({
+    firstName: req.body.firstName,
+    lastName: req.body.lastName,
+    email: req.body.email
+  });
+  await personRepo.save(newPerson);
+
+  const people = await getAllSortedPeople();
 
   res.render("people/index", {
     people,
@@ -20,40 +35,43 @@ function createPerson(req, res) {
   });
 }
 
-function getAllPeople(req, res) {
-  const sortedPeople = [...people].sort((a, b) =>
-    a.lastName.localeCompare(b.lastName)
-  );
+async function getAllPeople(req, res) {
+  const people = await getAllSortedPeople();
 
   res.render("people/index", {
-    people: sortedPeople,
+    people,
     openCreateModal: false,
     personSubmitted: false,
     personDeleted: false
   });
 }
 
-function getEditPerson(req, res) {
-  const person = people.find((p) => p.id === Number(req.params.id));
+async function getEditPerson(req, res) {
+  const person = await personRepo.findOneBy({ id: Number(req.params.id) });
   if (!person) return res.status(404).send("404 Person not found");
 
   res.render("people/edit", { person, submitted: false });
 }
 
-function updatePerson(req, res) {
-  const person = people.find((p) => p.id === Number(req.params.id));
+async function updatePerson(req, res) {
+  const person = await personRepo.findOneBy({ id: Number(req.params.id) });
   if (!person) return res.status(404).send("Person not found");
 
-  console.log("Submitted email:", req.body.email);
+  person.firstName = req.body.firstName;
+  person.lastName = req.body.lastName;
+  person.email = req.body.email;
+  await personRepo.save(person);
 
   res.render("people/edit", { person, submitted: true });
 }
 
-function deletePerson(req, res) {
-  const person = people.find((p) => p.id === Number(req.params.id));
+async function deletePerson(req, res) {
+  const person = await personRepo.findOneBy({ id: Number(req.params.id) });
   if (!person) return res.status(404).send("Person not found");
 
-  console.log("Delete requested for person ID:", person.id);
+  await personRepo.remove(person);
+
+  const people = await getAllSortedPeople();
 
   res.render("people/index", {
     people,
@@ -63,8 +81,10 @@ function deletePerson(req, res) {
   });
 }
 
-function getPerson(req, res) {
-  const person = people.find((p) => p.id === Number(req.params.id));
+async function getPerson(req, res) {
+  const person = await personRepo.findOne({where: { id: Number(req.params.id) },
+  relations: {addresses:true, phoneNumbers:true}
+  });
   if (!person) return res.status(404).send("Person not found");
 
   res.render("people/show", { person });
