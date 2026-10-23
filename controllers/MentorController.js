@@ -1,6 +1,92 @@
 // Mentors (Issue #25 pages, moved into a controller for Issue #63)
 const escapeHtml = require("ejs").escapeXML;
+const { request } = require("express");
+const postgres = require('../app-data-sourse');
+const MentorTable = require('../entities/Mentor.Entities');
 
+const mentorRepo = postgres.manager.getRepository(MentorTable);
+
+// GET /people
+const index = async (req, res) => {
+    const mentors = await mentorRepo.find({
+            relations: {
+                person: true,
+                skills: true
+            }
+        });
+
+        // Load existing people for the Create Mentor dropdown.
+        const people = await personRepo.find();
+
+        // Match the data structure expected by your EJS:
+        // mentor.person.firstName
+        // mentor.person.lastName
+        // mentor.skills
+        // mentor.mentor.id
+        const mentorData = mentors.map((item) => ({
+            mentor: item, person: item.person, skills: item.skills || []
+        }));
+
+        res.render('Mentor/index', {
+            title: 'Mentors',mentorData, people, notice: req.query.notice
+        });
+ /*
+    // const people = []; // TODO: load all people
+  const mentor = await mentorRepo.find({relations:{messages:true}})  //SELECT ALL
+  res.render("Mentor/index", { title: "Mentor", mentor, notice: req.query.notice });
+ */
+  };
+
+
+// GET /mentor/new
+const newForm = (req, res) => {
+  res.render("Mentor/new", { title: "Add Mentor" });
+};
+
+// POST /mentor
+const create = async (req, res) => {
+    const person = await personRepo.findOne({where: { id: req.body.personId }});
+    const newMentor = mentorRepo.create({person: person});
+    await mentorRepo.save(newMentor);
+    res.redirect("/mentor?notice=created");
+  /*
+    const newMentor = mentorRepo.create();
+  newMentor.firstname = req.body.firstName;
+  newMentor.lastname = req.body.lastName;
+  await mentorRepo.save(newMentor);
+  */
+};
+
+// GET /mentor/:id
+const show = (req, res) => {
+  res.render(`mentor/${req.params.id}`, { title: "Mentor Profile", id: req.params.id, mentor, notice: req.query.notice });
+};
+
+// GET /mentor/:id/edit
+const editForm = (req, res) => {
+  res.render(`mentor/edit/${req.params.id}`, { title: "Edit Mentor", id: req.params.id, mentor });
+};
+
+// POST /mentor/:id/edit
+const update = async (req, res) => {
+    const mentor = await mentorRepo.findOne({where:{id:req.params.id}, relations:{messages:true}});
+    
+    await mentorRepo.save(mentor);
+
+  res.redirect(`/mentor/${req.params.id}?notice=updated`);
+};
+
+// POST /mentor/:id/delete
+const destroy = async (req, res) => {
+  await mentorRepo.remove(req.params.id)
+  res.redirect("/mentor?notice=deleted");
+};
+
+module.exports = { index, newForm, create, show, editForm, update, destroy };
+
+
+
+/*
 // GET /mentors/new
 function getCreateMentorPage(req, res) {
     const people = require("../data/people");
@@ -196,5 +282,6 @@ function deleteMentor(req, res) {
 function getMentor(req, res) {
     res.type("text/plain").send(`Getting mentor ${escapeHtml(req.params.id)}`);
 }
+*/
 
 module.exports = { getCreateMentorPage, saveNewMentor, getAllMentors, getEditMentor, saveEditMentor, deleteMentor, getMentor };
