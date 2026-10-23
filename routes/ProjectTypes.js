@@ -2,7 +2,7 @@ const express = require("express");
 
 const router = express.Router();
 
-const {getCreateProjectType,saveNewType,getListTypes,getEditType,saveEditType,saveDeleteType,getProjectType} = require("../controllers/ProjectTypesController.js")
+const { getCreateProjectType, saveNewType, getListTypes, getEditType, saveEditType, saveDeleteType, getProjectType } = require("../controllers/ProjectTypesController.js")
 
 // Create lives in a modal on the list page, so this route just sends you there
 router.get("/new", getCreateProjectType);
@@ -25,7 +25,7 @@ router.post("/delete/:id", saveDeleteType);
 // Show one project type
 router.get("/:id", getProjectType);
 
-const {getCreatePage,saveNewProjectType,getAllProjectTypes,getEditPage,saveProjectTypeEdits,deleteProjectType,getProjectType} = require("../controllers/ProjectTypeController")
+const { getCreatePage, saveNewProjectType, getAllProjectTypes, getEditPage, saveProjectTypeEdits, deleteProjectType, getProjectType } = require("../controllers/ProjectTypeController")
 
 // Static paths (new, edit, delete) must be registered before /:id so they aren't shadowed.
 
@@ -50,5 +50,4 @@ router.post("/delete/:id", deleteProjectType);
 // Get one project by id
 router.get("/:id", getProjectType);
 
-
-module.exports = router
+module.exports = router;
