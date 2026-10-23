@@ -1,3 +1,6 @@
+require('dotenv').config();
+require('reflect-metadata');
+
 const express = require("express");
 const escapeHtml = require("ejs").escapeXML;
 
@@ -41,6 +44,8 @@ const projectSkillsRouter = require("./routes/projectSkills.js");
 const mentorRouter = require('./routes/Mentors.js')
 
 const skillRouter = require("./routes/Skills.js")
+
+const postgres = require('path');
 
 const app = express();
 app.set("view engine", "ejs");
@@ -455,6 +460,10 @@ app.use("/clients", clientsRouter);
 app.use("/people", peopleRouter);
 
 // Start listening
-app.listen(PORT, () => {
+postgres.initialize().then(() => {
+    app.listen(PORT, () => {
     console.log(`App is listening on http://localhost:${PORT}`);
 });
+
+})
+
