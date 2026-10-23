@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(git ls-tree *)",
+      "Bash(grep -E '^\\(typeorm|pg\\)$')",
+      "Bash(npx eslint *)",
+      "Bash(node -e 'const ds=require\\(\"./app-data-source\"\\); ds.buildMetadatas ? 0:0; ds.buildMetadatas\\(\\).then\\(\\(\\)=>{console.log\\(ds.entityMetadatas.map\\(m=>m.tableName+\": \"+m.columns.map\\(c=>c.databaseName\\).join\\(\",\"\\)\\).join\\(\"\\\\n\"\\)\\)}\\).catch\\(e=>console.error\\(\"ERR\",e.message\\)\\)')",
+      "Bash(node -e 'const ds=require\\(\"./app-data-source\"\\); ds.buildMetadatas\\(\\).then\\(\\(\\)=>console.log\\(ds.entityMetadatas.map\\(m=>m.tableName+\": \"+m.columns.map\\(c=>c.databaseName\\).join\\(\",\"\\)\\).join\\(\"\\\\n\"\\)\\)\\).catch\\(e=>console.error\\(\"ERR\",e.message\\)\\)')",
+      "Bash(node -e 'require\\(\"./controllers/PersonController\"\\); console.log\\(\"controller loads\"\\)')",
+      "Bash(echo \"lint exit $?\")",
+      "Read(//Users/ellie/Documents/GitHub/**)",
+      "Bash(grep -n \"^module.exports\\\\|^  [a-zA-Z]*,\\\\?$\" controllers/ProjectTypeController.js)",
+      "Bash(git check-ignore *)"
+    ]
+  }
+}
